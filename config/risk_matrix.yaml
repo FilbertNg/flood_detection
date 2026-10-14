@@ -1,0 +1,9 @@
+# Street level = matrix[susceptibility][trigger level]   (build plan §2; contract)
+# A street is never above its trigger level, and a more susceptible street is never lower.
+# Starting values; tune on replays of real events.
+matrix:
+  1: {normal: normal, watch: normal, warning: normal,  danger: watch}
+  2: {normal: normal, watch: normal, warning: watch,   danger: watch}
+  3: {normal: normal, watch: watch,  warning: watch,   danger: warning}
+  4: {normal: normal, watch: watch,  warning: warning, danger: danger}
+  5: {normal: normal, watch: watch,  warning: warning, danger: danger}
