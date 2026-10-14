@@ -88,7 +88,7 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
         runner.stop_replay(keep_mode=True)
 
     app = FastAPI(title="Flood-Ready Township API", version="0.1.0", lifespan=lifespan)
-    origins = [o for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174").split(",") if o]
+    origins = [o for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174").split(",") if o]
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"])
     ctx = runner.ctx
     api = "/api/v1"
