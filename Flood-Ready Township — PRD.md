@@ -1,7 +1,11 @@
 # Flood-Ready Township — Product Requirements Document
 
-v2.2 · 14 Oct 2026 · @Filbert
+v3.1 · 14 Oct 2026 · @Filbert
 
+> **v3.1 changes:** **ML-first trigger.** A gradient-boosted classifier trained on 2024–2026 JPS data pooled across all river stations predicts the chance that the river near each township crosses its warning level within 1–2 h. JPS's rules are a safety floor (the level is the higher of the two), and ML drives alerts only after passing an out-of-sample gate. Feasibility: `docs/ml-feasibility.md` (50 warning crossings at Sg Binjai; first model gave 90 vs 60 min median lead).
+>
+> **v3 changes:** the **full working MVP is due 23 Oct** (pitch deck ≤ 10 slides, 5-minute video or demo, prototype/code, optional documents), not a paper proposal. Timeline replaced by a dependency-ordered build plan for a team of five (`docs/superpowers/plans/2026-10-14-mvp-build-plan.md`). No hardware or VPS before Top 10: the sensor is simulated (HTTP) and MVP hosting costs $0 (GitHub Actions tick, free Postgres, Cloudflare Pages). Priorities re-tiered: Must = in the 23 Oct submission.
+>
 > **v2.2 changes:** gridded model rain missed the 12 Nov 2024 storm almost completely (≤ 6.8 mm anywhere near Klang vs 79 mm at the Kg Perepat gauge), so the district model now uses **JPS station rain** (history from Jan 2024) and gridded forecasts are kept for the Outlook only. A one-hour intensity rule (JPS's own "heavy" / "very heavy" categories) has been added. Loggers and history archive are running.
 >
 > **v2.1 changes:**
@@ -20,7 +24,7 @@ The system has four parts:
 
 - a **flood susceptibility map** of where water collects, built once per township;
 - a live **trigger layer** that predicts when flooding will happen. It refreshes every 15 minutes from JPS station rain and river levels, the rain forecast, MET warnings and the tide;
-- **one physical water-level sensor** that confirms the prediction on the ground;
+- **a water-level sensor** that confirms the prediction on the ground (simulated in the MVP; an ESP32 unit after Top 10);
 - **resident verification**: residents tell us whether the flood really happened, which confirms alerts, measures our accuracy and becomes new training data.
 
 The system has two web apps:
@@ -35,10 +39,10 @@ The system has two web apps:
 | Milestone | Date |
 | --- | --- |
 | Registration closes | 21 Oct 2026 |
-| Proposal submission | 23 Oct 2026 |
+| **Submission: full working MVP**: pitch deck (≤ 10 main slides + appendix), 5-minute video or live demo link, prototype / code (GitHub), optional supporting documents | **23 Oct 2026, 11:59 pm** |
 | Top 10 announced | 28 Oct 2026 |
-| Mentoring sprint | 2–6 Nov 2026 |
-| Final submission | 11 Nov 2026 |
+| Mentoring sprint (add the hardware sensor and VPS) | 2–6 Nov 2026 |
+| Final submission (improved build) | 11 Nov 2026 |
 | Top 10 pitch day | 14 Nov 2026 |
 | Final presentation & awards | 3 Dec 2026 |
 
@@ -63,13 +67,13 @@ Bandar Bukit Raja residents say parts of their township flash-flood at least thr
 
 ## How this plan scores against the judging criteria
 
-The proposal and the pitch follow the official criteria and the page's **Mechanism / Enabler** structure.
+The deck, the video and the pitch follow the official criteria and the page's **Mechanism / Enabler** structure.
 
 | Criterion | Weight | Our answer |
 | --- | --- | --- |
 | Impact & Sustainability Value | 25% | Residents of BBR Phase 1–2 get street-level warnings with an action; SDP gets data-backed drainage priorities. Impact is put in numbers: homes covered, minutes of warning, floods confirmed, streets prioritised |
-| Innovation & Differentiation | 20% | JPS and MET watch rivers and districts; we turn their data into a street-level alert with an action. Residents verify alerts, so the system measures and improves its own accuracy. The admin side turns floods into improvement suggestions |
-| Feasibility & Deliverability | 20% | Open data only; live logger already running; replay on real JPS readings; one sensor; two web apps sharing one API |
+| Innovation & Differentiation | 20% | JPS and MET watch rivers and districts; we turn their data into a street-level alert with an action. An ML trigger trained on 2.5 years of JPS river data gave about 30 min more warning than rain rules in a first test, with JPS's own thresholds as a safety floor. Residents verify alerts, so the system measures and improves its own accuracy. The admin side turns floods into improvement suggestions |
+| Feasibility & Deliverability | 20% | Open data only; working MVP in a public repo; live loggers running; replay on real JPS readings; two web apps sharing one API; $0 hosting |
 | Strategic Fit & Theme Relevance | 15% | Planet → climate resilience, in an SDP township, answering a residents' memorandum |
 | Commercial & Value Multiplication | 10% | Ops and drainage-planning value for SDP, "monitored street" sales card, one pipeline for every SDP township; cost per township |
 | Team, Evidence & Pitch Quality | 10% | Buyer survey (30–50), 5–10 BBR resident interviews, an evaluation that reports N as well as %, and a live verification loop |
@@ -88,7 +92,7 @@ The MVP must prove one thing: open data can warn an SDP street about a flash flo
 **Non-goals (MVP)**
 
 - No hydraulic or drain-network modelling. Improvement suggestions are screening prompts for engineers, not designs.
-- No dense sensor network; one physical sensor only.
+- No dense sensor network and no hardware in the MVP: one simulated sensor; one ESP32 unit after Top 10.
 - No integration with the real SDP App. The Resident app is a stand-alone PWA that could later be embedded.
 - No official warning role; JPS/MET/NADMA remain the authority.
 - No council access (cut from scope).
@@ -99,6 +103,7 @@ The MVP must prove one thing: open data can warn an SDP street about a flash flo
 | Metric | MVP target | How measured |
 | --- | --- | --- |
 | Event detection | Report "X of N events flagged Warning or higher"; target ≥ 70% | Leave-one-event-out over all dated events |
+| ML vs official rules | ML trigger passes the gate: detects at least as many river crossings as the Watch rule with no more false alarms, or the same number with ≥ 20 min more lead and ≤ 1.2× false alarms | Time-blocked out-of-sample evaluation over 2024–2026 (first spike: 23/50 detected by both, 90 vs 60 min lead) |
 | Nowcast lead time | Median ≥ 30 min before first report | Hour-precision events only. Report time lags real onset, and we say so |
 | Outlook lead time | Median ≥ 6 h before first report | Only with real day-ahead forecasts: Open-Meteo Previous Runs (2024+) or our own logged forecasts |
 | False alarms | ≤ 4 Warning alerts per township per month with no flood | Continuous hour-by-hour run over a 6-month rainy season; each Warning checked against news |
@@ -125,17 +130,17 @@ Four users share one data pipeline; residents and SDP ops are the MVP priority.
 A street's flood level combines where water collects (a fixed susceptibility score) with how likely flooding is right now (a live trigger level), using an explicit risk matrix. The sensor and resident verification confirm it on the ground.
 
 1. **Susceptibility map (where).** Built once per township on a 30 m grid from FABDEM ground height (buildings and trees removed), terrain features (slope, HAND, TWI, flow accumulation), distance to rivers and coast, and hard surfaces. A HAND + TWI index is the baseline; an ML classifier replaces it only if it scores better on held-out streets. Output: score 1–5 per cell, rolled up per street.
-2. **Trigger layer (when).** Refreshes every 15 minutes and has two parts:
-   - **Station rules** using JPS Public Infobanjir: rain of 60 mm or more in 2–4 h at a nearby station (JPS's own flash-flood guide), with a lower Watch threshold, and river level against each station's own alert / warning / danger levels.
-   - **District model** (logistic regression first, XGBoost as a stretch goal): probability that flash flooding is reported in the district today, from **station rain across the district** (1–4 h intensity, 24 h total, 72 h antecedent), river levels and computed tide height. Gridded model rain is not used here, because it missed the 12 Nov 2024 and 23 Apr 2025 storms (see *Data sources*).
+2. **Trigger layer (when): ML-first, with a safety floor.** Refreshes every 15 minutes.
+   - **ML trigger** (gradient-boosted trees, scikit-learn): trained on 2024–2026 JPS data pooled across all river stations in Selangor and KL. Predicts the probability that the river near each township crosses its warning level within 1–2 h. The labels come from the river data itself, so there are many events to learn from (50 warning crossings at Sg Binjai alone). Features: river level against its thresholds, rises, rain within 10–25 km, tide.
+   - **Safety floor: station rules** using JPS's own figures. Rain ≥ 31 mm in 1 h (JPS "heavy") or ≥ 40 mm in 2–4 h → Watch; > 60 mm in 1 h or ≥ 60 mm in 2–4 h → Warning. River alert / warning / danger → Watch / Warning / Danger.
 
-   The trigger level is the **higher** of the rule level and the model level, and every alert records which one fired.
+   The trigger level is the **higher** of the ML level and the rule level. ML may raise a level but never lowers an official threshold, and every alert records which input fired. ML drives alert levels only once it passes an out-of-sample gate against the rules (see *Success metrics*). Until then its probability is shown, but the rules decide.
 3. **Risk matrix.** Susceptibility (1–5) × trigger level (Normal / Watch / Warning / Danger) → street level, from a published 5 × 4 lookup table that is tuned on replay.
 4. **Expected time.** Every alert carries a **time window**, never an exact minute.
    - **Nowcast:** the window comes from the typical lag between the rule firing and flooding on past events. On 12 Nov 2024 the rain rule fired at 09:00 and the river reached danger at 10:00. The window is shifted by the next high tide.
    - **Outlook:** the window is the forecast peak-rain hours, overlapped with high tide.
 5. **Reasons.** Every alert lists its drivers in plain language, ranked by contribution. For example: "Heavy rain: 62 mm in 2 h at Kg Perepat", "Sg Binjai rising, 0.2 m below danger", "High tide at 11:40", "More heavy rain forecast in the next 3 h".
-6. **Ground truth.** One ESP32 + waterproof ultrasonic sensor over a drain (or a demo container) reports water level via MQTT. Residents answer "Is it flooding here?" on alerts and can report floods we didn't warn about. Sensor and resident answers mark alerts *confirmed* or *not confirmed*, feed the live benchmark and, once reviewed, become training labels.
+6. **Ground truth.** A water-level sensor reports over HTTP. The MVP uses a simulated sensor, clearly labelled; after Top 10 an ESP32 + waterproof ultrasonic sensor over a drain posts to the same endpoint. Residents answer "Is it flooding here?" on alerts and can report floods we didn't warn about. Sensor and resident answers mark alerts *confirmed* or *not confirmed*, feed the live benchmark and, once reviewed, become training labels.
 7. **Improvement suggestions.** A rule-based engine in the Admin app reads confirmed floods, the rain at which each street flooded, tide timing, susceptibility and missed reports, and proposes actions per street with the evidence behind each one (see *Improvement suggestion rules*).
 
 **Two alert horizons**
@@ -143,7 +148,7 @@ A street's flood level combines where water collects (a fixed susceptibility sco
 | Alert | Lead time | Driven by | Confidence | Resident message (example) |
 | --- | --- | --- | --- | --- |
 | Outlook | 6–24 h | Day-ahead rain forecast + MET thunderstorm warning for the district + high-tide timing + susceptibility | Medium | "Flash-flood risk in Bukit Raja Phase 1 this evening, 5–8 pm (heavy rain forecast near high tide). Park on higher ground tonight." |
-| Nowcast | 0–2 h | Station rain and river rules + district model + susceptibility (+ sensor and resident confirmations) | High | "Flooding likely at Jalan Makyong between 9:30 and 10:30: 62 mm of rain in 2 h at Kg Perepat, Sg Binjai rising, high tide 11:40. Move your car now." |
+| Nowcast | 0–2 h | ML trigger + station rain and river rules (safety floor) + susceptibility (+ sensor and resident confirmations) | High | "Flooding likely at Jalan Makyong between 9:30 and 10:30: 62 mm of rain in 2 h at Kg Perepat, Sg Binjai rising, high tide 11:40. Move your car now." |
 
 **Alert levels per street:** Normal → Watch → Warning → Danger, the same four levels JPS uses for rivers, so residents and authorities read them the same way.
 
@@ -191,34 +196,35 @@ Priority = High if the street had confirmed floods affecting homes (depth "knee"
 
 ## Functional requirements
 
-The MVP has 35 Must requirements across seven modules; about half of them are small (half a day or less). The two apps share one API, one map component library and one design system, which keeps the UI work manageable. Should items are cut first if time runs short.
+**Priority:** Must = in the 23 Oct submission; Should = before 23 Oct if time allows, otherwise for the 11 Nov final; Could = after Top 10. The MVP has 37 Must requirements across seven modules. Who builds what, in which order and with which acceptance tests is in the *MVP Build Plan* (`docs/superpowers/plans/2026-10-14-mvp-build-plan.md`).
 
 | ID | Module | Requirement | Priority |
 | --- | --- | --- | --- |
 | ING-1 | Ingestion | Scrape JPS Public Infobanjir live water-level and rainfall tables for Selangor (and KL) every 15 min; keep stations within 25 km of the pilot township plus the stations named in `townships.yaml`; store every reading with source timestamp | Must |
 | ING-2 | Ingestion | Poll the data.gov.my Weather Warning API every 15 min; store all warnings; parse land thunderstorm / heavy-rain warnings that name Selangor or the township's district | Must |
 | ING-3 | Ingestion | Fetch the Open-Meteo hourly forecast (precipitation, precipitation probability) for each township centroid every hour, and **store every forecast run** to build our own forecast archive | Must |
-| ING-4 | Ingestion | Receive sensor readings via MQTT (≤ 1 per minute) and store with device ID | Must |
+| ING-4 | Ingestion | Sensor readings via HTTP `POST /sensor/readings` (≤ 1 per minute, device ID, `simulated` flag). MVP: simulated sensor, labelled on screen; ESP32 hardware after Top 10 | Must |
 | ING-5 | Ingestion | Treat `-9999`, station status OFF and repeated 5-min filler rows as missing, never as zero | Must |
 | ING-6 | Ingestion | **Staleness check:** if a source timestamp is more than 2 h old, mark the station missing, lower alert confidence and notify the team | Must |
 | ING-7 | Ingestion | **Archive JPS history** (15-min rain and water level, Jan 2024 → today) for all stations within 25 km of each township, done once with polite rate limits | Must |
 | ING-8 | Ingestion | Compute **tide height** for Port Klang for every hour (past and next 48 h) | Must |
 | MAP-1 | Susceptibility | Compute terrain features per 30 m cell from FABDEM (elevation, slope, HAND, TWI, TPI, flow accumulation, distance to river and coast) plus impervious share and building density | Must |
-| MAP-2 | Susceptibility | Build a HAND + TWI baseline index (1–5) and an ML classifier; dry samples drawn along roads and built-up areas; spatial block cross-validation; keep the ML map only if it beats the baseline | Must |
+| MAP-2 | Susceptibility | HAND + TWI baseline index (1–5) per street (Must). ML classifier with dry samples along roads and spatial block cross-validation, kept only if it beats the baseline (Should) | Must |
 | MAP-3 | Susceptibility | Roll cell scores up to each OSM street segment (max and mean) | Must |
 | MAP-4 | Susceptibility | Validation run trained without BBR labels, scored on BBR and memorandum streets; the pitch map comes from this run | Must |
 | MAP-5 | Susceptibility | Sentinel-1 December 2021 flood extent, shown as river-flood context only | Could |
 | TRG-1 | Trigger | Build features every 15 min: station rain 1 h / 2 h / 3 h / 4 h / 24 h / 72 h (per station and district max), river level vs its thresholds and trend, forecast rain next 3/6/12 h (Outlook and display), tide height and hours to high tide, MET warning flag, hour of day | Must |
-| TRG-2 | Trigger | Station rule layer using JPS's own figures: **Watch** at ≥ 31 mm in 1 h (JPS "heavy") or ≥ 40 mm in 2–4 h; **Warning** at > 60 mm in 1 h (JPS "very heavy") or ≥ 60 mm in 2–4 h (JPS flash-flood guide); river alert / warning / danger mapped to Watch / Warning / Danger. Starting values, tuned per township on 2024+ events | Must |
-| TRG-3 | Trigger | District model (logistic regression) outputting P(flash flood reported in district today); trained on JPS station rain from the history archive (Jan 2024 →), the same source used live | Must |
+| TRG-2 | Trigger | **Safety floor:** station rules using JPS's own figures: **Watch** at ≥ 31 mm in 1 h (JPS "heavy") or ≥ 40 mm in 2–4 h; **Warning** at > 60 mm in 1 h (JPS "very heavy") or ≥ 60 mm in 2–4 h (JPS flash-flood guide); river alert / warning / danger mapped to Watch / Warning / Danger. Starting values, tuned per township on 2024+ events | Must |
+| TRG-3 | Trigger | **ML trigger** (gradient-boosted trees) trained on 2024–2026 JPS data pooled across all river stations: probability that the river near each township crosses its warning level within 1–2 h. Level = max(ML, rules). Drives alert levels once it passes the out-of-sample gate; always shown as the flood probability | Must |
 | TRG-4 | Trigger | Combine trigger level and susceptibility through the 5 × 4 risk matrix into a street level; record which input fired | Must |
-| TRG-5 | Trigger | XGBoost version of TRG-3, used only if it beats logistic regression in leave-one-event-out evaluation | Should |
+| TRG-5 | Trigger | River-level forecast curve (quantile model, p50/p90, 1–2 h ahead) on Resident and Admin charts | Should |
 | TRG-6 | Trigger | Every alert carries an **expected time window** (Nowcast: from rule-to-flood lag on past events, shifted by tide; Outlook: forecast peak-rain hours overlapped with high tide) and **ranked plain-language reasons** | Must |
+| TRG-7 | Trigger | Street flash-flood classifier trained on news and resident labels (township-day); ships only with ≥ 20 labelled events and if it beats TRG-3 | Should |
 | ALR-1 | Alerts | **Web Push** (PWA, service worker, VAPID) to residents subscribed to a street when it reaches Warning or Danger: level, street, time window, top reasons, action, link to the street page, and "Is it flooding here?" buttons. Text in BM or English | Must |
 | ALR-2 | Alerts | Outlook push when 6–24 h risk is high | Must |
 | ALR-3 | Alerts | No repeat alert for the same street within 60 min unless the level rises; "All clear" push when it returns to Normal | Must |
 | ALR-4 | Alerts | Alert status (confirmed / not confirmed / unverified) from the sensor and resident answers, using the *Live benchmark* rules; "Confirmed by neighbours" follow-up push | Must |
-| ALR-5 | Alerts | Telegram bot fallback with the same messages, for iPhone users who don't install the PWA | Should |
+| ALR-5 | Alerts | Telegram bot fallback with the same messages, for iPhone users who don't install the PWA | Could |
 | RES-1 | Resident app | Onboarding without an account: choose street(s) by search or by tapping the map, choose BM/EN, allow notifications; prompt to install as an app (needed for push on iPhone) | Must |
 | RES-2 | Resident app | Live map (Leaflet): streets coloured by level, the impacted area highlighted, my streets pinned, JPS stations with latest readings | Must |
 | RES-3 | Resident app | Street page: current level and confidence, expected time window, ranked reasons, next 12 h rain chart, tide, what to do, data time and the "JPS/MET/NADMA are official" footer | Must |
@@ -236,7 +242,10 @@ The MVP has 35 Must requirements across seven modules; about half of them are sm
 | ADM-9 | Admin app | Sales street card view (monitored badge, last event, mitigations), printable | Could |
 | DEM-1 | Demo | Replay mode over **12 Nov 2024** using archived JPS 15-min data at accelerated speed, driving both apps; must run **offline** from cached data | Must |
 | DEM-2 | Demo | Evaluation report: leave-one-event-out detection, lead time, continuous false-alarm run, map skill on held-out streets, one honest failure case | Must |
-| DEM-3 | Demo | Recorded backup video of the full demo | Must |
+| DEM-3 | Submission | **5-minute video** of the working MVP (replay with push, verify, Admin statistics and suggestions, live mode); link in README | Must |
+| DEM-4 | Submission | **Pitch deck**, ≤ 10 main slides + appendix | Must |
+| DEM-5 | Submission | **Public GitHub repo** with README: what it is, screenshots, video link, setup in ≤ 5 commands, data credits | Must |
+| DEM-6 | Submission | Live demo links (Resident app, Admin app, API) | Should |
 
 ## Data sources and ML approach
 
@@ -261,21 +270,21 @@ All inputs are open data; the full schema and scraping plan are in *Flood-Ready 
 **Models**
 
 - **Susceptibility:** HAND + TWI index as the baseline; Random Forest / XGBoost on terrain features if it beats the baseline under spatial cross-validation ([ISPRS 2022](https://isprs-archives.copernicus.org/articles/XLVI-4-W3-2021/305/2022/)).
-- **Trigger:** station rules first (JPS one-hour intensity categories, 60 mm in 2–4 h, river thresholds), then a district-level logistic regression on station rain, river levels and tide. It is trained on flash floods across Klang, Petaling and Kuala Lumpur from January 2024 onward, where station history exists. Gridded model rain is excluded because it misses short tropical storms. Labels are day-level, and hour-precision events are used only to measure lead time. Train and test are split by event; never split randomly.
+- **Trigger (ML-first):** a gradient-boosted classifier on JPS station data, pooled across all river stations (Jan 2024 →), predicts river warning crossings 1–2 h ahead. Labels come from the river data itself, and the model is validated on time-blocked folds (12 Nov 2024 always held out). It is compared against the JPS rain and river rules, which stay as a safety floor. Gridded model rain is excluded because it misses short tropical storms. Street-level flash-flood labels from news and residents feed a second, optional classifier (TRG-7). Feasibility: `docs/ml-feasibility.md`.
 - **No leaking features:** historical MET warnings, tide flags taken from news, and in-sample susceptibility scores are not used for training.
 - **Learning from residents:** reviewed app confirmations and missed floods are added to the labels before each retrain; the street rain-at-onset statistics also tune the station rule thresholds per township.
 - **Explainability:** every alert shows its ranked reasons and which input fired.
 
 ## System architecture and tech stack
 
-Live feeds pass through one ingest layer into a database. The rule layer, the district model and the susceptibility map meet in one risk matrix. Both apps read through one FastAPI service, and resident answers flow back into the database as benchmark data and labels.
+Live feeds pass through one ingest layer into a database. The ML trigger, the rule floor and the susceptibility map meet in one risk matrix. Both apps read through one FastAPI service, and resident answers flow back into the database as benchmark data and labels.
 
 ```text
  JPS Infobanjir (live + history) ─┐
- MET warnings (data.gov.my) ──────┤               ┌─ Station rules ──┐
+ MET warnings (data.gov.my) ──────┤               ┌─ ML trigger ─────┐
  Open-Meteo forecast ─────────────┼─► Ingest ─► DB┤                  ├─► Risk matrix + time window + reasons
- Tide (computed) ─────────────────┤   (15 min)    └─ District model ─┘              │
- ESP32 sensor (MQTT) ─────────────┘        ▲          Susceptibility map ───────────┤
+ Tide (computed) ─────────────────┤   (15 min)    └─ Rules (floor) ──┘              │
+ Sensor (simulated, HTTP) ────────┘        ▲          Susceptibility map ───────────┤
                                            │          (FABDEM + OSM, once)          ▼
                                            │                                     FastAPI ──► Web Push (+ Telegram fallback)
                                            │                                        │
@@ -288,12 +297,12 @@ The GIS path runs once per township; everything else refreshes every 15 minutes.
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| Ingest | Python + APScheduler on an always-on machine (free-tier VM, Raspberry Pi or desktop); GitHub Actions cron as backup | Loggers must not stop when a laptop sleeps |
-| Sensor | ESP32 + waterproof ultrasonic sensor (mounted above its ~20–25 cm blind zone), Mosquitto MQTT | Cheap, well documented |
-| Storage | PostgreSQL + PostGIS (SQLite acceptable for MVP) | Time series, street geometry, alerts and answers in one place |
+| Ingest | Python. MVP: GitHub Actions cron every 15 min (`scripts/tick.py`: ingest → engine → push). After Top 10: systemd on a VPS | No always-on machine needed for the MVP |
+| Sensor | MVP: `scripts/sim_sensor.py` posting to the API, labelled "simulated". After Top 10: ESP32 + waterproof ultrasonic sensor (mounted above its ~20–25 cm blind zone) posting over HTTPS | No hardware needed for the MVP |
+| Storage | Supabase Postgres (free) in the MVP; SQLite for development and tests (SQLAlchemy Core keeps both working); Postgres on the VPS later | One database for readings, streets, alerts and answers |
 | GIS | rasterio, WhiteboxTools or pysheds, GeoPandas | HAND, TWI, flow accumulation without hydrology expertise |
 | Tide | pyTMD or utide | Deterministic tide for any hour |
-| ML | scikit-learn (logistic regression), XGBoost (stretch) | Fast, explainable |
+| ML | scikit-learn `HistGradientBoostingClassifier` (ML trigger), quantile regressor (forecast curve, Should); joblib artifact + model card | Fast on a CPU, handles missing readings, explainable through its drivers |
 | API | FastAPI: REST for both apps, Server-Sent Events for live map updates, offline replay mode from cached data | One service for both apps |
 | Push | Web Push with VAPID keys (`pywebpush` on the server, service worker in the Resident app); Telegram Bot API as fallback | Free; works on Android browsers and on iPhone once the PWA is added to the Home Screen (iOS 16.4+) |
 | Frontend | **React + Leaflet** (react-leaflet), Vite. One repo, two apps: `apps/resident` (PWA) and `apps/admin`, sharing `packages/shared` (map layers, level colours, API client, BM/EN strings) | Shared map components avoid building everything twice |
@@ -302,15 +311,12 @@ The GIS path runs once per township; everything else refreshes every 15 minutes.
 
 ### Deployment and keeping the loggers running
 
-Details and commands are in `deploy/README.md`.
-
-| Part | Runs on | Notes |
+| Phase | Where it runs | How the loggers keep running |
 | --- | --- | --- |
-| Loggers, history archive, FastAPI, PostgreSQL, MQTT, models | **VPS** (Ubuntu, 1 vCPU / 1–2 GB) | systemd service with `Restart=always`, started at boot; a nightly archive timer backfills any gaps in the JPS live log from Infobanjir history |
-| Resident app, Admin app | **Cloudflare Pages** | Static React builds with HTTPS (needed for PWA and Web Push) |
-| Watchdog | **Cloudflare Worker** cron every 15 min *(to do)* | Calls the API's `/health`; alerts the team on Telegram if logging is more than 30 min old. It runs outside the VPS, so it still works when the VPS is down |
+| **MVP (now → 23 Oct, $0)** | GitHub Actions cron every 15 min runs `scripts/tick.py` (ingest → engine → push); Supabase Postgres (free); FastAPI on a free host, or locally with a tunnel for the demo; both apps on Cloudflare Pages | Actions cron (public repo, free). The laptop logger stays on as a backup, and a JPS history top-up backfills any gaps |
+| **After Top 10** | VPS (`deploy/README.md`): loggers, API, Postgres; apps stay on Cloudflare Pages; Cloudflare Worker watchdog | systemd `Restart=always` + nightly archive timer; watchdog alerts the team if logging stops for more than 30 min |
 
-The loggers stay on the VPS rather than in a Cloudflare Worker: they use Python with pandas/pyarrow, local files and multi-hour archive jobs, and Workers have no local disk. Until the VPS is ready, the loggers run on an always-on PC. JPS gaps can be backfilled from the history endpoints later; MET warnings and forecasts cannot.
+The first DevOps check is whether JPS Infobanjir answers requests from GitHub's runners outside Malaysia. If it doesn't, the tick runs on a teammate's always-on PC instead. GitHub Actions cron can start a few minutes late, which is acceptable for the MVP; the demo uses replay. MET warnings and forecasts can't be backfilled, so gaps in those stay gaps.
 
 ## User flows and screens
 
@@ -409,7 +415,7 @@ Flood-Ready Township turns a known resident concern into a selling point and a p
 | --- | --- | --- |
 | Data | Free open data | Same + paid forecast API and licensed DEM if used commercially |
 | Compute | Always-on PC / free-tier VM | Small cloud VM + database |
-| Sensors | 1 hobby unit | A handful of industrial units at known hotspots |
+| Sensors | Simulated (MVP), then 1 hobby unit | A handful of industrial units at known hotspots |
 | Alerts | Web Push (free) + Telegram fallback | Web Push, or embedded in the SDP App |
 
 Exact pilot costs will be quoted with SDP during mentoring.
@@ -423,7 +429,7 @@ The biggest risk is too few labelled flood events; every other risk has a cheape
 | Few labelled events at street level | Weak model; metrics too coarse to mean much | District-level trigger trained on all Klang/Petaling/KL flash floods; station rules don't need labels; report "X of N"; ask SDP for incident logs; resident verification adds labels over time |
 | Infobanjir endpoints are undocumented and may change or block | Live feed or history lost | Archive the full history now; staleness check; data.gov.my as fallback; credit JPS and scrape politely |
 | No station history before 2024 | 2017, 2021 and 2023 events can't be used to train the trigger | They serve as map labels and news-quoted checks; the trigger trains on 2024+ events; the demo replays 12 Nov 2024. *(Optional: request older history from JPS.)* |
-| Gridded rain misses short storms (confirmed: 12 Nov 2024 and 23 Apr 2025) | Outlook under-predicts; gridded data useless for the Nowcast | Nowcast and district model use station rain only; Outlook leans on MET warnings and is labelled medium confidence; gridded skill measured with our logged forecasts |
+| Gridded rain misses short storms (confirmed: 12 Nov 2024 and 23 Apr 2025) | Outlook under-predicts; gridded data useless for the Nowcast | Nowcast, ML trigger and rules use station rain only; Outlook leans on MET warnings and is labelled medium confidence; gridded skill measured with our logged forecasts |
 | Thunderstorm forecasts are uncertain | Outlook false alarms; wrong time windows | Outlook labelled medium confidence; windows, never exact times; Warning needs observed rain |
 | Tide drives coastal Klang floods | Missed driver | Computed tide height is a Must input; SUG-2 tests it per street |
 | DEM (30 m) misses drains and kerbs; Klang is very flat | Street score noise | FABDEM; HAND baseline; roll up per street; validate on held-out streets; never claim house-level accuracy |
@@ -435,83 +441,66 @@ The biggest risk is too few labelled flood events; every other risk has a cheape
 | Alert fatigue | Residents ignore alerts | 60 min cooldown; two horizons; false-alarm rate measured continuously |
 | Liability | Resident relies on us instead of the authorities | Footer: advisory only; JPS/MET/NADMA are official |
 | Sensitive framing to the sponsor | Pitch reads as "SDP's township floods" | Frame as "SDP listened and acted"; score internal unless SDP chooses otherwise; share findings with SDP before publishing |
+| JPS Infobanjir blocks GitHub runners (foreign IPs) | Live tick fails | Checked first (build plan D2); fallback: tick on a teammate's always-on PC; JPS history backfills gaps |
+| Free tiers: Actions cron delay, API cold start, database limits | Late alerts, slow first load | Acceptable for the MVP; the demo uses replay; warm the API before recording; VPS after Top 10 |
+| No hardware before Top 10 | Sensor can't be shown for real | Simulated sensor, labelled on screen; ESP32 during the mentoring sprint |
+| Five people building in parallel in 9 days | Merge conflicts, integration surprises | Contracts frozen at M0, mocks for the frontends, small PRs, one owner per directory, CI on every PR |
 | Pitch-day failure (Wi-Fi, push, sensor) | Demo breaks on stage | Offline replay, push tested at the venue, backup video |
 
-## Timeline, milestones and team
+## Build plan, milestones and team
 
-The proposal on 23 Oct decides the Top 10, so it must show working pieces, not only plans. The working demo is due 11 Nov.
+Everything is due 23 Oct, so all five people build in parallel, ordered by dependency rather than by date: start any task as soon as what it needs is merged. Contracts, tasks with files and acceptance tests, git rules, the cut list and the submission checklist are in **`docs/superpowers/plans/2026-10-14-mvp-build-plan.md`**.
 
-**By 16 Oct — data running**
-
-- [x] Infobanjir live logger (water level + rainfall, Selangor + KL) running, with the staleness check *(started 14 Oct on a laptop; move to an always-on machine)*
-- [x] Weather-warning and Open-Meteo forecast loggers running *(14 Oct)*
-- [ ] JPS history archive (Jan 2024 → today) downloaded *(started 14 Oct; resumable)*
-- [ ] Frontend repo set up: React + Vite, `apps/resident`, `apps/admin`, `packages/shared`
-
-**By 21 Oct — register**
-
-- [ ] Team of 3–5 registered with at least one coder
-
-**By 23 Oct — proposal**
-
-- [ ] First BBR terrain map (FABDEM → HAND + TWI) with the memorandum streets overlaid, not used in training
-- [ ] 12 Nov 2024 chart from real JPS data: Kg Perepat rain + Sg Binjai level + 60 mm rule line + tide
-- [ ] Events table with the 6 seed incidents checked
-- [ ] Architecture diagram and mock-ups of both apps (resident push + street page; admin statistics + suggestions)
-- [ ] Proposal written against the six weighted criteria, using Mechanism / Enabler
-- [ ] Resident outreach started (BBR residents' groups / council)
-
-**24 Oct – 1 Nov — data, map and Resident app core**
-
-- [ ] VPS deployed: loggers and archive timer under systemd (`deploy/`), `data/raw/` copied from the laptop, backups to object storage
-
-- [ ] Flash-flood labels widened to Klang / Petaling / KL, 2017–2026, with evidence quotes
-- [ ] Tide series; Previous Runs day-ahead forecasts for Outlook evaluation; gridded-vs-station bias study
-- [ ] Susceptibility: baseline + ML, spatial cross-validation, BBR held-out validation run
-- [ ] Station rules tuned on 2024+ events; district logistic regression trained
-- [ ] Resident app: map, street page, Web Push working end to end on Android and iPhone
-
-**2–6 Nov — mentoring sprint**
-
-- [ ] Evaluation harness: leave-one-event-out, lead time, continuous false-alarm run, map skill
-- [ ] Verify + Report a flood; alert status rules
-- [ ] Sensor node streaming over MQTT
-- [ ] Admin app: login, ops map, street detail, statistics
-- [ ] Ask SDP mentors: incident/complaint logs, drain specs, retention-pond plans, which suggestions are useful to them, whether buyers should see the score
-
-**7–11 Nov — final build**
-
-- [ ] Admin app: reports, suggestions
-- [ ] Offline replay of 12 Nov 2024 driving both apps; backup video
-- [ ] Final submission
-
-**14 Nov — Top 10 pitch** · **3 Dec — final presentation**
-
-| Role | Owns |
+| Milestone | Done when |
 | --- | --- |
-| Data engineer | Infobanjir + warning + forecast loggers, history archive, news scraping, database |
-| GIS / ML 1 | Terrain features, susceptibility baseline + model, street roll-up |
-| ML 2 | Station rules, district model, tide, time windows and reasons, evaluation, suggestion rules |
-| Backend + IoT | FastAPI, risk matrix, Web Push + Telegram fallback, answers and statistics endpoints, ESP32 sensor, MQTT |
-| Frontend + pitch | Shared map package, Resident app, Admin app, slides, survey and resident interviews |
+| **M0 Foundations** | Contracts as code (API, DB, engine types, rules config), monorepo + CI, design tokens, mocks; everyone is unblocked |
+| **M1 Engine replay** | `scripts/replay.py --event 2024-11-12` prints Watch 08:45 → Warning 09:00 → Danger 10:00 for BBR from real JPS data |
+| **M2 Vertical slice** | Resident app on a phone shows replay levels from the API, and the push arrives |
+| **M3 Full MVP** | Verify / report, Admin statistics, report and suggestions on the 2024–2026 backfill, live tick, simulated sensor, BM/EN, deployed links |
+| **M4 Ship** | Freeze ≥ 36 h before the deadline, bug bash on Android + iPhone, video + deck final, submitted ≥ 6 h early |
 
-The frontend load has doubled, so Backend + IoT should also build the Admin statistics and report pages on the shared components. With a team of 3, merge "Data engineer + ML 2" and "Backend/IoT + Frontend".
+**Already done:** live loggers (JPS, MET, forecasts) running since 14 Oct; JPS history archive from Jan 2024; parsers with tests; public repo with git workflow; deployment units for the VPS phase.
+
+| Person | Role | Owns |
+| --- | --- | --- |
+| Filbert | Backend + AI/ML, integration lead | Engine (features, rules, risk matrix, levels, alerts, Outlook, replay, backfill), GIS susceptibility, tide, flood labels + evaluation report, suggestions; approves contract changes |
+| Michael | Backend | Database layer, FastAPI (public + admin + auth), Web Push, answers and outcomes, statistics and report endpoints, live tick, sensor endpoint + simulator |
+| Darrell | Frontend + UI/UX | Design system and screens for both apps, Admin app lead, deck design, video edit |
+| Christian | Frontend | Resident app: PWA, map, street page, push subscription, verify and report, BM/EN |
+| Chingiz | DevOps + frontend | Monorepo, CI, branch protection, GitHub Actions tick, Supabase, hosting, secrets, shared map components, Admin statistics pages |
+
+**After Top 10 (28 Oct → 11 Nov):** ESP32 sensor at a real drain, VPS + watchdog, district ML model, more townships, and the SDP mentors' input (incident logs, drain specs, which suggestions they find useful).
 
 ## Demo script and evaluation plan
 
 The pitch replays a real Bandar Bukit Raja flood from JPS's own 15-minute readings, on an event the model never trained on. The phone buzzes before the water rises, residents confirm it, and SDP sees what to fix.
 
-**3-minute demo (Mechanism, then Enabler)**
+**5-minute video (23 Oct submission; the 14 Nov Top 10 pitch shows the same flow live)**
 
-1. **(25 s) Problem:** the residents' memorandum on Jalan Makyong, and how SDP can answer it with action.
-2. **(25 s) Map:** the BBR susceptibility map from the held-out validation run. The memorandum streets turn red **without the model ever seeing them**.
-3. **(60 s) Replay 12 Nov 2024 in the Resident app:**
-   - Kg Perepat rain climbs; Watch at about 08:45, then Warning at 09:00 (61.5 mm), near high tide.
+1. **(0:00–0:40) Problem:** the residents' memorandum on Jalan Makyong, and how SDP can answer it with action.
+2. **(0:40–1:30) Resident app tour + map:** pick a street; the BBR susceptibility baseline (built without any flood labels) and where the memorandum streets fall.
+3. **(1:30–2:45) Replay 12 Nov 2024 in the Resident app:**
+   - Kg Perepat rain climbs; Watch at about 08:45, then Warning at 09:00 (61.5 mm), near high tide. The street page shows the ML flood probability alongside the official thresholds (values from the final, out-of-sample model).
    - The phone on stage receives the push: "Flooding likely at Persiaran Sungai Keramat between 9:30 and 10:30: heavy rain at Kg Perepat, high tide." Tapping it opens the street page with the map, time window and reasons.
    - Sg Binjai reaches danger (4.21 m) at 10:00, about an hour after the alert.
-4. **(25 s) Verify:** pour water under the sensor and tap "Yes, flooding (knee)" on a second phone; the alert turns *confirmed*.
-5. **(30 s) Admin app:** statistics update (alerts, confirmation rate, lead time); the street shows a suggestion, e.g. "Persiaran Sungai Keramat: check outfall backflow, floods coincide with high tide", with its evidence; the monthly report prints.
-6. **(15 s) Enabler + ask:** one pipeline and two apps for every SDP township; cost per township; buyer survey result; pilot ask.
+4. **(2:45–3:15) Verify:** the simulated sensor rises (labelled "simulated") and a second phone taps "Yes, flooding (knee)"; the alert turns *confirmed*.
+5. **(3:15–4:15) Admin app:** statistics, monthly report and suggestions from the 2024–2026 backfill (the engine run over archived JPS data with out-of-fold ML probabilities, outcomes matched to news reports), e.g. "Persiaran Sungai Keramat: check outfall backflow, floods coincide with high tide", with its evidence.
+6. **(4:15–4:40) Live mode:** today's levels from the 15-minute tick.
+7. **(4:40–5:00) Enabler + ask:** one pipeline and two apps for every SDP township; cost per township; buyer survey result; pilot ask.
+
+**Pitch deck (≤ 10 main slides):**
+1. Problem
+2. Why current warnings fail
+3. Solution
+4. How it works
+5. Evidence: 12 Nov 2024 replay
+6. Evaluation
+7. Admin value
+8. Enabler and scale
+9. Business case
+10. Team and ask
+
+Appendix: data sources, the gridded-vs-station rain finding, roadmap.
 
 **Evaluation plan**
 

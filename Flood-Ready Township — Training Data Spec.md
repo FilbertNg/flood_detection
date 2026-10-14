@@ -1,7 +1,9 @@
 # Flood-Ready Township — Training Data Specification
 
-v2.2 · 14 Oct 2026 · @Filbert
+v2.3 · 14 Oct 2026 · @Filbert
 
+> **v2.3 changes:** new **Table D `ml_trigger_train.parquet`** for the ML-first trigger: one row per river station per 15 min, labelled by whether the river crosses its own warning level within 1 / 2 h (labels come from the data, no news needed). Table B (news-labelled) becomes the optional street flash-flood classifier.
+>
 > **v2.2 changes:** gridded model rain missed the 12 Nov 2024 storm (≤ 6.8 mm anywhere in a 30 km box around Klang, across 8 Open-Meteo sources, vs 79 mm at the Kg Perepat gauge), so **Table B is now built from JPS station rain** (Jan 2024 onward) and Dataset 2 is reduced to forecasts, warnings and a bias study. The history archive uses monthly chunks and selects stations by district. T2–T4 are implemented and running (`scripts/run_loggers.py`, `scripts/archive_jps_history.py`). Sg Binjai read 2.94 m at 08:00 on 12 Nov 2024 (not 2.93).
 >
 > **v2.1 changes:** the Telegram bot report is replaced by **Resident app answers and flood reports** (Dataset 7), which feed the live benchmark and, after review, the labels (`source_type = app_report`). Rain-at-onset per street is added for the Admin app's improvement suggestions.
@@ -20,6 +22,7 @@ This spec tells Claude Code exactly which files to build, from which open source
 | `data/final/susceptibility_train.parquet` | One row per point (flood or dry sample) | Susceptibility map (where) |
 | `data/final/trigger_train.parquet` | One row per district per hour | District model (when) |
 | `data/final/station_15min.parquet` | One row per JPS station per 15 min | Station rules, replay, evaluation |
+| `data/final/ml_trigger_train.parquet` | One row per river station per 15 min (below warning) | **ML trigger** (main model) |
 | `data/final/alert_outcomes.parquet` | One row per alert, with resident and sensor outcome | Live benchmark, Admin statistics, suggestions, new labels |
 
 **How to use it with Claude Code**
@@ -336,7 +339,7 @@ Every alert the system sends becomes a scored prediction once residents answer. 
 | `answered_at` | MYT |
 | `review_status` | `pending` / `valid` / `spam` (Admin review queue) |
 
-`sensor_events`: `device_id`, `time_local`, `level_cm`, `above_threshold`.
+`sensor_events`: `device_id`, `time_local`, `level_cm`, `above_threshold`, `simulated` (1 for the MVP simulator; excluded from statistics).
 
 **Derived: `data/final/alert_outcomes.parquet`** (one row per non-replay alert)
 
@@ -370,7 +373,7 @@ Three tables come out of the pipeline: one row per place for the map, one row pe
 | `holdout_bbr` | 1 if inside the BBR buffer | Excluded from the **validation run**; included in the final production map |
 | `event_ids` | list | Links back to `events.csv` |
 
-**Table B — `trigger_train.parquet` (when; district model)**
+**Table B — `trigger_train.parquet` (when; optional street flash-flood classifier, Should)**
 
 | Column | From | Notes |
 | --- | --- | --- |
@@ -386,6 +389,21 @@ Three tables come out of the pipeline: one row per place for the map, one row pe
 | `negative_type` | — | `probable_negative` for non-event days (see rules) |
 
 **Deliberately excluded from Table B** (they leak the label or don't match live data): historical `met_warning_active`, `tide_mentioned`, `susceptibility_score`, and gridded model rain. The training period starts in Jan 2024, where station history begins.
+
+**Table D — `ml_trigger_train.parquet` (ML trigger, Must)**
+
+| Column | From | Notes |
+| --- | --- | --- |
+| `graph_id`, `time_local` | Table C | One row per river station per quarter hour while the level is below its warning level |
+| `d_alert_m`, `d_warning_m`, `d_danger_m` | Table C | Level minus each of the station's own thresholds (station-relative, so one model fits all stations) |
+| `rise_15m`, `rise_60m`, `rise_120m` | Table C | Level change over the window |
+| `rain_{1h,2h,3h,6h,24h}_{max,mean}_{10km,25km}`, `rain_72h_antecedent_max_25km` | Table C | Over rain stations within 10 / 25 km of the river station |
+| `tide_height_m`, `hours_to_high_tide` | Dataset 5 | |
+| `hour`, `month` | derived | |
+| `cross_1h`, `cross_2h` | Table C | **Labels:** 1 if the level reaches the station's warning level within the next 1 / 2 h |
+| `fold` | derived | Time-blocked fold by season; 12 Nov 2024 always in a test fold |
+
+Rules: stations whose thresholds are out of order are excluded; features use only data at or before `time_local` (a leakage test enforces this); no station ID feature. Evidence that this works: `docs/ml-feasibility.md`.
 
 **Table C — `station_15min.parquet`** is defined in Dataset 3. It feeds the station rules, the 12 Nov 2024 replay, and the rule-layer evaluation on 2024+ events.
 
@@ -453,7 +471,7 @@ flood-ready/
 **Tasks**
 
 - [ ] **T1 Townships + stations.** Geocode every township with OSM Nominatim; save polygon or 3 km buffer to `config/townships.yaml` and `data/interim/townships.gpkg`. Build the station lookup from the Infobanjir live tables (code ↔ graph ID ↔ name ↔ district) and fill the named-station list per township.
-- [x] **T2 Infobanjir live logger.** *Implemented: `scripts/run_loggers.py`, running since 14 Oct.* Scrapes the live water-level and rainfall tables (`SEL`, `WLH`) every 15 min → `data/raw/jps_live/{wl,rf}/YYYY-MM-DD.parquet` + raw HTML; staleness flag per station and `_status.json`. To do: deploy on the VPS with `deploy/systemd/` (`Restart=always`; nightly archive top-up backfills JPS gaps), watchdog alert channel, data.gov.my fallback client.
+- [x] **T2 Infobanjir live logger.** *Implemented: `scripts/run_loggers.py`, running since 14 Oct.* Scrapes the live water-level and rainfall tables (`SEL`, `WLH`) every 15 min → `data/raw/jps_live/{wl,rf}/YYYY-MM-DD.parquet` + raw HTML; staleness flag per station and `_status.json`. To do: MVP tick in GitHub Actions writing to Postgres (build plan B6, D2; first check that Infobanjir answers GitHub runners); after Top 10, the VPS with `deploy/systemd/` (`Restart=always`; nightly archive top-up backfills JPS gaps), watchdog alert channel, data.gov.my fallback client.
 - [x] **T3 Warning + forecast loggers.** *Implemented in `scripts/run_loggers.py` (4 models × 8 points, every run kept).* data.gov.my weather warnings every 15 min → `data/raw/met_warnings/`; Open-Meteo forecast for every district point every hour → `data/raw/openmeteo_live/` (store every run).
 - [ ] **T4 Infobanjir history archive.** *Implemented: `scripts/archive_jps_history.py`, first run started 14 Oct (resumable).* Named township stations first, then every station in the districts listed in `config/sources.yaml`; rain from 1 Jan 2024 and water level from 1 Apr 2024 to today, in monthly chunks, ≥ 3 s between requests, cached per chunk.
 - [ ] **T5 News search.** Google News RSS / GDELT by keyword × district/township × month, 2017–2026; save raw text to `data/raw/news/`.

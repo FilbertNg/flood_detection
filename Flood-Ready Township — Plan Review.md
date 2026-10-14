@@ -2,7 +2,7 @@
 
 14 Oct 2026 · Review of *Flood-Ready Township — PRD* and *Flood-Ready Township — Training Data Spec* (v1)
 
-> **Status:** the plan fixes (C1–C5, B1–B8, and A-06 to A-28 where they change the plan) are now written into **PRD v2** and **Training Data Spec v2**, which are the current documents. This review describes v1 and is kept as the record of why things changed; the v1 files are in `archive/`. Actions A-01 to A-05, A-07, A-08, A-11 and A-28 are work to *do*, not plan changes, and are still open. A-04 and A-05 are optional.
+> **Status:** the plan fixes (C1–C5, B1–B8, and A-06 to A-28 where they change the plan) are now written into **PRD v2** and **Training Data Spec v2**, which are the current documents. This review describes v1 and is kept as the record of why things changed; the v1 files are in `archive/`. Actions A-01 to A-05, A-07, A-08, A-11 and A-28 are work to *do*, not plan changes, and are still open. A-04 and A-05 are optional. **Timeline correction:** this review assumed 23 Oct was a paper proposal; it is the full MVP submission (deck, 5-minute video, code). The current plan is PRD v3 + `docs/superpowers/plans/2026-10-14-mvp-build-plan.md`.
 
 ## TL;DR
 

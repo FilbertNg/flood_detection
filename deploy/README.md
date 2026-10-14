@@ -1,10 +1,12 @@
 # Deployment
 
+> **Phase:** this VPS setup is for **after Top 10**. Until then the MVP runs at $0: GitHub Actions cron for the 15-minute tick, free Supabase Postgres and Cloudflare Pages (PRD "Deployment", build plan workstream D).
+
 Where each part runs, and how the loggers keep running.
 
 | Part | Runs on | Why |
 | --- | --- | --- |
-| Loggers, history archive, FastAPI, PostgreSQL, MQTT broker, models | **VPS** (Ubuntu, 1 vCPU / 1–2 GB is enough) | Python with pandas/pyarrow, local files and long-running jobs. A Cloudflare Worker has no local disk, so the loggers would need rewriting for R2/D1 |
+| Loggers, history archive, FastAPI, PostgreSQL, models | **VPS** (Ubuntu, 1 vCPU / 1–2 GB is enough) | Python with pandas/pyarrow, local files and long-running jobs. A Cloudflare Worker has no local disk, so the loggers would need rewriting for R2/D1 |
 | Resident app and Admin app (React + Leaflet) | **Cloudflare Pages** (or the VPS behind nginx) | Static builds, free HTTPS (required for PWA and Web Push) |
 | Watchdog *(to do)* | **Cloudflare Worker** with a Cron Trigger every 15 min | Runs outside the VPS, so it can alert the team when the VPS or the loggers stop |
 
