@@ -249,7 +249,7 @@ ml.predict.township_probability(model, features: pd.DataFrame, wl_station_ids: l
 levels.combine(rule: TriggerResult, ml: MLResult | None, cfg: dict) -> TriggerResult   # max(rule, ML); rules only if ml is None or ml_drives_alerts is false
 matrix.street_level(susceptibility: int, trigger: Level, table: dict) -> Level
 levels.street_states(streets: pd.DataFrame, trigger: TriggerResult, cfg: dict) -> list[StreetState]
-alerts.issue(prev: dict[str, StreetState], new: list[StreetState], last_alert_at: dict[str, datetime], cfg: dict) -> list[Alert]
+alerts.issue(prev: dict[str, StreetState], new: list[StreetState], last_alerts: dict[str, Alert], cfg: dict) -> list[Alert]   # last alert or all-clear per street (its level is needed for "unless the level rises")
 replay.run(event_start: datetime, event_end: datetime, step: timedelta, readings: pd.DataFrame, ...) -> Iterator[tuple[datetime, list[StreetState], list[Alert]]]
 ```
 
