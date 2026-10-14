@@ -137,6 +137,8 @@ docs/api-contract.md         # §4.2 as a living document
 
 ### 4.2 API (base `/api/v1`)
 
+> **After F1 the source of truth is [`docs/api-contract.md`](../../api-contract.md) + `packages/shared/src/api/types.ts`** (mocks in `packages/shared/src/mocks/index.ts`). The table and examples below are a summary.
+
 | Method + path | Auth | Returns / accepts |
 | --- | --- | --- |
 | `GET /status` | — | `{mode: "live"\|"replay", now: ts, data_time: ts, replay: {event, speed}\|null, sources: {jps_wl_stale: int, jps_rf_stale: int}}` |
@@ -181,7 +183,8 @@ docs/api-contract.md         # §4.2 as a living document
   "river_forecast": {"graph_id": "PEKANMERU", "points": [{"time": "2024-11-12T10:00:00+08:00", "wl_m": 4.05, "wl_m_p90": 4.25}]},  // Should (ML5); null if unavailable
   "stations": ["26558", "PEKANMERU"],
   "active_alert": {"alert_id": "a_01", "level": "warning", "issued_at": "2024-11-12T09:00:00+08:00"},
-  "history": [{"alert_id": "a_01", "level": "warning", "issued_at": "…", "outcome": "confirmed"}],
+  "history": [{"alert_id": "a_01", "street_id": "BBR-jalan-makyong", "horizon": "nowcast", "kind": "alert", "level": "warning",
+               "issued_at": "…", "window": {"start": "…", "end": "…"}, "outcome": "unverified", "is_replay": true}],   // AlertSummary
   "is_replay": true
 }
 // Stats
@@ -283,9 +286,10 @@ Each task lists: **Owner · Depends on · Files · Interfaces · Acceptance test
 ### Workstream F — Foundations (M0)
 
 #### F1. Contracts as code
-**Owner:** Michael + Filbert · **Depends:** — · **Files:** create `docs/api-contract.md` (§4.2 verbatim), `floodready/engine/types.py` (§4.4 dataclasses), `config/rules.yaml`, `config/risk_matrix.yaml` (§2 values), `packages/shared/src/api/types.ts` (TS mirrors of StreetDetail, Stats, Report, Suggestion, AlertSummary, Station, Answer), `packages/shared/mocks/*.json` (one example per endpoint, values from §4.2)
+**Owner:** Michael + Filbert · **Depends:** — · **Files:** create `docs/api-contract.md` (§4.2 verbatim), `floodready/engine/types.py` (§4.4 dataclasses), `config/rules.yaml`, `config/risk_matrix.yaml` (§2 values), `packages/shared/src/api/types.ts` (TS mirrors of StreetDetail, Stats, Report, Suggestion, AlertSummary, Station, Answer), `packages/shared/src/mocks/index.ts` (one typed example per endpoint; TypeScript rather than JSON so `tsc` checks every mock against the types)
 - **Acceptance:** `tests/engine/test_types.py::test_levels_order` (`Level.DANGER > Level.WARNING > Level.WATCH > Level.NORMAL`); `test_risk_matrix_config_complete` (5 × 4 entries, all valid level names); a TS type check (`pnpm -C packages/shared tsc --noEmit`) passes with the mocks typed as the interfaces.
 - **Done when:** merged; announced in the team chat; from now on contract changes follow §9.
+- **Status:** implemented on branch `feat/contracts-f1` (also adds `config/ml.yaml`, level-name parity test between Python and TypeScript, and a "Mock data" ribbon rule for the apps).
 
 #### F2. Monorepo, CI and branch protection
 **Owner:** Chingiz · **Depends:** — · **Files:** `package.json` + `pnpm-workspace.yaml` (apps/*, packages/*), `apps/resident` and `apps/admin` (Vite React TS templates), `packages/shared` (TS lib), `.github/workflows/ci.yml` (jobs: `python` = pip install `-e .[dev]` + `pytest -q`; `web` = `pnpm i --frozen-lockfile` + `pnpm -r lint` + `pnpm -r test` + `pnpm -r build`), `.nvmrc`, `README.md` (add web commands)
