@@ -77,38 +77,45 @@ def terrain_indices(dem_path: Path, stream_threshold: int = 200) -> dict:
     score = _percentile_rank(-hand) + _percentile_rank(twi)
     rank = _percentile_rank(score)
     index = np.where(np.isnan(rank), np.nan, np.minimum(1 + np.floor(rank * 5), 5))
-    return {"hand": hand, "twi": twi, "acc": acc, "index": index, "transform": transform, "crs": crs}
+    return {"hand": hand, "twi": twi, "acc": acc, "score": score, "index": index, "transform": transform, "crs": crs}
 
 
 def _sample(line, result, step_m: float = 10.0) -> tuple[list, list, list]:
-    transform, index, hand, twi = result["transform"], result["index"], result["hand"], result["twi"]
+    """Combined terrain score, HAND and TWI at points every step_m along a line."""
+    transform, score, hand, twi = result["transform"], result["score"], result["hand"], result["twi"]
     n = max(int(line.length * M_PER_DEG / step_m), 1)
-    idx_vals, hand_vals, twi_vals = [], [], []
+    score_vals, hand_vals, twi_vals = [], [], []
     for k in range(n + 1):
         point = line.interpolate(k / n, normalized=True)
         r, c = rowcol(transform, point.x, point.y, op=math.floor)
-        if 0 <= r < index.shape[0] and 0 <= c < index.shape[1] and not np.isnan(index[r, c]):
-            idx_vals.append(index[r, c]); hand_vals.append(hand[r, c]); twi_vals.append(twi[r, c])
-    return idx_vals, hand_vals, twi_vals
+        if 0 <= r < score.shape[0] and 0 <= c < score.shape[1] and not np.isnan(score[r, c]):
+            score_vals.append(score[r, c]); hand_vals.append(hand[r, c]); twi_vals.append(twi[r, c])
+    return score_vals, hand_vals, twi_vals
 
 
 def street_susceptibility(streets: gpd.GeoDataFrame, result: dict) -> gpd.GeoDataFrame:
-    """1-5 per street = 90th percentile of the cells it crosses (robust to one noisy cell)."""
+    """1-5 per street, ranked WITHIN the given streets (each class ~20%).
+
+    The cell index is relative to the whole DEM clip (hills included), where a
+    low-lying township lands almost entirely in the top classes; SDP needs to
+    know which of its own streets are most flood-prone, so streets are ranked
+    by their mean terrain score and split into fifths.
+    """
     lines = streets.to_crs(result["crs"])
-    sus, hand_min, twi_max, idx_mean = [], [], [], []
+    score_mean, hand_min, twi_max = [], [], []
     for geom in lines.geometry:
         parts = list(geom.geoms) if geom.geom_type == "MultiLineString" else [geom]
-        idx_vals, hand_vals, twi_vals = [], [], []
+        score_vals, hand_vals, twi_vals = [], [], []
         for part in parts:
             a, b, c = _sample(part, result)
-            idx_vals += a; hand_vals += b; twi_vals += c
-        if idx_vals:
-            sus.append(int(min(max(round(float(np.percentile(idx_vals, 90))), 1), 5)))
-            hand_min.append(round(float(np.nanmin(hand_vals)), 2))
-            twi_max.append(round(float(np.nanmax(twi_vals)), 2))
-            idx_mean.append(round(float(np.mean(idx_vals)), 2))
-        else:  # street outside the DEM: treat as average, flagged by missing terrain values
-            sus.append(3); hand_min.append(None); twi_max.append(None); idx_mean.append(None)
+            score_vals += a; hand_vals += b; twi_vals += c
+        score_mean.append(float(np.mean(score_vals)) if score_vals else np.nan)
+        hand_min.append(round(float(np.nanmin(hand_vals)), 2) if hand_vals else None)
+        twi_max.append(round(float(np.nanmax(twi_vals)), 2) if twi_vals else None)
     out = streets.copy()
-    out["susceptibility"], out["hand_m_min"], out["twi_max"], out["index_mean"] = sus, hand_min, twi_max, idx_mean
+    out["score_mean"] = np.round(score_mean, 4)
+    rank = out["score_mean"].rank(method="first")
+    pct = (rank - 1) / max(rank.count() - 1, 1)
+    out["susceptibility"] = np.where(pct.isna(), 3, np.minimum(1 + np.floor(pct * 5), 5)).astype(int)
+    out["hand_m_min"], out["twi_max"] = hand_min, twi_max
     return out

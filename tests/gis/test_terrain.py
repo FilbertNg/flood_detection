@@ -51,3 +51,20 @@ def test_streets_take_their_susceptibility_from_the_cells_they_cross(tmp_path):
     assert valley.susceptibility == 5 and ridge.susceptibility <= 2
     assert valley.hand_m_min < ridge.hand_m_min
     assert scored.susceptibility.between(1, 5).all()
+
+
+def test_streets_are_ranked_within_the_township_in_fifths(tmp_path):
+    """Classes are relative to the township's own streets: each class holds about 20%."""
+    path, _, n = valley_dem(tmp_path)
+    result = terrain.terrain_indices(path, stream_threshold=20)
+    lat_top, lat_bottom = 3.10 - 8 * CELL_DEG, 3.10 - (n - 8) * CELL_DEG
+    cols = range(2, n - 2, 4)
+    streets = gpd.GeoDataFrame(
+        {"street_id": [f"X-{c}" for c in cols]},
+        geometry=[LineString([(101.40 + (c + 0.5) * CELL_DEG, lat_top), (101.40 + (c + 0.5) * CELL_DEG, lat_bottom)]) for c in cols],
+        crs=4326)
+    scored = terrain.street_susceptibility(streets, result)
+    counts = scored.susceptibility.value_counts()
+    assert set(counts.index) == {1, 2, 3, 4, 5}
+    assert counts.max() - counts.min() <= 1
+    assert "score_mean" in scored.columns
