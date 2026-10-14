@@ -35,6 +35,20 @@ Health check: `data/raw/jps_live/_status.json` (`"ok": true`, few stale stations
 
 Downloads 15-min station history (rain from Jan 2024, water level from Apr 2024) for township stations, then every station in the districts in `config/sources.yaml`. It takes many hours at a polite pace and is resumable: every monthly chunk is cached, so just run it again after a stop or to retry failed chunks. Progress: `data/raw/jps_hist/_progress.json`, `logs/archive.log`.
 
+## See the flood prediction working (local)
+
+```bash
+.venv/Scripts/python.exe scripts/serve_api.py                 # API on http://localhost:8000 (docs at /docs)
+npx pnpm@9.15.0 install && npx pnpm@9.15.0 dev:resident     # Resident app on http://localhost:5173
+.venv/Scripts/python.exe scripts/demo_replay.py --event 2024-11-12 --speed 120     # replay the 12 Nov 2024 flood
+.venv/Scripts/python.exe scripts/demo_replay.py --stop                              # back to live
+```
+
+- **Live mode** (default) recomputes every 15 minutes from the logged JPS data.
+- **Replay** walks a real past flood from the JPS archive, with ML probabilities from a model that never trained on that period.
+- `--speed 0 --stop-at 09:00` jumps straight to a moment.
+- Engine-only timeline: `python scripts/replay.py --event 2024-11-12`.
+
 ## Deployment
 
 On a VPS the loggers run as a systemd service that restarts automatically, and a nightly timer tops up the history archive. See [deploy/README.md](deploy/README.md).

@@ -25,3 +25,19 @@ def test_stopping_replay_returns_to_live(runner):
     runner.start_replay(date(2024, 11, 12), speed=None, start="06:00", end="08:00")
     runner.stop_replay()
     assert runner.snapshot().mode == "live"
+
+
+def test_a_live_refresh_that_finishes_after_a_replay_started_does_not_overwrite_it(context):
+    from floodready.api.runner import Runner
+    import pandas as pd
+    runner = Runner(context)
+
+    def live_readings_while_a_replay_starts(since):
+        # The live refresh is slow (archive load); a replay is started meanwhile.
+        runner.start_replay(date(2024, 11, 12), speed=None, start="06:00", end="14:00", stop_at="09:00")
+        return pd.DataFrame(columns=["graph_id", "kind", "time_local", "rain_15min_mm", "wl_m"])
+
+    context.load_live_readings = live_readings_while_a_replay_starts
+    runner.refresh_live(datetime(2024, 11, 13, 12, 0))
+    snap = runner.snapshot()
+    assert snap.mode == "replay" and snap.step.time == T("09:00")

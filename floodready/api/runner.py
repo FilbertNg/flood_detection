@@ -65,6 +65,7 @@ class Runner:
     _lock: threading.Lock = field(default_factory=threading.Lock)
     _stop: threading.Event = field(default_factory=threading.Event)
     _thread: threading.Thread | None = None
+    _generation: int = 0   # bumped on every replay start/stop; a slower live refresh from an older generation is dropped
 
     # ---------- stations ----------
     @property
@@ -103,6 +104,7 @@ class Runner:
         """Recompute live levels from the last 3 h of steps (alerts issued in that window are kept once)."""
         if self.mode != "live":
             return
+        generation = self._generation
         now = pd.Timestamp(now or datetime.now()).floor("15min").to_pydatetime()
         since = now - timedelta(days=5)
         ids = set(self.station_ids) | set(self._ml_rain_ids())
@@ -118,7 +120,10 @@ class Runner:
         if last is None:
             return
         fresh = [a for a in last.alerts if f"{a.street_id}@{a.issued_at:%Y%m%dT%H%M}-{a.kind}" not in known]
-        self._readings = readings
+        with self._lock:
+            if self.mode != "live" or self._generation != generation:
+                return  # a replay started (or stopped) while this refresh was computing
+            self._readings = readings
         self._record(ReplayStep(time=last.time, trigger=last.trigger, states=last.states, alerts=fresh), is_replay=False)
 
     # ---------- replay ----------
@@ -131,6 +136,7 @@ class Runner:
         readings = self.ctx.load_readings(t0 - timedelta(days=5), datetime.fromisoformat(f"{event} {end}"))
         readings = readings[readings.graph_id.isin(ids)]
         with self._lock:
+            self._generation += 1
             self.mode = "replay"
             self._alerts = [a for a in self._alerts if not a["is_replay"]]
             self._replay = {"event": str(event), "speed": speed or 0}
@@ -141,10 +147,11 @@ class Runner:
                 self._record(step, is_replay=True)
             return
         self._stop.clear()
+        generation = self._generation
 
         def worker():
             for step in steps:
-                if self._stop.is_set():
+                if self._stop.is_set() or self._generation != generation:
                     return
                 self._record(step, is_replay=True)
                 self._stop.wait(STEP.total_seconds() / speed)
@@ -159,6 +166,7 @@ class Runner:
             self._thread = None
         if not keep_mode:
             with self._lock:
+                self._generation += 1
                 self.mode, self._replay = "live", None
                 self._alerts = [a for a in self._alerts if not a["is_replay"]]
                 self._step = None
