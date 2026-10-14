@@ -334,7 +334,7 @@ Every alert the system sends becomes a scored prediction once residents answer. 
 | `answered_at` | MYT |
 | `review_status` | `pending` / `valid` / `spam` (Admin review queue) |
 
-`sensor_events`: `device_id`, `time_local`, `level_cm`, `above_threshold`.
+`sensor_events`: `device_id`, `time_local`, `level_cm`, `above_threshold`, `simulated` (1 for the MVP simulator; excluded from statistics).
 
 **Derived: `data/final/alert_outcomes.parquet`** (one row per non-replay alert)
 
@@ -451,7 +451,7 @@ flood-ready/
 **Tasks**
 
 - [ ] **T1 Townships + stations.** Geocode every township with OSM Nominatim; save polygon or 3 km buffer to `config/townships.yaml` and `data/interim/townships.gpkg`. Build the station lookup from the Infobanjir live tables (code ↔ graph ID ↔ name ↔ district) and fill the named-station list per township.
-- [x] **T2 Infobanjir live logger.** *Implemented: `scripts/run_loggers.py`, running since 14 Oct.* Scrapes the live water-level and rainfall tables (`SEL`, `WLH`) every 15 min → `data/raw/jps_live/{wl,rf}/YYYY-MM-DD.parquet` + raw HTML; staleness flag per station and `_status.json`. To do: deploy on the VPS with `deploy/systemd/` (`Restart=always`; nightly archive top-up backfills JPS gaps), watchdog alert channel, data.gov.my fallback client.
+- [x] **T2 Infobanjir live logger.** *Implemented: `scripts/run_loggers.py`, running since 14 Oct.* Scrapes the live water-level and rainfall tables (`SEL`, `WLH`) every 15 min → `data/raw/jps_live/{wl,rf}/YYYY-MM-DD.parquet` + raw HTML; staleness flag per station and `_status.json`. To do: MVP tick in GitHub Actions writing to Postgres (build plan B6, D2; first check that Infobanjir answers GitHub runners); after Top 10, the VPS with `deploy/systemd/` (`Restart=always`; nightly archive top-up backfills JPS gaps), watchdog alert channel, data.gov.my fallback client.
 - [x] **T3 Warning + forecast loggers.** *Implemented in `scripts/run_loggers.py` (4 models × 8 points, every run kept).* data.gov.my weather warnings every 15 min → `data/raw/met_warnings/`; Open-Meteo forecast for every district point every hour → `data/raw/openmeteo_live/` (store every run).
 - [ ] **T4 Infobanjir history archive.** *Implemented: `scripts/archive_jps_history.py`, first run started 14 Oct (resumable).* Named township stations first, then every station in the districts listed in `config/sources.yaml`; rain from 1 Jan 2024 and water level from 1 Apr 2024 to today, in monthly chunks, ≥ 3 s between requests, cached per chunk.
 - [ ] **T5 News search.** Google News RSS / GDELT by keyword × district/township × month, 2017–2026; save raw text to `data/raw/news/`.
