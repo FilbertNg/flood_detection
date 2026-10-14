@@ -1,0 +1,22 @@
+# Station rules: the safety floor under the ML trigger (build plan §2; contract).
+# Figures are JPS's own: one-hour intensity categories (heavy 31-60 mm, very heavy > 60 mm)
+# and "convective rain more than 60 mm in 2 to 4 hours may cause flash floods".
+# Starting values; tune per township on 2024+ events.
+
+rain:
+  watch:   {rain_1h_min_mm: 31, rain_2to4h_min_mm: 40}    # either one, >=
+  warning: {rain_1h_above_mm: 60, rain_2to4h_min_mm: 60}  # 1 h strictly above 60, or 2-4 h >= 60
+
+# River band (the station's own JPS thresholds) -> trigger level
+river: {alert: watch, warning: warning, danger: danger}
+
+stale_after_min: 120          # a station with no reading for longer is stale
+
+alerts:
+  cooldown_min: 60            # no repeat alert for a street unless its level rises
+  alert_levels: [warning, danger]
+
+nowcast_window_min: {start: 30, end: 90}   # expected flooding window after issue
+
+outlook:
+  forecast_6_24h_min_mm: 40   # forecast rain over the next 6-24 h that triggers an Outlook
