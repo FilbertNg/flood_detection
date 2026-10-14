@@ -12,6 +12,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+gis = ["geopandas>=1.0", "shapely>=2.0", "rasterio>=1.4", "pysheds>=0.5"]
+ml = ["scikit-learn>=1.5", "joblib>=1.4"]
 
 [build-system]
 requires = ["setuptools>=68"]
