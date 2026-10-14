@@ -84,3 +84,13 @@ def test_flatten_forecast_makes_long_rows_per_point_model_hour():
     assert row["time_local"] == datetime(2026, 10, 14, 20, 0)
     assert row["precip_prob_pct"] == 51
     assert {r["point_id"] for r in rows} == {"BBR", "USJ"}
+
+
+def test_append_parquet_can_let_the_latest_copy_win(tmp_path):
+    # JPS sometimes publishes a 0.00 placeholder and corrects it in the next fetch.
+    path = tmp_path / "day.parquet"
+    storage.append_parquet(pd.DataFrame({"graph_id": ["A"], "source_time": [1], "wl_m": [0.0]}), path,
+                           keys=["graph_id", "source_time"], keep="last")
+    storage.append_parquet(pd.DataFrame({"graph_id": ["A"], "source_time": [1], "wl_m": [3.15]}), path,
+                           keys=["graph_id", "source_time"], keep="last")
+    assert pd.read_parquet(path).wl_m.tolist() == [3.15]

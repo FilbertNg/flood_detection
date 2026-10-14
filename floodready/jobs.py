@@ -64,7 +64,7 @@ def run_jps_live(session, root: Path, states: list[str], now_local: datetime,
             for key, value in _stamp(now_local).items():
                 df[key] = value
             storage.append_parquet(df, root / kind / f"{day}.parquet",
-                                   keys=["state", "graph_id", "station_code", "source_time"])
+                                   keys=["state", "graph_id", "station_code", "source_time"], keep="last")
             summary[f"{kind}_rows"] += len(df)
             summary[f"{kind}_stale"] += int(df["is_stale"].sum())
 
@@ -76,6 +76,37 @@ def run_jps_live(session, root: Path, states: list[str], now_local: datetime,
     if not summary["ok"]:
         log.warning("JPS live NOT OK: %s", summary)
     return summary
+
+
+def rebuild_live_day(root: Path, day: str) -> dict:
+    """Re-parse one day's saved live pages (fetch order, latest copy wins) into fresh parquet files.
+    Used after a parsing or de-duplication fix; nothing is downloaded."""
+    root = Path(root) / "jps_live"
+    parsers = {"wl": ib.parse_wl_live, "rf": ib.parse_rf_live}
+    counts = {}
+    for kind, parse in parsers.items():
+        frames = []
+        for page in sorted((root / "html" / day).glob(f"*_{kind}_*.html.gz"), key=lambda p: p.name.split("_")[-1]):
+            state, hhmm = page.name.split("_")[0], page.name.split("_")[-1][:4]
+            rows = parse(storage.read_raw(page), state=state)
+            if not rows:
+                continue
+            df = pd.DataFrame(rows)
+            if "daily_mm" in df:
+                df["daily_mm"] = df["daily_mm"].map(json.dumps)
+            fetched = datetime.strptime(f"{day} {hhmm}", "%Y-%m-%d %H%M")
+            df["is_stale"] = [ib.is_stale(t, fetched) for t in df["source_time"]]
+            for key, value in _stamp(fetched).items():
+                df[key] = value
+            frames.append(df)
+        out = root / kind / f"{day}.parquet"
+        if frames:
+            merged = pd.concat(frames, ignore_index=True).drop_duplicates(
+                ["state", "graph_id", "station_code", "source_time"], keep="last")
+            out.parent.mkdir(parents=True, exist_ok=True)
+            merged.to_parquet(out, index=False)
+            counts[kind] = merged.graph_id.nunique()
+    return counts
 
 
 # ---------- T3: MET warnings and Open-Meteo forecasts ----------
