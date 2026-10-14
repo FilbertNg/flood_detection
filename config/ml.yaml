@@ -3,8 +3,8 @@
 
 model_path: models/trigger_v1.joblib
 horizon_h: 2                  # probability the river crosses its warning level within 2 h
-p_watch: 0.5
-p_warning: 0.7
+p_watch: 0.25
+p_warning: 0.95
 smoothing_min: 30             # use the max probability over the last 30 min
 
 # Only the ML3 gate may set this to true. While false, the probability is shown

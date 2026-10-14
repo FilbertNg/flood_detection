@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Callable, Iterator
+from typing import Iterator
 
 import pandas as pd
 
@@ -18,8 +18,6 @@ from . import levels, rules
 from .features import compute_station_features
 from .types import Alert, StreetState, TriggerResult
 
-# trigger_fn(features_at_t, time) -> TriggerResult; default: rules only.
-TriggerFn = Callable[[pd.DataFrame, datetime], TriggerResult]
 
 
 @dataclass(frozen=True)
@@ -32,28 +30,44 @@ class ReplayStep:
 
 def run(start: datetime, end: datetime, step: timedelta, readings: pd.DataFrame, stations: pd.DataFrame,
         streets: pd.DataFrame, station_ids: list[str], rules_cfg: dict, matrix_table: dict,
-        trigger_fn: TriggerFn | None = None) -> Iterator[ReplayStep]:
+        ml_bundle: dict | None = None, ml_cfg: dict | None = None, wl_ids: list[str] | None = None,
+        tide: pd.DataFrame | None = None) -> Iterator[ReplayStep]:
+    """Rules floor always; with `ml_bundle` ({model, features}), `ml_cfg` and the township's river
+    stations `wl_ids`, the ML trigger is combined in (levels.combine) and its probability is shown."""
     window = readings[(readings.time_local > pd.Timestamp(start) - timedelta(hours=26)) &
                       (readings.time_local <= pd.Timestamp(end))]
     all_features = compute_station_features(window[window.graph_id.isin(station_ids)], stations, end=end,
                                             stale_after_min=rules_cfg.get("stale_after_min", 120))
     by_time = {t: f for t, f in all_features.groupby("time_local")}
     empty = all_features.iloc[0:0]
-    if trigger_fn is None:
-        def trigger_fn(feats, _t):
-            return rules.township_trigger(feats, station_ids, rules_cfg)
+
+    ml_feats = None
+    if ml_bundle is not None and ml_cfg is not None and wl_ids:
+        from ..ml import dataset
+        ml_window = readings[(readings.time_local > pd.Timestamp(start) - timedelta(days=5)) &
+                             (readings.time_local <= pd.Timestamp(end))]
+        ml_feats = dataset.build_features(ml_window, stations, tide, wl_ids)
+        names = stations[stations.kind == "wl"].set_index("graph_id")["name"]
+        ml_feats["name"] = ml_feats.graph_id.map(names).fillna(ml_feats.graph_id)
 
     prev: dict[str, StreetState] = {}
     last_alerts: dict[str, Alert] = {}
     t = pd.Timestamp(start)
     while t <= pd.Timestamp(end):
         feats = by_time.get(t, empty)
-        trigger = trigger_fn(feats, t.to_pydatetime())
+        trigger = rules.township_trigger(feats, station_ids, rules_cfg)
         if pd.isna(pd.Timestamp(trigger.data_time)) or trigger.data_time == datetime.min:
             trigger = TriggerResult(level=trigger.level, confidence=trigger.confidence, fired_by=trigger.fired_by,
                                     reasons=trigger.reasons, data_time=t.to_pydatetime(),
                                     stale_stations=trigger.stale_stations)
-        states = levels.street_states(streets, trigger, rules_cfg, matrix_table)
+        ml = None
+        if ml_feats is not None:
+            from ..ml import predict
+            ml = predict.township_probability(ml_bundle["model"], ml_bundle["features"], ml_feats, wl_ids,
+                                              t.to_pydatetime(), ml_cfg)
+            trigger = levels.combine(trigger, ml, ml_cfg)
+        states = levels.street_states(streets, trigger, rules_cfg, matrix_table,
+                                      flood_probability=ml.p if ml is not None else None)
         issued = alerts_mod.issue(prev, states, last_alerts, rules_cfg)
         prev = {s.street_id: s for s in states}
         for alert in issued:
