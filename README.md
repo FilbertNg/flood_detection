@@ -35,12 +35,17 @@ Health check: `data/raw/jps_live/_status.json` (`"ok": true`, few stale stations
 
 Downloads 15-min station history (rain from Jan 2024, water level from Apr 2024) for township stations, then every station in the districts in `config/sources.yaml`. It takes many hours at a polite pace and is resumable: every monthly chunk is cached, so just run it again after a stop or to retry failed chunks. Progress: `data/raw/jps_hist/_progress.json`, `logs/archive.log`.
 
+## Deployment
+
+On a VPS the loggers run as a systemd service that restarts automatically, and a nightly timer tops up the history archive. See [deploy/README.md](deploy/README.md).
+
 ## Layout
 
 ```text
 config/       townships.yaml (centres, named JPS stations), sources.yaml (endpoints, polling, archive)
 floodready/   Python package: infobanjir parsers, MET and Open-Meteo clients, storage, jobs
 scripts/      runnable tasks (one per spec task)
+deploy/       systemd units and deployment notes
 tests/        pytest, using real responses saved in tests/fixtures
 data/         raw/ interim/ final/ (not in git)
 ```

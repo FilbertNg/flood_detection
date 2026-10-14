@@ -300,6 +300,18 @@ The GIS path runs once per township; everything else refreshes every 15 minutes.
 | Charts | One React chart library shared by both apps | Rain, river, tide and statistics charts |
 | Auth | Residents: no account (random device ID); admins: email + password with roles | PDPA-light for residents; access control for SDP data |
 
+### Deployment and keeping the loggers running
+
+Details and commands are in `deploy/README.md`.
+
+| Part | Runs on | Notes |
+| --- | --- | --- |
+| Loggers, history archive, FastAPI, PostgreSQL, MQTT, models | **VPS** (Ubuntu, 1 vCPU / 1–2 GB) | systemd service with `Restart=always`, started at boot; a nightly archive timer backfills any gaps in the JPS live log from Infobanjir history |
+| Resident app, Admin app | **Cloudflare Pages** | Static React builds with HTTPS (needed for PWA and Web Push) |
+| Watchdog | **Cloudflare Worker** cron every 15 min *(to do)* | Calls the API's `/health`; alerts the team on Telegram if logging is more than 30 min old. It runs outside the VPS, so it still works when the VPS is down |
+
+The loggers stay on the VPS rather than in a Cloudflare Worker: they use Python with pandas/pyarrow, local files and multi-hour archive jobs, and Workers have no local disk. Until the VPS is ready, the loggers run on an always-on PC. JPS gaps can be backfilled from the history endpoints later; MET warnings and forecasts cannot.
+
 ## User flows and screens
 
 ### Resident app (React + Leaflet PWA)
@@ -356,7 +368,7 @@ The system must be fresh, honest about uncertainty, and safe with resident data.
 | Area | Requirement |
 | --- | --- |
 | Freshness | Source timestamps ≤ 30 min old, otherwise the station is shown as stale; push sent ≤ 2 min after a level change |
-| Availability | Ingest jobs retry 3× with backoff; a missing or stale source lowers the level's confidence and is never silently treated as Normal |
+| Availability | Loggers run as a systemd service (`Restart=always`, start at boot) with a nightly archive top-up that backfills JPS gaps; an external watchdog alerts the team if logging stops for more than 30 min. Ingest jobs retry 3× with backoff; a missing or stale source lowers the level's confidence and is never silently treated as Normal |
 | Mobile-first | Resident app works on a 360 px wide phone screen, loads in ≤ 3 s on 4G, and shows the last known status offline (service worker cache) |
 | Language | Resident app and push text in BM and English; Admin app in English |
 | Scraping etiquette | Infobanjir: one request every few seconds at most, history archived once and cached, a clear User-Agent, JPS credited on every screen |
@@ -450,6 +462,8 @@ The proposal on 23 Oct decides the Top 10, so it must show working pieces, not o
 - [ ] Resident outreach started (BBR residents' groups / council)
 
 **24 Oct – 1 Nov — data, map and Resident app core**
+
+- [ ] VPS deployed: loggers and archive timer under systemd (`deploy/`), `data/raw/` copied from the laptop, backups to object storage
 
 - [ ] Flash-flood labels widened to Klang / Petaling / KL, 2017–2026, with evidence quotes
 - [ ] Tide series; Previous Runs day-ahead forecasts for Outlook evaluation; gridded-vs-station bias study

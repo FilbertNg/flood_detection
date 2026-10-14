@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly JPS history top-up (fetches the current month, retries failed chunks)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Kuala_Lumpur
+# Run at next boot if the VPS was off at 03:30.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

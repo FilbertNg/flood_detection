@@ -1,0 +1,11 @@
+[Unit]
+Description=Flood-Ready Township JPS history archive (resumable; backfills live-log gaps)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=floodready
+WorkingDirectory=/opt/floodready
+ExecStart=/opt/floodready/.venv/bin/python scripts/archive_jps_history.py
+Environment=PYTHONUNBUFFERED=1
