@@ -1,0 +1,64 @@
+# SDP townships and the JPS stations that watch them.
+# Centres geocoded with OSM Nominatim on 2026-10-14 (T1 will add polygons / 3 km buffers).
+# graph_id = the `stationid` used by Infobanjir graph/history endpoints.
+
+townships:
+  - id: BBR
+    name: Bandar Bukit Raja
+    district: Klang
+    state: SEL
+    priority: pilot
+    centre: {lat: 3.0852, lon: 101.4377}
+    hotspots:  # memorandum streets (held out of map training; see Data Spec)
+      - {name: Jalan Makyong, lat: 3.0899, lon: 101.4251}
+      - {name: Persiaran Sungai Keramat, lat: 3.0830, lon: 101.4065}
+    stations:
+      - {graph_id: "26558", name: "Kg. Perepat, Kapar", codes: [0220301RF, 0220301WL], types: [RF, WL], verified: true}
+      - {graph_id: PEKANMERU, name: "Sg. Binjai di Pekan Meru / Pekan Meru", codes: ["3112401", "3112001"], types: [WL, RF], verified: true}
+      - {graph_id: KGRANTAUPANJANG, name: "Kg. Rantau Panjang", types: [RF], verified: false}
+      - {graph_id: TELOKGONG, name: "Telok Gong", codes: ["2913001"], types: [RF], verified: false}
+      - {graph_id: PANDAMARAN, name: "P/A Pandamaran", codes: ["3014002"], types: [RF, WL], verified: false}
+      - {graph_id: JLNBENTENGKAPAR, name: "Jln. Benteng Kapar", codes: ["3013002"], types: [RF], verified: false}
+      - {graph_id: SELATMUARA, name: "Selat Muara", codes: ["3013003"], types: [RF, WL], verified: false}
+
+  - id: USJ
+    name: Subang Jaya / USJ
+    district: Petaling
+    state: SEL
+    priority: high
+    centre: {lat: 3.0466, lon: 101.5892}
+    stations:
+      - {graph_id: USJ1, name: "Sg. Klang di USJ 1", types: [RF], verified: true}
+
+  - id: ELMINA
+    name: City of Elmina
+    district: Petaling
+    state: SEL
+    priority: high
+    centre: {lat: 3.1804, lon: 101.5173}
+    stations:
+      - {graph_id: LDGELMINA, name: "Ladang Elmina", types: [RF], verified: false}
+
+  - id: BKTJELUTONG
+    name: Bukit Jelutong
+    district: Petaling
+    state: SEL
+    priority: high
+    centre: {lat: 3.1002, lon: 101.5375}
+    stations: []
+
+  - id: ARADAMANSARA
+    name: Ara Damansara
+    district: Petaling
+    state: SEL
+    priority: medium
+    centre: {lat: 3.1084, lon: 101.5866}
+    stations: []
+
+  - id: PUTRAHEIGHTS
+    name: Putra Heights
+    district: Petaling
+    state: SEL
+    priority: medium
+    centre: {lat: 2.9960, lon: 101.5755}
+    stations: []

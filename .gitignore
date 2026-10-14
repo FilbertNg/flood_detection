@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Data: raw logs and archives stay local / in shared storage, not in git
+data/raw/
+data/interim/
+data/final/
+logs/
+
+# Node (frontend apps, later)
+node_modules/
+dist/
+
+# Secrets
+.env

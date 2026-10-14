@@ -1,0 +1,31 @@
+# Data sources, polling and archive settings for the loggers (T2-T4).
+
+jps_live:
+  states: [SEL, WLH]          # Selangor, WP Kuala Lumpur
+  interval_min: 15
+  stale_after_hours: 2
+
+jps_history:
+  rain_from: 2024-01-01       # rainfall history starts ~Jan 2024
+  wl_from: 2024-04-01         # water-level history starts ~Apr 2024
+  chunk: month                # 6-month windows fail; 1 month = ~1 MB, 3-5 s
+  pause_s: 3
+  # Archive order: named township stations first, then these districts.
+  districts: [Klang, Petaling, Kuala Lumpur, Kuala Langat, Gombak, Hulu Langat, Sepang]
+
+met_warnings:
+  interval_min: 15
+
+openmeteo_forecast:
+  interval_min: 60
+  # Several models are logged so we can pick the best one later (T10).
+  models: [best_match, ecmwf_ifs, gfs_seamless, icon_seamless]
+  points:
+    - {id: BBR, lat: 3.0852, lon: 101.4377}
+    - {id: USJ, lat: 3.0466, lon: 101.5892}
+    - {id: ELMINA, lat: 3.1804, lon: 101.5173}
+    - {id: BKTJELUTONG, lat: 3.1002, lon: 101.5375}
+    - {id: KLANG, lat: 3.0448, lon: 101.4447}
+    - {id: SHAHALAM, lat: 3.0739, lon: 101.5185}
+    - {id: PJ, lat: 3.0989, lon: 101.6454}
+    - {id: KL, lat: 3.1517, lon: 101.6942}

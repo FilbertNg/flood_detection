@@ -1,0 +1,5 @@
+# Normalise line endings so Windows and Linux (VPS) checkouts match.
+* text=auto eol=lf
+
+# Real server responses used as test fixtures: keep byte-exact.
+tests/fixtures/** -text
