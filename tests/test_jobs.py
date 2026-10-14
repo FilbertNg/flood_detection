@@ -145,3 +145,14 @@ def test_rebuild_history_reparses_cached_raw_chunks(tmp_path):
     assert n == 96
     assert rows.loc[datetime(2024, 11, 12, 8, 15), "rain_15min_mm"] == 0.0
     assert rows.rain_15min_mm.sum() == 79.0
+
+
+def test_rebuild_live_day_reparses_saved_pages_in_fetch_order(tmp_path):
+    from floodready import storage
+    html_dir = tmp_path / "jps_live" / "html" / "2026-10-14"
+    storage.save_raw(html_dir / "SEL_wl_2002.html.gz", fixture("infobanjir_wl_live_SEL.html"))
+    storage.save_raw(html_dir / "SEL_rf_2002.html.gz", fixture("infobanjir_rf_live_SEL.html"))
+    counts = jobs.rebuild_live_day(tmp_path, "2026-10-14")
+    assert counts["wl"] == 67 and counts["rf"] > 200
+    wl = pd.read_parquet(tmp_path / "jps_live" / "wl" / "2026-10-14.parquet")
+    assert wl[wl.graph_id == "PEKANMERU"].wl_m.tolist() == [3.21]

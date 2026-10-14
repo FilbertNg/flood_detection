@@ -21,13 +21,16 @@ def read_raw(path: Path) -> str:
         return handle.read()
 
 
-def append_parquet(df: pd.DataFrame, path: Path, keys: list[str]) -> Path:
-    """Append rows to a parquet file, keeping the first copy of each key."""
+def append_parquet(df: pd.DataFrame, path: Path, keys: list[str], keep: str = "first") -> Path:
+    """Append rows to a parquet file, de-duplicated on `keys`.
+
+    keep="first" keeps what was stored earlier; keep="last" lets a newer copy replace it
+    (live tables: JPS sometimes publishes a 0.00 placeholder and corrects it later)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         df = pd.concat([pd.read_parquet(path), df], ignore_index=True)
-    df = df.drop_duplicates(subset=keys, keep="first")
+    df = df.drop_duplicates(subset=keys, keep=keep)
     tmp = path.with_suffix(".tmp")
     df.to_parquet(tmp, index=False)
     tmp.replace(path)
