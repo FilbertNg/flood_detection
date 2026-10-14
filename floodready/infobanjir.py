@@ -166,12 +166,15 @@ def wl_history_rows(payload: dict, graph_id: str) -> list[dict]:
 
 
 def rf_history_rows(payload: dict, graph_id: str) -> list[dict]:
-    """15-min rain per quarter hour. Rows between quarter hours repeat the
-    last value, and a quarter hour with raw=-9999 is missing, not zero."""
+    """15-min rain per quarter hour, from the quality-checked `c15min` value.
+
+    Rows between quarter hours repeat the last value and are skipped. At a
+    quarter hour JPS may leave raw=-9999 while c15min holds the checked value
+    (0 when the daily total did not change), so only a missing c15min is missing.
+    """
     rows = []
     for when, value in _quarter_hour_values(payload):
-        rain = None if to_float(value.get("raw")) is None else to_float(value.get("c15min"))
-        rows.append({"graph_id": graph_id, "time_local": when, "rain_15min_mm": rain})
+        rows.append({"graph_id": graph_id, "time_local": when, "rain_15min_mm": to_float(value.get("c15min"))})
     return rows
 
 

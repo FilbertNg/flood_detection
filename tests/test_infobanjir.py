@@ -103,6 +103,23 @@ def test_rf_history_does_not_triple_count_repeated_5min_rows():
     assert by_time[datetime(2024, 11, 12, 9, 0)] == 16.5
 
 
+def test_rf_history_uses_quality_checked_value_when_raw_is_missing():
+    # At 08:15 and 09:30 on 12 Nov 2024 JPS left raw=-9999 but clean=0, and the
+    # daily running total (cdaily) confirms no rain fell. That is 0 mm, not missing,
+    # otherwise rolling 1-hour sums break in the middle of the storm.
+    payload = ib.parse_history(read("infobanjir_rf_hist_26558_20241112.txt"))
+    by_time = {r["time_local"]: r["rain_15min_mm"] for r in ib.rf_history_rows(payload, graph_id="26558")}
+    assert by_time[datetime(2024, 11, 12, 8, 15)] == 0.0
+    assert by_time[datetime(2024, 11, 12, 9, 30)] == 0.0
+    assert len(by_time) == 96  # every quarter hour of the day
+
+
+def test_wl_history_keeps_truly_missing_quarters_as_none():
+    payload = ib.parse_history(read("infobanjir_wl_hist_PEKANMERU_20241112.txt"))
+    by_time = {r["time_local"]: r["wl_m"] for r in ib.wl_history_rows(payload, graph_id="PEKANMERU")}
+    assert by_time[datetime(2024, 11, 12, 21, 0)] is None
+
+
 # ---------- request planning ----------
 
 def test_month_chunks_cover_range_in_calendar_months():

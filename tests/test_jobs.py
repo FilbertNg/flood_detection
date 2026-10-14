@@ -128,3 +128,20 @@ def test_forecast_logger_keeps_every_run(tmp_path):
     rows = pd.read_parquet(tmp_path / "openmeteo_live" / "2026-10-14.parquet")
     assert len(rows) == 2 * (2 * 2 * 6)  # two runs kept, not merged
     assert session.requests[0][1]["models"] == "best_match,gfs_seamless"
+
+
+def test_rebuild_history_reparses_cached_raw_chunks(tmp_path):
+    from floodready import storage
+    raw = tmp_path / "jps_hist" / "raw" / "rf" / "26558" / "20241112_20241112.json.gz"
+    storage.save_raw(raw, fixture("infobanjir_rf_hist_26558_20241112.txt"))
+    stale = pd.DataFrame({"graph_id": ["26558"], "time_local": [datetime(2024, 11, 12, 8, 15)], "rain_15min_mm": [None]})
+    out = tmp_path / "jps_hist" / "rf" / "26558.parquet"
+    out.parent.mkdir(parents=True)
+    stale.to_parquet(out)
+
+    n = jobs.rebuild_history_parquet(tmp_path, "rf", "26558")
+
+    rows = pd.read_parquet(out).set_index("time_local")
+    assert n == 96
+    assert rows.loc[datetime(2024, 11, 12, 8, 15), "rain_15min_mm"] == 0.0
+    assert rows.rain_15min_mm.sum() == 79.0
