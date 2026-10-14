@@ -42,3 +42,23 @@ def test_replay_states_cover_every_street_at_every_step(readings, stations, rule
     at_nine = next(step for step in steps if step.time == T("09:00"))
     prone = next(s for s in at_nine.states if s.street_id == "BBR-prone")
     assert (prone.window_start, prone.window_end) == (T("09:30"), T("10:30"))
+
+
+class HalfModel:
+    """Stub classifier: always 50%."""
+    def predict_proba(self, X):
+        import numpy as np
+        return np.column_stack([np.full(len(X), 0.5), np.full(len(X), 0.5)])
+
+
+def test_replay_with_ml_shows_probability_but_rules_decide_while_the_gate_is_closed(readings, stations, rules_cfg, matrix_cfg):
+    from floodready.ml import dataset
+    ml_cfg = {"p_watch": 0.35, "p_warning": 0.7, "smoothing_min": 30, "horizon_h": 2, "ml_drives_alerts": False}
+    bundle = {"model": HalfModel(), "features": dataset.FEATURES}
+    with_ml = list(replay.run(T("06:00"), T("14:00"), timedelta(minutes=15), readings, stations, STREETS,
+                              BBR_STATIONS, rules_cfg, matrix_cfg, ml_bundle=bundle, ml_cfg=ml_cfg,
+                              wl_ids=["PEKANMERU", "PANDAMARAN"]))
+    rules_only = run(readings, stations, rules_cfg, matrix_cfg)
+    assert [s.trigger.level for s in with_ml] == [s.trigger.level for s in rules_only]
+    assert all(st.flood_probability == 0.5 for step in with_ml for st in step.states)
+    assert any(r.code == "ml_probability" for r in with_ml[12].trigger.reasons)

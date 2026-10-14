@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from floodready.engine import replay  # noqa: E402
+from floodready.ml import dataset, predict  # noqa: E402
 from floodready.engine.types import Level  # noqa: E402
 
 
@@ -38,27 +39,40 @@ def main() -> None:
 
     town = next(t for t in load_yaml("townships.yaml")["townships"] if t["id"] == args.township)
     station_ids = [s["graph_id"] for s in town["stations"]]
+    wl_ids = [s["graph_id"] for s in town["stations"] if "WL" in s.get("types", [])]
     start = datetime.fromisoformat(f"{args.event} {args.start}")
     end = datetime.fromisoformat(f"{args.event} {args.end}")
-    readings = replay.load_archive_readings(ROOT / "data" / "raw" / "jps_hist", station_ids, start - timedelta(hours=26), end)
     stations = pd.read_parquet(ROOT / "data" / "interim" / "stations.parquet")
+    hist = ROOT / "data" / "raw" / "jps_hist"
+    archived = {p.stem for p in (hist / "rf").glob("*.parquet")}
+    ml_rain = dataset.rain_stations_near(stations, wl_ids, km=25, available=archived)
+    readings = replay.load_archive_readings(hist, sorted(set(station_ids) | set(ml_rain)), start - timedelta(days=5), end)
+    bundle = predict.bundle_for(ROOT / "models", start, live=False)  # model that never trained on this period
+    ml_cfg = load_yaml("ml.yaml")
+    tide_path = ROOT / "data" / "interim" / "tide_hourly.parquet"
+    tide = pd.read_parquet(tide_path) if tide_path.exists() else None
     streets = gpd.read_file(ROOT / "assets" / "geo" / f"{args.township.lower()}_streets.geojson")[["street_id", "name", "susceptibility"]]
     names = dict(zip(streets.street_id, streets.name))
 
     print(f"Replay {args.township} {args.event} {args.start}-{args.end}: {len(streets)} streets, "
-          f"{readings.graph_id.nunique()} stations with data")
+          f"{readings.graph_id.nunique()} stations with data; ML trigger: "
+          f"{('out-of-sample model' if bundle['out_of_sample'] else 'final model (IN-SAMPLE for this period)') if bundle else 'unavailable'}"
+          f" (drives alerts: {ml_cfg['ml_drives_alerts']})")
     last_line, total_alerts = None, Counter()
     for step in replay.run(start, end, timedelta(minutes=15), readings, stations, streets, station_ids,
-                           load_yaml("rules.yaml"), load_yaml("risk_matrix.yaml")["matrix"]):
+                           load_yaml("rules.yaml"), load_yaml("risk_matrix.yaml")["matrix"],
+                           ml_bundle=bundle, ml_cfg=ml_cfg, wl_ids=wl_ids, tide=tide):
         counts = Counter(s.level for s in step.states)
         summary = " ".join(f"{lv.json}:{counts[lv]}" for lv in (Level.WATCH, Level.WARNING, Level.DANGER) if counts[lv])
         reason = step.trigger.reasons[0].text_en if step.trigger.reasons else ""
-        line = (step.trigger.level, summary)
+        p = step.states[0].flood_probability if step.states else None
+        p_txt = f"p={p:.2f}" if p is not None else ""
+        line = (step.trigger.level, summary, round(p, 1) if p is not None else None)
         for alert in step.alerts:
             total_alerts[(alert.kind, alert.level.json)] += 1
         if line != last_line:
             fired = ",".join(step.trigger.fired_by) or "-"
-            print(f"{step.time:%H:%M}  {step.trigger.level.json.upper():8s} [{fired:20s}] streets {summary or 'all normal':40s} {reason}")
+            print(f"{step.time:%H:%M}  {step.trigger.level.json.upper():8s} {p_txt:7s} [{fired:20s}] streets {summary or 'all normal':40s} {reason}")
             last_line = line
         new_alerts = [a for a in step.alerts if a.kind == "alert"]
         if new_alerts:
