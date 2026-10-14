@@ -1,0 +1,11 @@
+graph_id,kind,station_code,name,district,state,lat,lon,wl_normal_m,wl_alert_m,wl_warning_m,wl_danger_m,thresholds_ok
+PANDAMARAN,wl,3014402,P/A Pandamaran,Klang,SEL,3.000872,101.420448,1.2,1.8,2.0,2.2,True
+26558,wl,0220301WL,"Sg. Kapar Kechil di Kg. Perepat, Kapar",Klang,SEL,3.107821,101.355571,0.0,0.6,1.0,1.5,True
+PEKANMERU,wl,3112401,Sg. Binjai di Pekan Meru,Klang,SEL,3.136456,101.438946,2.8,3.8,4.0,4.2,True
+TELOKGONG,rf,2913001,Telok Gong,Klang,SEL,2.955108,101.367882,,,,,True
+PANDAMARAN,rf,3014002,P/A Pandamaran,Klang,SEL,3.000872,101.420448,,,,,True
+26558,rf,0220301RF,"Kg. Perepat, Kapar",Klang,SEL,3.107821,101.355571,,,,,True
+PEKANMERU,rf,3112001,Pekan Meru,Klang,SEL,3.136456,101.438946,,,,,True
+SELATMUARA,rf,3013003,Selat Muara,Klang,SEL,3.019277,101.376362,,,,,True
+KGRANTAUPANJANG,rf,3013001,Kg. Rantau Panjang,Klang,SEL,3.049139,101.41316,,,,,True
+JLNBENTENGKAPAR,rf,3013002,Jln. Benteng Kapar,Klang,SEL,3.131329,101.356582,,,,,True
