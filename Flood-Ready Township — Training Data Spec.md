@@ -1,7 +1,9 @@
 # Flood-Ready Township — Training Data Specification
 
-v2.2 · 14 Oct 2026 · @Filbert
+v2.3 · 14 Oct 2026 · @Filbert
 
+> **v2.3 changes:** new **Table D `ml_trigger_train.parquet`** for the ML-first trigger: one row per river station per 15 min, labelled by whether the river crosses its own warning level within 1 / 2 h (labels come from the data, no news needed). Table B (news-labelled) becomes the optional street flash-flood classifier.
+>
 > **v2.2 changes:** gridded model rain missed the 12 Nov 2024 storm (≤ 6.8 mm anywhere in a 30 km box around Klang, across 8 Open-Meteo sources, vs 79 mm at the Kg Perepat gauge), so **Table B is now built from JPS station rain** (Jan 2024 onward) and Dataset 2 is reduced to forecasts, warnings and a bias study. The history archive uses monthly chunks and selects stations by district. T2–T4 are implemented and running (`scripts/run_loggers.py`, `scripts/archive_jps_history.py`). Sg Binjai read 2.94 m at 08:00 on 12 Nov 2024 (not 2.93).
 >
 > **v2.1 changes:** the Telegram bot report is replaced by **Resident app answers and flood reports** (Dataset 7), which feed the live benchmark and, after review, the labels (`source_type = app_report`). Rain-at-onset per street is added for the Admin app's improvement suggestions.
@@ -20,6 +22,7 @@ This spec tells Claude Code exactly which files to build, from which open source
 | `data/final/susceptibility_train.parquet` | One row per point (flood or dry sample) | Susceptibility map (where) |
 | `data/final/trigger_train.parquet` | One row per district per hour | District model (when) |
 | `data/final/station_15min.parquet` | One row per JPS station per 15 min | Station rules, replay, evaluation |
+| `data/final/ml_trigger_train.parquet` | One row per river station per 15 min (below warning) | **ML trigger** (main model) |
 | `data/final/alert_outcomes.parquet` | One row per alert, with resident and sensor outcome | Live benchmark, Admin statistics, suggestions, new labels |
 
 **How to use it with Claude Code**
@@ -368,7 +371,7 @@ Three tables come out of the pipeline: one row per place for the map, one row pe
 | `holdout_bbr` | 1 if inside the BBR buffer | Excluded from the **validation run**; included in the final production map |
 | `event_ids` | list | Links back to `events.csv` |
 
-**Table B — `trigger_train.parquet` (when; district model)**
+**Table B — `trigger_train.parquet` (when; optional street flash-flood classifier, Should)**
 
 | Column | From | Notes |
 | --- | --- | --- |
@@ -384,6 +387,21 @@ Three tables come out of the pipeline: one row per place for the map, one row pe
 | `negative_type` | — | `probable_negative` for non-event days (see rules) |
 
 **Deliberately excluded from Table B** (they leak the label or don't match live data): historical `met_warning_active`, `tide_mentioned`, `susceptibility_score`, and gridded model rain. The training period starts in Jan 2024, where station history begins.
+
+**Table D — `ml_trigger_train.parquet` (ML trigger, Must)**
+
+| Column | From | Notes |
+| --- | --- | --- |
+| `graph_id`, `time_local` | Table C | One row per river station per quarter hour while the level is below its warning level |
+| `d_alert_m`, `d_warning_m`, `d_danger_m` | Table C | Level minus each of the station's own thresholds (station-relative, so one model fits all stations) |
+| `rise_15m`, `rise_60m`, `rise_120m` | Table C | Level change over the window |
+| `rain_{1h,2h,3h,6h,24h}_{max,mean}_{10km,25km}`, `rain_72h_antecedent_max_25km` | Table C | Over rain stations within 10 / 25 km of the river station |
+| `tide_height_m`, `hours_to_high_tide` | Dataset 5 | |
+| `hour`, `month` | derived | |
+| `cross_1h`, `cross_2h` | Table C | **Labels:** 1 if the level reaches the station's warning level within the next 1 / 2 h |
+| `fold` | derived | Time-blocked fold by season; 12 Nov 2024 always in a test fold |
+
+Rules: stations whose thresholds are out of order are excluded; features use only data at or before `time_local` (a leakage test enforces this); no station ID feature. Evidence that this works: `docs/ml-feasibility.md`.
 
 **Table C — `station_15min.parquet`** is defined in Dataset 3. It feeds the station rules, the 12 Nov 2024 replay, and the rule-layer evaluation on 2024+ events.
 

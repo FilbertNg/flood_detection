@@ -1,7 +1,9 @@
 # Flood-Ready Township — Product Requirements Document
 
-v3 · 14 Oct 2026 · @Filbert
+v3.1 · 14 Oct 2026 · @Filbert
 
+> **v3.1 changes:** **ML-first trigger.** A gradient-boosted classifier trained on 2024–2026 JPS data pooled across all river stations predicts the chance that the river near each township crosses its warning level within 1–2 h. JPS's rules are a safety floor (the level is the higher of the two), and ML drives alerts only after passing an out-of-sample gate. Feasibility: `docs/ml-feasibility.md` (50 warning crossings at Sg Binjai; first model gave 90 vs 60 min median lead).
+>
 > **v3 changes:** the **full working MVP is due 23 Oct** (pitch deck ≤ 10 slides, 5-minute video or demo, prototype/code, optional documents), not a paper proposal. Timeline replaced by a dependency-ordered build plan for a team of five (`docs/superpowers/plans/2026-10-14-mvp-build-plan.md`). No hardware or VPS before Top 10: the sensor is simulated (HTTP) and MVP hosting costs $0 (GitHub Actions tick, free Postgres, Cloudflare Pages). Priorities re-tiered: Must = in the 23 Oct submission.
 >
 > **v2.2 changes:** gridded model rain missed the 12 Nov 2024 storm almost completely (≤ 6.8 mm anywhere near Klang vs 79 mm at the Kg Perepat gauge), so the district model now uses **JPS station rain** (history from Jan 2024) and gridded forecasts are kept for the Outlook only. A one-hour intensity rule (JPS's own "heavy" / "very heavy" categories) has been added. Loggers and history archive are running.
@@ -70,7 +72,7 @@ The deck, the video and the pitch follow the official criteria and the page's **
 | Criterion | Weight | Our answer |
 | --- | --- | --- |
 | Impact & Sustainability Value | 25% | Residents of BBR Phase 1–2 get street-level warnings with an action; SDP gets data-backed drainage priorities. Impact is put in numbers: homes covered, minutes of warning, floods confirmed, streets prioritised |
-| Innovation & Differentiation | 20% | JPS and MET watch rivers and districts; we turn their data into a street-level alert with an action. Residents verify alerts, so the system measures and improves its own accuracy. The admin side turns floods into improvement suggestions |
+| Innovation & Differentiation | 20% | JPS and MET watch rivers and districts; we turn their data into a street-level alert with an action. An ML trigger trained on 2.5 years of JPS river data gave about 30 min more warning than rain rules in a first test, with JPS's own thresholds as a safety floor. Residents verify alerts, so the system measures and improves its own accuracy. The admin side turns floods into improvement suggestions |
 | Feasibility & Deliverability | 20% | Open data only; working MVP in a public repo; live loggers running; replay on real JPS readings; two web apps sharing one API; $0 hosting |
 | Strategic Fit & Theme Relevance | 15% | Planet → climate resilience, in an SDP township, answering a residents' memorandum |
 | Commercial & Value Multiplication | 10% | Ops and drainage-planning value for SDP, "monitored street" sales card, one pipeline for every SDP township; cost per township |
@@ -101,6 +103,7 @@ The MVP must prove one thing: open data can warn an SDP street about a flash flo
 | Metric | MVP target | How measured |
 | --- | --- | --- |
 | Event detection | Report "X of N events flagged Warning or higher"; target ≥ 70% | Leave-one-event-out over all dated events |
+| ML vs official rules | ML trigger passes the gate: detects at least as many river crossings as the Watch rule with no more false alarms, or the same number with ≥ 20 min more lead and ≤ 1.2× false alarms | Time-blocked out-of-sample evaluation over 2024–2026 (first spike: 23/50 detected by both, 90 vs 60 min lead) |
 | Nowcast lead time | Median ≥ 30 min before first report | Hour-precision events only. Report time lags real onset, and we say so |
 | Outlook lead time | Median ≥ 6 h before first report | Only with real day-ahead forecasts: Open-Meteo Previous Runs (2024+) or our own logged forecasts |
 | False alarms | ≤ 4 Warning alerts per township per month with no flood | Continuous hour-by-hour run over a 6-month rainy season; each Warning checked against news |
@@ -127,11 +130,11 @@ Four users share one data pipeline; residents and SDP ops are the MVP priority.
 A street's flood level combines where water collects (a fixed susceptibility score) with how likely flooding is right now (a live trigger level), using an explicit risk matrix. The sensor and resident verification confirm it on the ground.
 
 1. **Susceptibility map (where).** Built once per township on a 30 m grid from FABDEM ground height (buildings and trees removed), terrain features (slope, HAND, TWI, flow accumulation), distance to rivers and coast, and hard surfaces. A HAND + TWI index is the baseline; an ML classifier replaces it only if it scores better on held-out streets. Output: score 1–5 per cell, rolled up per street.
-2. **Trigger layer (when).** Refreshes every 15 minutes and has two parts:
-   - **Station rules** using JPS Public Infobanjir: rain of 60 mm or more in 2–4 h at a nearby station (JPS's own flash-flood guide), with a lower Watch threshold, and river level against each station's own alert / warning / danger levels.
-   - **District model** (logistic regression first, XGBoost as a stretch goal): probability that flash flooding is reported in the district today, from **station rain across the district** (1–4 h intensity, 24 h total, 72 h antecedent), river levels and computed tide height. Gridded model rain is not used here, because it missed the 12 Nov 2024 and 23 Apr 2025 storms (see *Data sources*).
+2. **Trigger layer (when): ML-first, with a safety floor.** Refreshes every 15 minutes.
+   - **ML trigger** (gradient-boosted trees, scikit-learn): trained on 2024–2026 JPS data pooled across all river stations in Selangor and KL. Predicts the probability that the river near each township crosses its warning level within 1–2 h. The labels come from the river data itself, so there are many events to learn from (50 warning crossings at Sg Binjai alone). Features: river level against its thresholds, rises, rain within 10–25 km, tide.
+   - **Safety floor: station rules** using JPS's own figures. Rain ≥ 31 mm in 1 h (JPS "heavy") or ≥ 40 mm in 2–4 h → Watch; > 60 mm in 1 h or ≥ 60 mm in 2–4 h → Warning. River alert / warning / danger → Watch / Warning / Danger.
 
-   The trigger level is the **higher** of the rule level and the model level, and every alert records which one fired.
+   The trigger level is the **higher** of the ML level and the rule level. ML may raise a level but never lowers an official threshold, and every alert records which input fired. ML drives alert levels only once it passes an out-of-sample gate against the rules (see *Success metrics*). Until then its probability is shown, but the rules decide.
 3. **Risk matrix.** Susceptibility (1–5) × trigger level (Normal / Watch / Warning / Danger) → street level, from a published 5 × 4 lookup table that is tuned on replay.
 4. **Expected time.** Every alert carries a **time window**, never an exact minute.
    - **Nowcast:** the window comes from the typical lag between the rule firing and flooding on past events. On 12 Nov 2024 the rain rule fired at 09:00 and the river reached danger at 10:00. The window is shifted by the next high tide.
@@ -145,7 +148,7 @@ A street's flood level combines where water collects (a fixed susceptibility sco
 | Alert | Lead time | Driven by | Confidence | Resident message (example) |
 | --- | --- | --- | --- | --- |
 | Outlook | 6–24 h | Day-ahead rain forecast + MET thunderstorm warning for the district + high-tide timing + susceptibility | Medium | "Flash-flood risk in Bukit Raja Phase 1 this evening, 5–8 pm (heavy rain forecast near high tide). Park on higher ground tonight." |
-| Nowcast | 0–2 h | Station rain and river rules + district model + susceptibility (+ sensor and resident confirmations) | High | "Flooding likely at Jalan Makyong between 9:30 and 10:30: 62 mm of rain in 2 h at Kg Perepat, Sg Binjai rising, high tide 11:40. Move your car now." |
+| Nowcast | 0–2 h | ML trigger + station rain and river rules (safety floor) + susceptibility (+ sensor and resident confirmations) | High | "Flooding likely at Jalan Makyong between 9:30 and 10:30: 62 mm of rain in 2 h at Kg Perepat, Sg Binjai rising, high tide 11:40. Move your car now." |
 
 **Alert levels per street:** Normal → Watch → Warning → Danger, the same four levels JPS uses for rivers, so residents and authorities read them the same way.
 
@@ -193,7 +196,7 @@ Priority = High if the street had confirmed floods affecting homes (depth "knee"
 
 ## Functional requirements
 
-**Priority:** Must = in the 23 Oct submission; Should = before 23 Oct if time allows, otherwise for the 11 Nov final; Could = after Top 10. The MVP has 36 Must requirements across seven modules. Who builds what, in which order and with which acceptance tests is in the *MVP Build Plan* (`docs/superpowers/plans/2026-10-14-mvp-build-plan.md`).
+**Priority:** Must = in the 23 Oct submission; Should = before 23 Oct if time allows, otherwise for the 11 Nov final; Could = after Top 10. The MVP has 37 Must requirements across seven modules. Who builds what, in which order and with which acceptance tests is in the *MVP Build Plan* (`docs/superpowers/plans/2026-10-14-mvp-build-plan.md`).
 
 | ID | Module | Requirement | Priority |
 | --- | --- | --- | --- |
@@ -211,11 +214,12 @@ Priority = High if the street had confirmed floods affecting homes (depth "knee"
 | MAP-4 | Susceptibility | Validation run trained without BBR labels, scored on BBR and memorandum streets; the pitch map comes from this run | Must |
 | MAP-5 | Susceptibility | Sentinel-1 December 2021 flood extent, shown as river-flood context only | Could |
 | TRG-1 | Trigger | Build features every 15 min: station rain 1 h / 2 h / 3 h / 4 h / 24 h / 72 h (per station and district max), river level vs its thresholds and trend, forecast rain next 3/6/12 h (Outlook and display), tide height and hours to high tide, MET warning flag, hour of day | Must |
-| TRG-2 | Trigger | Station rule layer using JPS's own figures: **Watch** at ≥ 31 mm in 1 h (JPS "heavy") or ≥ 40 mm in 2–4 h; **Warning** at > 60 mm in 1 h (JPS "very heavy") or ≥ 60 mm in 2–4 h (JPS flash-flood guide); river alert / warning / danger mapped to Watch / Warning / Danger. Starting values, tuned per township on 2024+ events | Must |
-| TRG-3 | Trigger | District model (logistic regression) outputting P(flash flood reported in district today), trained on JPS station rain (Jan 2024 →); shipped only if it beats the station rules in leave-one-event-out evaluation | Should |
+| TRG-2 | Trigger | **Safety floor:** station rules using JPS's own figures: **Watch** at ≥ 31 mm in 1 h (JPS "heavy") or ≥ 40 mm in 2–4 h; **Warning** at > 60 mm in 1 h (JPS "very heavy") or ≥ 60 mm in 2–4 h (JPS flash-flood guide); river alert / warning / danger mapped to Watch / Warning / Danger. Starting values, tuned per township on 2024+ events | Must |
+| TRG-3 | Trigger | **ML trigger** (gradient-boosted trees) trained on 2024–2026 JPS data pooled across all river stations: probability that the river near each township crosses its warning level within 1–2 h. Level = max(ML, rules). Drives alert levels once it passes the out-of-sample gate; always shown as the flood probability | Must |
 | TRG-4 | Trigger | Combine trigger level and susceptibility through the 5 × 4 risk matrix into a street level; record which input fired | Must |
-| TRG-5 | Trigger | XGBoost version of TRG-3, used only if it beats logistic regression in leave-one-event-out evaluation | Should |
+| TRG-5 | Trigger | River-level forecast curve (quantile model, p50/p90, 1–2 h ahead) on Resident and Admin charts | Should |
 | TRG-6 | Trigger | Every alert carries an **expected time window** (Nowcast: from rule-to-flood lag on past events, shifted by tide; Outlook: forecast peak-rain hours overlapped with high tide) and **ranked plain-language reasons** | Must |
+| TRG-7 | Trigger | Street flash-flood classifier trained on news and resident labels (township-day); ships only with ≥ 20 labelled events and if it beats TRG-3 | Should |
 | ALR-1 | Alerts | **Web Push** (PWA, service worker, VAPID) to residents subscribed to a street when it reaches Warning or Danger: level, street, time window, top reasons, action, link to the street page, and "Is it flooding here?" buttons. Text in BM or English | Must |
 | ALR-2 | Alerts | Outlook push when 6–24 h risk is high | Must |
 | ALR-3 | Alerts | No repeat alert for the same street within 60 min unless the level rises; "All clear" push when it returns to Normal | Must |
@@ -266,20 +270,20 @@ All inputs are open data; the full schema and scraping plan are in *Flood-Ready 
 **Models**
 
 - **Susceptibility:** HAND + TWI index as the baseline; Random Forest / XGBoost on terrain features if it beats the baseline under spatial cross-validation ([ISPRS 2022](https://isprs-archives.copernicus.org/articles/XLVI-4-W3-2021/305/2022/)).
-- **Trigger:** station rules first (JPS one-hour intensity categories, 60 mm in 2–4 h, river thresholds), then a district-level logistic regression on station rain, river levels and tide. It is trained on flash floods across Klang, Petaling and Kuala Lumpur from January 2024 onward, where station history exists. Gridded model rain is excluded because it misses short tropical storms. Labels are day-level, and hour-precision events are used only to measure lead time. Train and test are split by event; never split randomly.
+- **Trigger (ML-first):** a gradient-boosted classifier on JPS station data, pooled across all river stations (Jan 2024 →), predicts river warning crossings 1–2 h ahead. Labels come from the river data itself, and the model is validated on time-blocked folds (12 Nov 2024 always held out). It is compared against the JPS rain and river rules, which stay as a safety floor. Gridded model rain is excluded because it misses short tropical storms. Street-level flash-flood labels from news and residents feed a second, optional classifier (TRG-7). Feasibility: `docs/ml-feasibility.md`.
 - **No leaking features:** historical MET warnings, tide flags taken from news, and in-sample susceptibility scores are not used for training.
 - **Learning from residents:** reviewed app confirmations and missed floods are added to the labels before each retrain; the street rain-at-onset statistics also tune the station rule thresholds per township.
 - **Explainability:** every alert shows its ranked reasons and which input fired.
 
 ## System architecture and tech stack
 
-Live feeds pass through one ingest layer into a database. The rule layer, the district model and the susceptibility map meet in one risk matrix. Both apps read through one FastAPI service, and resident answers flow back into the database as benchmark data and labels.
+Live feeds pass through one ingest layer into a database. The ML trigger, the rule floor and the susceptibility map meet in one risk matrix. Both apps read through one FastAPI service, and resident answers flow back into the database as benchmark data and labels.
 
 ```text
  JPS Infobanjir (live + history) ─┐
- MET warnings (data.gov.my) ──────┤               ┌─ Station rules ──┐
+ MET warnings (data.gov.my) ──────┤               ┌─ ML trigger ─────┐
  Open-Meteo forecast ─────────────┼─► Ingest ─► DB┤                  ├─► Risk matrix + time window + reasons
- Tide (computed) ─────────────────┤   (15 min)    └─ District model ─┘              │
+ Tide (computed) ─────────────────┤   (15 min)    └─ Rules (floor) ──┘              │
  Sensor (simulated, HTTP) ────────┘        ▲          Susceptibility map ───────────┤
                                            │          (FABDEM + OSM, once)          ▼
                                            │                                     FastAPI ──► Web Push (+ Telegram fallback)
@@ -298,7 +302,7 @@ The GIS path runs once per township; everything else refreshes every 15 minutes.
 | Storage | Supabase Postgres (free) in the MVP; SQLite for development and tests (SQLAlchemy Core keeps both working); Postgres on the VPS later | One database for readings, streets, alerts and answers |
 | GIS | rasterio, WhiteboxTools or pysheds, GeoPandas | HAND, TWI, flow accumulation without hydrology expertise |
 | Tide | pyTMD or utide | Deterministic tide for any hour |
-| ML | scikit-learn (logistic regression), XGBoost (stretch) | Fast, explainable |
+| ML | scikit-learn `HistGradientBoostingClassifier` (ML trigger), quantile regressor (forecast curve, Should); joblib artifact + model card | Fast on a CPU, handles missing readings, explainable through its drivers |
 | API | FastAPI: REST for both apps, Server-Sent Events for live map updates, offline replay mode from cached data | One service for both apps |
 | Push | Web Push with VAPID keys (`pywebpush` on the server, service worker in the Resident app); Telegram Bot API as fallback | Free; works on Android browsers and on iPhone once the PWA is added to the Home Screen (iOS 16.4+) |
 | Frontend | **React + Leaflet** (react-leaflet), Vite. One repo, two apps: `apps/resident` (PWA) and `apps/admin`, sharing `packages/shared` (map layers, level colours, API client, BM/EN strings) | Shared map components avoid building everything twice |
@@ -425,7 +429,7 @@ The biggest risk is too few labelled flood events; every other risk has a cheape
 | Few labelled events at street level | Weak model; metrics too coarse to mean much | District-level trigger trained on all Klang/Petaling/KL flash floods; station rules don't need labels; report "X of N"; ask SDP for incident logs; resident verification adds labels over time |
 | Infobanjir endpoints are undocumented and may change or block | Live feed or history lost | Archive the full history now; staleness check; data.gov.my as fallback; credit JPS and scrape politely |
 | No station history before 2024 | 2017, 2021 and 2023 events can't be used to train the trigger | They serve as map labels and news-quoted checks; the trigger trains on 2024+ events; the demo replays 12 Nov 2024. *(Optional: request older history from JPS.)* |
-| Gridded rain misses short storms (confirmed: 12 Nov 2024 and 23 Apr 2025) | Outlook under-predicts; gridded data useless for the Nowcast | Nowcast and district model use station rain only; Outlook leans on MET warnings and is labelled medium confidence; gridded skill measured with our logged forecasts |
+| Gridded rain misses short storms (confirmed: 12 Nov 2024 and 23 Apr 2025) | Outlook under-predicts; gridded data useless for the Nowcast | Nowcast, ML trigger and rules use station rain only; Outlook leans on MET warnings and is labelled medium confidence; gridded skill measured with our logged forecasts |
 | Thunderstorm forecasts are uncertain | Outlook false alarms; wrong time windows | Outlook labelled medium confidence; windows, never exact times; Warning needs observed rain |
 | Tide drives coastal Klang floods | Missed driver | Computed tide height is a Must input; SUG-2 tests it per street |
 | DEM (30 m) misses drains and kerbs; Klang is very flat | Street score noise | FABDEM; HAND baseline; roll up per street; validate on held-out streets; never claim house-level accuracy |
@@ -476,11 +480,11 @@ The pitch replays a real Bandar Bukit Raja flood from JPS's own 15-minute readin
 1. **(0:00–0:40) Problem:** the residents' memorandum on Jalan Makyong, and how SDP can answer it with action.
 2. **(0:40–1:30) Resident app tour + map:** pick a street; the BBR susceptibility baseline (built without any flood labels) and where the memorandum streets fall.
 3. **(1:30–2:45) Replay 12 Nov 2024 in the Resident app:**
-   - Kg Perepat rain climbs; Watch at about 08:45, then Warning at 09:00 (61.5 mm), near high tide.
+   - Kg Perepat rain climbs; Watch at about 08:45, then Warning at 09:00 (61.5 mm), near high tide. The street page shows the ML flood probability alongside the official thresholds (values from the final, out-of-sample model).
    - The phone on stage receives the push: "Flooding likely at Persiaran Sungai Keramat between 9:30 and 10:30: heavy rain at Kg Perepat, high tide." Tapping it opens the street page with the map, time window and reasons.
    - Sg Binjai reaches danger (4.21 m) at 10:00, about an hour after the alert.
 4. **(2:45–3:15) Verify:** the simulated sensor rises (labelled "simulated") and a second phone taps "Yes, flooding (knee)"; the alert turns *confirmed*.
-5. **(3:15–4:15) Admin app:** statistics, monthly report and suggestions from the 2024–2026 backfill (rules run over archived JPS data, outcomes matched to news reports), e.g. "Persiaran Sungai Keramat: check outfall backflow, floods coincide with high tide", with its evidence.
+5. **(3:15–4:15) Admin app:** statistics, monthly report and suggestions from the 2024–2026 backfill (the engine run over archived JPS data with out-of-fold ML probabilities, outcomes matched to news reports), e.g. "Persiaran Sungai Keramat: check outfall backflow, floods coincide with high tide", with its evidence.
 6. **(4:15–4:40) Live mode:** today's levels from the 15-minute tick.
 7. **(4:40–5:00) Enabler + ask:** one pipeline and two apps for every SDP township; cost per township; buyer survey result; pilot ask.
 

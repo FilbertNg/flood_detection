@@ -4,15 +4,15 @@
 >
 > This is the **master plan** for five people. It fixes the shared contracts, the work order and each task's files, interfaces and acceptance tests. When you pick up a task, have your Claude Code expand **that task** into bite-sized TDD steps with superpowers:writing-plans (save the plan as `docs/superpowers/plans/<date>-<task-id>.md`), then execute it. Never change a contract in §4 without the PR rule in §9.
 
-**Goal:** a working MVP on GitHub by **23 Oct 2026, 11:59 pm**: Resident PWA + SDP Admin app + flood engine running on real JPS data, shown in a 5-minute video and a 10-slide deck.
+**Goal:** a working MVP on GitHub by **23 Oct 2026, 11:59 pm**: Resident PWA + SDP Admin app + an **ML-first flood engine** (JPS rules as a safety floor) running on real JPS data, shown in a 5-minute video and a 10-slide deck.
 
 **Architecture:**
-- A Python engine turns JPS station readings, tide and a street susceptibility map into street flood levels, alerts, time windows and reasons. It runs every 15 min in live mode, at accelerated speed in replay mode, and over 2024–2026 history in backfill mode.
+- A Python engine turns JPS station readings, tide and a street susceptibility map into street flood levels, alerts, time windows and reasons. Its trigger is **ML-first**: a gradient-boosted classifier, trained on 2024–2026 JPS data pooled across all river stations, gives the probability that the river near each township crosses its warning level within 1–2 h. JPS's official rain and river thresholds act as a **safety floor** (the level is the higher of the two). Evidence: `docs/ml-feasibility.md`. It runs every 15 min in live mode, at accelerated speed in replay mode, and over 2024–2026 history in backfill mode.
 - A FastAPI service exposes it to two React + Leaflet apps and sends Web Push.
 - MVP hosting costs $0: GitHub Actions cron for the 15-min tick, a free Postgres, Cloudflare Pages for the apps. A VPS comes only after Top 10.
 
 **Tech Stack:**
-- **Python 3.12:** pandas, pyarrow, SQLAlchemy 2 Core, FastAPI, pywebpush, PyJWT, pysheds/rasterio/geopandas (GIS only).
+- **Python 3.12:** pandas, pyarrow, scikit-learn + joblib (ML trigger), SQLAlchemy 2 Core, FastAPI, pywebpush, PyJWT, pysheds/rasterio/geopandas (GIS only).
 - **TypeScript:** React + Vite, react-leaflet, TanStack Query, Recharts, vite-plugin-pwa, MSW, Vitest; pnpm workspaces.
 - **Hosting:** GitHub Actions, Supabase Postgres (free), Cloudflare Pages.
 
@@ -29,7 +29,7 @@
 1. **Resident app** (phone, installed PWA):
    - pick a street;
    - map of street levels;
-   - street page with level, time window, reasons and 12 h rain;
+   - street page with level, **ML flood probability**, time window, reasons and 12 h rain;
    - a push notification arrives during the replay;
    - "Is it flooding here?" Yes/No; "Report a flood".
 2. **Admin app:**
@@ -49,6 +49,7 @@
 - **Station rules (starting values, `config/rules.yaml`):**
   - rain: Watch at `st_rain_1h ≥ 31` mm or `st_rain_2to4h_max ≥ 40` mm; Warning at `st_rain_1h > 60` mm or `st_rain_2to4h_max ≥ 60` mm;
   - river: alert → Watch, warning → Warning, danger → Danger (the station's own thresholds).
+- **ML-first trigger with a rule floor (`config/ml.yaml`):** trigger level = max(ML level, rule level). ML level from the model probability: Watch at `p ≥ p_watch`, Warning at `p ≥ p_warning` (chosen on validation folds only; spike values 0.5 / 0.7). ML may raise a level, never lower one. ML drives alert levels only while `ml_drives_alerts: true`, set by the evaluation gate (task ML3); otherwise the probability is still shown but the rules decide.
 - **Risk matrix (`config/risk_matrix.yaml`), susceptibility 1–5 × trigger level → street level:**
 
 | Susceptibility | normal | watch | warning | danger |
@@ -102,6 +103,11 @@ floodready/                  # Python package (exists: infobanjir, met, openmete
     streets.py               # OSM streets for a township → named streets GeoJSON
     terrain.py               # DEM → HAND, TWI → baseline index → street susceptibility
   tide.py                    # hourly tide series for Port Klang
+  ml/
+    dataset.py               # pooled training table: station-relative features + crossing labels
+    train.py                 # fit, save artifact + model card
+    evaluate.py              # event-level metrics vs rule baselines, gate decision
+    predict.py               # load artifact; probability per township at time t
   db/
     schema.py                # SQLAlchemy Core tables (§4.3)
     repo.py                  # read/write functions used by API, tick, replay
@@ -117,7 +123,9 @@ floodready/                  # Python package (exists: infobanjir, met, openmete
     report.py                # monthly report JSON
     suggestions.py           # SUG-1..7
 scripts/                     # run_loggers, archive_jps_history, rebuild_jps_history (exist) + tick, replay, backfill, build_streets, build_susceptibility, sim_sensor, seed_admin
-config/                      # townships.yaml, sources.yaml (exist) + rules.yaml, risk_matrix.yaml
+config/                      # townships.yaml, sources.yaml (exist) + rules.yaml, risk_matrix.yaml, ml.yaml
+models/                      # trigger_v<N>.joblib + model card trigger_v<N>.md (committed if < 10 MB)
+notebooks/spikes/            # exploration (ml_trigger_feasibility.py)
 assets/geo/                  # bbr_streets.geojson (generated, committed; ODbL attribution)
 data/events/events.csv       # human-checked flood labels (committed; facts + URLs only)
 apps/resident/               # Vite + React + TS PWA
@@ -157,15 +165,20 @@ docs/api-contract.md         # §4.2 as a living document
   "street_id": "BBR-jalan-makyong", "name": "Jalan Makyong", "township_id": "BBR",
   "susceptibility": 5, "level": "warning", "trigger_level": "warning",
   "confidence": "high",                         // high | medium (outlook) | low (stale data)
+  "flood_probability": 0.62,                    // ML trigger, 0-1; null if the model is unavailable
   "fired_by": ["rule_rain"],                    // rule_rain | rule_river | model | outlook
   "window": {"start": "2024-11-12T09:30:00+08:00", "end": "2024-11-12T10:30:00+08:00"},
   "reasons": [
     {"code": "rain_1h", "value": 61.5, "unit": "mm", "station": "Kg. Perepat, Kapar",
-     "text": {"en": "61.5 mm of rain in 1 h at Kg. Perepat, Kapar", "ms": "Hujan 61.5 mm dalam 1 jam di Kg. Perepat, Kapar"}}
+     "text": {"en": "61.5 mm of rain in 1 h at Kg. Perepat, Kapar", "ms": "Hujan 61.5 mm dalam 1 jam di Kg. Perepat, Kapar"}},
+    {"code": "ml_probability", "value": 0.62, "unit": "p", "station": "Sg. Binjai di Pekan Meru",
+     "text": {"en": "62% chance the river at Sg. Binjai di Pekan Meru crosses warning level within 2 h",
+              "ms": "62% kemungkinan paras Sg. Binjai di Pekan Meru melepasi paras amaran dalam 2 jam"}}
   ],
   "data_time": "2024-11-12T09:00:00+08:00",
   "rain_next_12h": [{"time": "2024-11-12T10:00:00+08:00", "mm": 2.1}],
   "tide": [{"time": "2024-11-12T10:00:00+08:00", "height_m": 1.9}],
+  "river_forecast": {"graph_id": "PEKANMERU", "points": [{"time": "2024-11-12T10:00:00+08:00", "wl_m": 4.05, "wl_m_p90": 4.25}]},  // Should (ML5); null if unavailable
   "stations": ["26558", "PEKANMERU"],
   "active_alert": {"alert_id": "a_01", "level": "warning", "issued_at": "2024-11-12T09:00:00+08:00"},
   "history": [{"alert_id": "a_01", "level": "warning", "issued_at": "…", "outcome": "confirmed"}],
@@ -195,7 +208,7 @@ docs/api-contract.md         # §4.2 as a living document
 `stations(graph_id, kind, name, district, state, lat, lon, wl_alert_m, wl_warning_m, wl_danger_m)` ·
 `readings(graph_id, kind, time_local, rain_15min_mm, wl_m, source, fetched_at)` PK (graph_id, kind, time_local) ·
 `streets(street_id, township_id, name, susceptibility, centroid_lat, centroid_lon, geometry_geojson)` ·
-`street_state(street_id, mode, level, trigger_level, confidence, fired_by_json, window_start, window_end, reasons_json, data_time, updated_at)` PK (street_id, mode) ·
+`street_state(street_id, mode, level, trigger_level, confidence, flood_probability, fired_by_json, window_start, window_end, reasons_json, data_time, updated_at)` PK (street_id, mode) ·
 `alerts(alert_id, street_id, township_id, horizon, level, kind ['alert'|'all_clear'], issued_at, window_start, window_end, fired_by_json, reasons_json, inputs_json, recipients, is_replay, is_backfill)` ·
 `answers(answer_id, device_id, alert_id, street_id, answer, depth, photo_path, lat3, lon3, distance_m, answered_at, review_status, source ['resident'|'news'|'demo'])` ·
 `subscriptions(device_id, endpoint, p256dh, auth, lang, created_at)` · `subscription_streets(device_id, street_id)` ·
@@ -215,7 +228,11 @@ class Reason:  code: str; value: float; unit: str; station: str | None; text_en:
 class TriggerResult:  level: Level; confidence: str; fired_by: tuple[str, ...]; reasons: tuple[Reason, ...]; data_time: datetime; stale_stations: tuple[str, ...]
 
 @dataclass(frozen=True)
-class StreetState:  street_id: str; level: Level; trigger_level: Level; confidence: str; fired_by: tuple[str, ...]
+@dataclass(frozen=True)
+class MLResult:  p: float; level: Level; station: str; horizon_h: int; reasons: tuple[Reason, ...]
+
+@dataclass(frozen=True)
+class StreetState:  street_id: str; level: Level; trigger_level: Level; confidence: str; flood_probability: float | None; fired_by: tuple[str, ...]
                     window_start: datetime | None; window_end: datetime | None; reasons: tuple[Reason, ...]; data_time: datetime
 
 @dataclass(frozen=True)
@@ -225,6 +242,8 @@ features.station_features(readings: pd.DataFrame, at: datetime, stations: pd.Dat
     # readings cols: graph_id, kind, time_local, rain_15min_mm, wl_m ; stations cols: graph_id, kind, name, wl_alert_m, wl_warning_m, wl_danger_m
     # returns one row per (graph_id, kind): st_rain_1h, st_rain_2to4h_max, st_rain_24h, wl_m, river_band ('normal'|'alert'|'warning'|'danger'|None), river_rising, is_stale
 rules.township_trigger(features: pd.DataFrame, station_ids: list[str], cfg: dict) -> TriggerResult
+ml.predict.township_probability(model, features: pd.DataFrame, wl_station_ids: list[str], at: datetime, cfg: dict) -> MLResult
+levels.combine(rule: TriggerResult, ml: MLResult | None, cfg: dict) -> TriggerResult   # max(rule, ML); rules only if ml is None or ml_drives_alerts is false
 matrix.street_level(susceptibility: int, trigger: Level, table: dict) -> Level
 levels.street_states(streets: pd.DataFrame, trigger: TriggerResult, cfg: dict) -> list[StreetState]
 alerts.issue(prev: dict[str, StreetState], new: list[StreetState], last_alert_at: dict[str, datetime], cfg: dict) -> list[Alert]
@@ -235,7 +254,7 @@ replay.run(event_start: datetime, event_end: datetime, step: timedelta, readings
 
 | Person | Role | Owns |
 | --- | --- | --- |
-| **Filbert** | Backend + AI/ML, integration lead | Engine (features, rules, matrix, levels, alerts, replay, backfill), GIS susceptibility, tide, labels + evaluation report, suggestions engine, ML stretch goals; merges contract changes |
+| **Filbert** | Backend + AI/ML, integration lead | **ML trigger** (dataset, training, evaluation gate, inference), engine (features, rules floor, matrix, levels, alerts, replay, backfill), GIS susceptibility, tide, labels + evaluation report, suggestions engine; merges contract changes |
 | **Michael** | Backend | DB layer, FastAPI (public + admin + auth), Web Push, answers/outcomes, statistics/report endpoints, tick script, sensor endpoint + simulator |
 | **Darrell** | Frontend + UI/UX | Design system and screens for both apps, **Admin app** lead, deck design, video edit |
 | **Christian** | Frontend | **Resident app**: PWA, map, street page, verify/report, push subscription, BM/EN |
@@ -252,7 +271,7 @@ Start every task as soon as its dependencies are merged. Frontends depend only o
 | **M0 Foundations** | Contracts merged (§4 as files), monorepo builds in CI, DB schema + SQLite dev DB, design tokens, MSW mocks | Everyone works in parallel |
 | **M1 Engine replay (headless)** | `python scripts/replay.py --event 2024-11-12` prints the BBR timeline from real data: Watch 08:45, Warning 09:00, Danger 10:00 | API real data, deck evidence slide |
 | **M2 Vertical slice** | Resident app on a phone shows replay levels from the real API, and a push arrives | Video storyboard can be recorded |
-| **M3 Full MVP** | Verify/report, Admin stats/report/suggestions on backfill, live tick in Actions, simulated sensor, BM/EN, deployed links | Freeze |
+| **M3 Full MVP** | ML trigger trained, gated and integrated (or shown as probability if it fails the gate); verify/report, Admin stats/report/suggestions on backfill, live tick in Actions, simulated sensor, BM/EN, deployed links | Freeze |
 | **M4 Ship** | Feature freeze → bug bash on Android + iPhone → video + deck final → submission checklist (§11) | Submit |
 
 **Rule of thumb:** freeze features with at least 36 h left before the deadline, and submit at least 6 h early.
@@ -313,7 +332,7 @@ Each task lists: **Owner · Depends on · Files · Interfaces · Acceptance test
 
 #### E7. Backfill 2024–2026
 **Depends:** E6, L1 · **Files:** `floodready/engine/backfill.py`, `scripts/backfill.py`, `tests/engine/test_backfill.py`
-- **Acceptance:** over the fixture day it produces the same alerts as replay, flagged `is_backfill=1`; on the full archive it completes for BBR, USJ and ELMINA and prints alert counts per township per month.
+- **Acceptance:** over the fixture day it produces the same alerts as replay, flagged `is_backfill=1`; ML probabilities in the backfill are **out-of-fold** (each period scored by the ML2 model that did not train on it), so Admin statistics are not inflated; on the full archive it completes for BBR, USJ and ELMINA and prints alert counts per township per month.
 
 #### E8. Outlook (6–24 h)
 **Depends:** E4, existing forecast + MET logs · **Files:** `floodready/engine/outlook.py`, `floodready/met_parse.py`, `tests/engine/test_outlook.py`
@@ -344,12 +363,60 @@ Each task lists: **Owner · Depends on · Files · Interfaces · Acceptance test
 
 #### L2. Evaluation report (supporting document)
 **Depends:** E7, L1 · **Files:** `scripts/evaluate.py`, `docs/evaluation-report.md`
-- **Contents:** for every labelled 2024+ event: detected? first Watch/Warning time vs report time (lead); Warning days per township per month over the backfill (false-alarm ceiling); the gridded-vs-station rain gap (12 Nov 2024, 23 Apr 2025); one honest failure.
+- **Contents:** the ML-vs-rules out-of-sample table and the gate decision (ML3); for every labelled 2024+ event: detected? first Watch/Warning time vs report time (lead); Warning days per township per month over the backfill (false-alarm ceiling); the gridded-vs-station rain gap (12 Nov 2024, 23 Apr 2025); one honest failure.
 
-#### L3 (stretch). District model
-**Depends:** L1 with ≥ 20 events · **Files:** `floodready/engine/model.py`, `scripts/train_district_model.py`
-- **Acceptance:** leave-one-event-out recall reported as "X of N"; shipped only if it beats the rules on the evaluation.
+### Workstream ML — ML trigger (Filbert, with Claude) · Must
 
+**Evidence:** `docs/ml-feasibility.md`. Sg. Binjai crossed warning 50 times in 2.5 years. A first classifier (no tide, 10 stations, no tuning) matched the Watch rule's detection with 90 vs 60 min median lead, but more false alarms. This workstream turns that into a pooled, tide-aware, gated model.
+**Depends on:** archive finished + `scripts/rebuild_jps_history.py` (PR #1), G3 tide, station coordinates (old data.gov.my list: `station_code` usually equals the graph ID).
+
+#### ML1. Pooled training dataset
+**Depends:** archive + rebuild, G3 · **Files:** `floodready/ml/dataset.py`, `scripts/build_ml_dataset.py`, `tests/ml/test_dataset.py`, `config/ml.yaml`; add `scikit-learn`, `joblib` to `pyproject.toml`
+- **Rows:** one per river station per quarter hour while the level is below that station's warning level; only stations whose thresholds are in order (normal < alert < warning < danger).
+- **Labels:** `cross_1h`, `cross_2h` = the level reaches the station's warning level within the next 1 / 2 h.
+- **Features (only data at or before t):**
+  - level minus each threshold;
+  - rises over 15 / 60 / 120 min;
+  - rain sums 1 / 2 / 3 / 6 / 24 h and 72 h antecedent, as max and mean over rain stations within 10 km and within 25 km;
+  - tide height and hours to high water (G3);
+  - hour and month.
+  - No station ID feature (the model must generalise, not memorise stations).
+- **Acceptance (real data):** PEKANMERU at 2024-11-12 08:30 has `cross_2h == 1` (crosses at 09:30) and at 06:00 `cross_2h == 0`; rows at or above warning are excluded; **leakage test:** changing any value after t leaves every feature at t unchanged; stations with broken threshold order are excluded and listed in the build log.
+
+#### ML2. Training and evaluation harness
+**Depends:** ML1 · **Files:** `floodready/ml/train.py`, `floodready/ml/evaluate.py`, `scripts/train_trigger.py`, `tests/ml/test_evaluate.py`, `models/trigger_v1.joblib`, `models/trigger_v1.md` (model card: data range, features, folds, metrics, known limits)
+- **Model:** `HistGradientBoostingClassifier(class_weight="balanced")`. Probability smoothed as the max over the last 30 min (the spike's probability was jumpy).
+- **Validation:** time-blocked folds by season (4 folds, an event never split across folds); 12 Nov 2024 always in a test fold.
+- **Event metrics** (spike definitions): crossings detected 15 min–3 h ahead, median lead, false-alarm episodes per month, per station and pooled, side by side with the Watch and Warning rain rules.
+- **Acceptance:**
+  - on a synthetic series, a fired window 60 min before a crossing counts as detected with lead 60, and an alarm with no crossing in the next 3 h counts as false;
+  - on the spike configuration (PEKANMERU, same archive snapshot) the harness reproduces the Watch-rule baseline: 23 / 50 detected, 4.9 false alarms per month.
+
+#### ML3. Gate and thresholds
+**Depends:** ML2 · **Files:** `config/ml.yaml` (`p_watch`, `p_warning`, `smoothing_min`, `ml_drives_alerts`), the ML section of `docs/evaluation-report.md`
+- Pick `p_watch` and `p_warning` on validation folds only.
+- **Gate:** (a) detection ≥ the Watch rule with false alarms ≤ the Watch rule, **or** (b) equal detection with ≥ 20 min more median lead and ≤ 1.2× false alarms. Pass → `ml_drives_alerts: true`. Fail → `false`, and the report says so plainly.
+- **Done when:** the out-of-sample rules-vs-ML table is in the evaluation report and on the deck's evaluation slide.
+
+#### ML4. Inference in the engine
+**Depends:** ML3, E4 · **Files:** `floodready/ml/predict.py`, `floodready/engine/levels.py` (`combine`), `tests/ml/test_predict.py`, `tests/engine/test_combine.py`
+- **Township probability:** max over the township's named river stations (BBR: PEKANMERU, 26558, PANDAMARAN, SELATMUARA).
+- **Acceptance:**
+  - `combine` never returns a level below the rule level;
+  - with `ml_drives_alerts: false`, levels equal rules-only while `flood_probability` is still filled;
+  - reasons include `ml_probability` with BM / EN text;
+  - the 12 Nov 2024 replay shows the probability at every step;
+  - works in live, replay and backfill modes;
+  - if the model can't be loaded, the engine falls back to rules-only with a confidence note, never a crash.
+
+#### ML5 (Should). River level forecast curve
+`HistGradientBoostingRegressor` with quantile loss (p50, p90) at 1 h and 2 h; served as `river_forecast` in StreetDetail; drawn as a dashed line on the Resident and Admin charts. **Acceptance:** p90 coverage between 0.85 and 0.95 on held-out folds.
+
+#### ML6 (Should). Street flash-flood classifier
+Supervised on news and resident labels (L1) at township-day level, using station and ML4 features. Ships only with ≥ 20 labelled events and if it improves on ML4 in leave-one-event-out evaluation; recall reported as "X of N".
+
+#### ML7 (Should). ML susceptibility map
+Random forest on the G2 terrain features with flood points, spatial block cross-validation; kept only if it beats the HAND + TWI baseline on held-out BBR streets.
 ### Workstream B — Backend API (Michael)
 
 #### B1. App factory + public read endpoints
@@ -443,9 +510,9 @@ Each task lists: **Owner · Depends on · Files · Interfaces · Acceptance test
 1. Problem (memorandum)
 2. Why current warnings fail
 3. Solution (two apps + engine)
-4. How it works (Mechanism)
+4. How it works (Mechanism): ML trigger + JPS safety floor
 5. Evidence: 12 Nov 2024 replay from real JPS data
-6. Evaluation (backtest, honest numbers)
+6. Evaluation: ML vs official rules, out-of-sample
 7. Admin value: stats + suggestions
 8. Enabler: tech, open data, scale to all SDP townships
 9. Business case and cost
@@ -482,13 +549,13 @@ Record at 1080p with captions; upload unlisted on YouTube and link it in the REA
 
 ## 10. Scope guard (cut in this order if time runs short)
 
-1. District ML model (L3) and ML susceptibility.
+1. Street flash-flood classifier (ML6), ML susceptibility (ML7), river forecast curve (ML5).
 2. Telegram fallback, review queue (ADM-7), sales card.
 3. USJ and ELMINA backfill (keep BBR only).
 4. Live deployment of the API (keep the local API + tunnel; the video is the required artifact).
 5. Tide in reasons (keep it in the charts).
 
-Never cut: the real-data replay, the Resident app push, verify, Admin statistics + suggestions from backfill, the video, the deck.
+Never cut: the ML trigger with its honest out-of-sample evaluation (if it fails the gate it still ships as a displayed probability), the real-data replay, the Resident app push, verify, Admin statistics + suggestions from backfill, the video, the deck.
 
 ## 11. Submission checklist
 
@@ -508,4 +575,6 @@ Never cut: the real-data replay, the Resident app push, verify, Admin statistics
 | Free API host sleeps (cold start) | Warm it up before recording; local API + tunnel fallback |
 | iPhone push needs the installed PWA (iOS 16.4+) | Install guide in onboarding; record the demo on Android if needed |
 | Merge conflicts across 5 people | Contracts frozen at M0; small PRs; one owner per directory |
+| ML trigger fails the gate | Ships as a displayed probability and forecast; rules decide alerts; reported honestly (judges value a fair comparison) |
+| ML overfits or leaks future data | Time-blocked folds, leakage test (ML1), smoothing, model card with limits |
 | Backfill has few news-confirmed outcomes | Show counts honestly ("confirmed by news: N"); verification loop is the long-term fix |

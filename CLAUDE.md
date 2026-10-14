@@ -23,6 +23,7 @@ uv venv .venv && uv pip install --python .venv/Scripts/python.exe -e ".[dev]"   
 
 - **TDD:** write the failing test first, watch it fail, then implement. Tests use real data fixtures in `tests/fixtures/` where possible.
 - **Never fabricate data.** No invented readings, events, answers or statistics. Simulated, replay and demo rows are flagged (`simulated`, `is_replay`, `source='demo'`), labelled on screen, and excluded from statistics.
+- **ML is evaluated honestly:** time-blocked folds, never score a period with a model trained on it (backfill uses out-of-fold probabilities), features use only data at or before t, and always compare against the JPS rule baseline. The ML trigger may raise a level, never lower an official threshold.
 - **Contracts are frozen** (build plan §4: levels, IDs, API shapes, DB tables, engine interfaces). Changing one needs a PR labelled `contract`, approved by one backend and one frontend owner, with mocks updated.
 - **Times** are MYT (UTC+8). API timestamps are ISO 8601 with `+08:00`.
 - **Git:** never commit to `main`. Branch `feat|fix|docs|ops/<area>-<short>`, conventional commits, small PRs, one approval + green CI, squash merge. Never force-push shared branches. End commit messages with the Co-Authored-By line your Claude Code session gives you.
