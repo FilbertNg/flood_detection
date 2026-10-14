@@ -20,3 +20,6 @@ dist/
 
 # Local browser automation output
 .playwright-mcp/
+
+# Vite cache
+.vite/

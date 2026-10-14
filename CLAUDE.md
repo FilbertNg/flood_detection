@@ -4,6 +4,7 @@ Street-level flash-flood warnings for SDP townships (SDP University Hackathon 20
 
 ## Read first
 
+- `HANDOFF.md`: **current state, how to run, results, gotchas, next tasks per person** (start here).
 - `docs/superpowers/plans/2026-10-14-mvp-build-plan.md`: **the build plan**. Tasks, owners, contracts (§4), git rules (§9). Work only on your assigned task; expand it into a TDD plan with superpowers:writing-plans before coding.
 - `Flood-Ready Township — PRD.md`: product requirements.
 - `Flood-Ready Township — Training Data Spec.md`: data sources and schemas.

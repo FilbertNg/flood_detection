@@ -2,6 +2,8 @@
 
 SDP University Hackathon 2026 · Planet → Climate resilience.
 
+**New here? Start with [HANDOFF.md](HANDOFF.md)**: status, how to run, results and next tasks.
+
 Plan documents (current versions):
 
 - [Flood-Ready Township — PRD.md](Flood-Ready%20Township%20—%20PRD.md): product, requirements, demo
