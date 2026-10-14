@@ -1,0 +1,16 @@
+# ML trigger settings (build plan §2, workstream ML; contract).
+# Thresholds are chosen on validation folds only (task ML3). Spike values below.
+
+model_path: models/trigger_v1.joblib
+horizon_h: 2                  # probability the river crosses its warning level within 2 h
+p_watch: 0.5
+p_warning: 0.7
+smoothing_min: 30             # use the max probability over the last 30 min
+
+# Only the ML3 gate may set this to true. While false, the probability is shown
+# but the station rules decide the alert level.
+ml_drives_alerts: false
+
+gate:
+  min_extra_lead_min: 20      # or: detection >= rules with false alarms <= rules
+  max_false_alarm_ratio: 1.2

@@ -1,0 +1,17 @@
+{
+  "name": "@floodready/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API contract types, mocks and shared UI for the Resident and Admin apps",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mocks": "./src/mocks/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3"
+  }
+}
