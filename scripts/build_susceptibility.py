@@ -49,7 +49,7 @@ def main() -> None:
 
     streets_path = ROOT / "assets" / "geo" / f"{args.township.lower()}_streets.geojson"
     streets = gpd.read_file(streets_path)
-    keep = [c for c in streets.columns if c not in ("susceptibility", "hand_m_min", "twi_max", "index_mean")]
+    keep = [c for c in streets.columns if c not in ("susceptibility", "hand_m_min", "twi_max", "index_mean", "score_mean")]
     scored = terrain.street_susceptibility(streets[keep], result)
     scored.to_file(streets_path, driver="GeoJSON")
 
@@ -63,8 +63,10 @@ def main() -> None:
             print(f"  {prefix}: classes {sorted(hits.susceptibility.tolist())}, min HAND {hits.hand_m_min.min()} m")
         else:
             print(f"  {prefix}: not found in OSM extract")
-    share = (scored.susceptibility >= 4).mean()
-    print(f"share of all streets in classes 4-5: {share:.0%} (the memorandum result only means something if this is well below 100%)")
+    memo = scored.name.str.startswith(MEMORANDUM)
+    print(f"memorandum segments in classes 4-5: {(scored.susceptibility[memo] >= 4).mean():.0%} "
+          f"vs {(scored.susceptibility >= 4).mean():.0%} of all streets (classes are fifths within the township); "
+          f"median percentile {scored.score_mean.rank(pct=True)[memo].median():.2f}")
 
 
 if __name__ == "__main__":
