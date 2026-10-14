@@ -205,7 +205,9 @@ For Kuala Lumpur, find the state code in the page's state dropdown. Parse column
 
 - The response may start with whitespace; parse from the first `{`. An empty result looks like `{"count":},]}No result`; treat it as empty, not as an error.
 - Rows come every **5 minutes**. Only quarter-hour rows carry real readings. In between, `raw = -9999`, and for rainfall the `clean` / `c15min` values are **repeated** from the last quarter-hour.
-- **Keep only rows where `raw != -9999`**, otherwise rain is counted three times. For rain, use `c15min` and cross-check that it equals the change in `cdaily`.
+- **Keep only quarter-hour rows** (minute 00/15/30/45), otherwise rain is counted three times.
+- **Rain:** use `c15min` at quarter-hour rows **even when `raw = -9999`**. JPS sometimes leaves `raw` empty while `c15min` / `clean` hold the quality-checked value. On 12 Nov 2024 at 08:15 and 09:30 that value was 0, confirmed by an unchanged `cdaily`; treating it as missing breaks rolling sums mid-storm. Only a missing `c15min` is missing. Cross-check that `c15min` equals the change in `cdaily`.
+- **Water level:** use `final`; when `raw = -9999` at a quarter hour, `final` is also `-9999`, so that reading really is missing.
 - For water level, use `final`, with `-9999` → null.
 - Timestamps are local time (MYT), format `DD/MM/YYYY HH:mm`.
 - Request in **calendar-month** chunks (about 1 MB, 3–5 s each; a 6-month window failed), wait at least 3 s between requests, cache every response under `data/raw/jps_hist/raw/{kind}/{graph_id}/{YYYYMMDD}_{YYYYMMDD}.json.gz` only after it parses, and never re-download a cached chunk. Parsed rows go to `data/raw/jps_hist/{kind}/{graph_id}.parquet`.

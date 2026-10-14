@@ -152,6 +152,22 @@ def archive_station_history(session, root: Path, graph_id: str, kind: str,
     return summary
 
 
+def rebuild_history_parquet(root: Path, kind: str, graph_id: str) -> int:
+    """Re-parse every cached raw chunk of one station into a fresh parquet
+    file (used after a parser fix; nothing is downloaded). Returns row count."""
+    _, to_rows = _HISTORY[kind]
+    root = Path(root) / "jps_hist"
+    rows = []
+    for raw_path in sorted((root / "raw" / kind / graph_id).glob("*.json.gz")):
+        rows += to_rows(ib.parse_history(storage.read_raw(raw_path)), graph_id=graph_id)
+    out = root / kind / f"{graph_id}.parquet"
+    if out.exists():
+        out.unlink()
+    if rows:
+        storage.append_parquet(pd.DataFrame(rows), out, keys=["graph_id", "time_local"])
+    return len(pd.read_parquet(out)) if rows else 0
+
+
 def select_archive_stations(wl_rows: list[dict], rf_rows: list[dict],
                             townships: list[dict], districts: list[str]) -> list[tuple[str, str]]:
     """Archive order: township stations first, then stations by district priority."""
