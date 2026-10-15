@@ -4,7 +4,7 @@ v3.1 · 14 Oct 2026 · @Filbert
 
 > **v3.1 changes:** **ML-first trigger.** A gradient-boosted classifier trained on 2024–2026 JPS data pooled across all river stations predicts the chance that the river near each township crosses its warning level within 1–2 h. JPS's rules are a safety floor (the level is the higher of the two), and ML drives alerts only after passing an out-of-sample gate. Feasibility: `docs/ml-feasibility.md` (50 warning crossings at Sg Binjai; first model gave 90 vs 60 min median lead).
 >
-> **v3 changes:** the **full working MVP is due 23 Oct** (pitch deck ≤ 10 slides, 5-minute video or demo, prototype/code, optional documents), not a paper proposal. Timeline replaced by a dependency-ordered build plan for a team of five (`docs/superpowers/plans/2026-10-14-mvp-build-plan.md`). No hardware or VPS before Top 10: the sensor is simulated (HTTP) and MVP hosting costs $0 (GitHub Actions tick, free Postgres, Cloudflare Pages). Priorities re-tiered: Must = in the 23 Oct submission.
+> **v3 changes:** the **full working MVP is due 23 Oct** (pitch deck ≤ 10 slides, 5-minute video or demo, prototype/code, optional documents), not a paper proposal. Timeline replaced by a dependency-ordered build plan for a team of five (`docs/plans/2026-10-14-mvp-build-plan.md`). No hardware or VPS before Top 10: the sensor is simulated (HTTP) and MVP hosting costs $0 (GitHub Actions tick, free Postgres, Cloudflare Pages). Priorities re-tiered: Must = in the 23 Oct submission.
 >
 > **v2.2 changes:** gridded model rain missed the 12 Nov 2024 storm almost completely (≤ 6.8 mm anywhere near Klang vs 79 mm at the Kg Perepat gauge), so the district model now uses **JPS station rain** (history from Jan 2024) and gridded forecasts are kept for the Outlook only. A one-hour intensity rule (JPS's own "heavy" / "very heavy" categories) has been added. Loggers and history archive are running.
 >
@@ -196,7 +196,7 @@ Priority = High if the street had confirmed floods affecting homes (depth "knee"
 
 ## Functional requirements
 
-**Priority:** Must = in the 23 Oct submission; Should = before 23 Oct if time allows, otherwise for the 11 Nov final; Could = after Top 10. The MVP has 37 Must requirements across seven modules. Who builds what, in which order and with which acceptance tests is in the *MVP Build Plan* (`docs/superpowers/plans/2026-10-14-mvp-build-plan.md`).
+**Priority:** Must = in the 23 Oct submission; Should = before 23 Oct if time allows, otherwise for the 11 Nov final; Could = after Top 10. The MVP has 37 Must requirements across seven modules. Who builds what, in which order and with which acceptance tests is in the *MVP Build Plan* (`docs/plans/2026-10-14-mvp-build-plan.md`).
 
 | ID | Module | Requirement | Priority |
 | --- | --- | --- | --- |
@@ -449,7 +449,7 @@ The biggest risk is too few labelled flood events; every other risk has a cheape
 
 ## Build plan, milestones and team
 
-Everything is due 23 Oct, so all five people build in parallel, ordered by dependency rather than by date: start any task as soon as what it needs is merged. Contracts, tasks with files and acceptance tests, git rules, the cut list and the submission checklist are in **`docs/superpowers/plans/2026-10-14-mvp-build-plan.md`**.
+Everything is due 23 Oct, so all five people build in parallel, ordered by dependency rather than by date: start any task as soon as what it needs is merged. Contracts, tasks with files and acceptance tests, git rules, the cut list and the submission checklist are in **`docs/plans/2026-10-14-mvp-build-plan.md`**.
 
 | Milestone | Done when |
 | --- | --- |

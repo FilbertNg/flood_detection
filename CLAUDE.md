@@ -5,16 +5,19 @@ Street-level flash-flood warnings for SDP townships (SDP University Hackathon 20
 ## Read first
 
 - `HANDOFF.md`: **current state, how to run, results, gotchas, next tasks per person** (start here).
-- `docs/superpowers/plans/2026-10-14-mvp-build-plan.md`: **the build plan**. Tasks, owners, contracts (§4), git rules (§9). Work only on your assigned task; expand it into a TDD plan with superpowers:writing-plans before coding.
-- `Flood-Ready Township — PRD.md`: product requirements.
-- `Flood-Ready Township — Training Data Spec.md`: data sources and schemas.
-- `docs/api-contract.md`: API contract (once F1 is merged).
+- `docs/plans/2026-10-14-mvp-build-plan.md`: **the build plan**. Tasks, owners, contracts (§4), git rules (§9). Work only on your assigned task; expand it into a TDD plan with superpowers:writing-plans before coding.
+- `docs/product/prd.md`: product requirements.
+- `docs/product/training-data-spec.md`: data sources and schemas.
+- `docs/api-contract.md`: API contract.
+- `docs/README.md`: index of every document.
+
+**Where to save plans:** write task plans (superpowers:writing-plans) to `docs/plans/YYYY-MM-DD-<task-id>-<short-name>.md`, not `docs/superpowers/plans/`. Don't create new top-level folders or root-level documents; documents go in `docs/`.
 
 ## Commands
 
 ```bash
 # Python (3.12)
-uv venv .venv && uv pip install --python .venv/Scripts/python.exe -e ".[dev]"   # .venv/bin/python on macOS/Linux
+uv venv .venv && uv pip install --python .venv/Scripts/python.exe -e ".[dev,gis,ml,api]"   # .venv/bin/python on macOS/Linux
 .venv/Scripts/python.exe -m pytest -q
 .venv/Scripts/python.exe scripts/run_loggers.py --once
 # Web (after F2): pnpm i && pnpm -C apps/resident dev / pnpm -C apps/admin dev / pnpm -r test
