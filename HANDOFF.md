@@ -2,7 +2,7 @@
 
 **As of 15 Oct 2026, 02:00 MYT** · Submission due **23 Oct 2026, 11:59 pm** (deck ≤ 10 slides, 5-min video, this repo)
 
-This is the starting point for anyone (or any Claude Code session) picking up work. Read this, then [`CLAUDE.md`](CLAUDE.md) (rules) and the [build plan](docs/superpowers/plans/2026-10-14-mvp-build-plan.md) (tasks and contracts).
+This is the starting point for anyone (or any Claude Code session) picking up work. Read this, then [`CLAUDE.md`](CLAUDE.md) (rules) and the [build plan](docs/plans/2026-10-14-mvp-build-plan.md) (tasks and contracts). The folder map is in [README.md](README.md); every document is listed in [docs/README.md](docs/README.md).
 
 ## 1. Where we are
 

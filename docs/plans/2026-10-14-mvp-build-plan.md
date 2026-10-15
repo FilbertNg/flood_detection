@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
-> This is the **master plan** for five people. It fixes the shared contracts, the work order and each task's files, interfaces and acceptance tests. When you pick up a task, have your Claude Code expand **that task** into bite-sized TDD steps with superpowers:writing-plans (save the plan as `docs/superpowers/plans/<date>-<task-id>.md`), then execute it. Never change a contract in §4 without the PR rule in §9.
+> This is the **master plan** for five people. It fixes the shared contracts, the work order and each task's files, interfaces and acceptance tests. When you pick up a task, have your Claude Code expand **that task** into bite-sized TDD steps with superpowers:writing-plans (save the plan as `docs/plans/<date>-<task-id>-<short-name>.md`), then execute it. Never change a contract in §4 without the PR rule in §9.
 
 **Goal:** a working MVP on GitHub by **23 Oct 2026, 11:59 pm**: Resident PWA + SDP Admin app + an **ML-first flood engine** (JPS rules as a safety floor) running on real JPS data, shown in a 5-minute video and a 10-slide deck.
 
@@ -137,7 +137,7 @@ docs/api-contract.md         # §4.2 as a living document
 
 ### 4.2 API (base `/api/v1`)
 
-> **After F1 the source of truth is [`docs/api-contract.md`](../../api-contract.md) + `packages/shared/src/api/types.ts`** (mocks in `packages/shared/src/mocks/index.ts`). The table and examples below are a summary.
+> **After F1 the source of truth is [`docs/api-contract.md`](../api-contract.md) + `packages/shared/src/api/types.ts`** (mocks in `packages/shared/src/mocks/index.ts`). The table and examples below are a summary.
 
 | Method + path | Auth | Returns / accepts |
 | --- | --- | --- |
