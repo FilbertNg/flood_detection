@@ -103,7 +103,6 @@ def test_a_model_trained_on_other_features_falls_back_to_rules_not_a_crash(caplo
     assert len(warnings) == 1   # once per model, not at every 15-min step of a replay
 
 
-@pytest.mark.xfail(strict=False, reason="models retrained by lead after archive rebuild")
 def test_committed_bundle_features_equal_dataset_features():
     import joblib
     from pathlib import Path
