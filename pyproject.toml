@@ -25,3 +25,4 @@ include = ["floodready*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]   # lets tests import shared helpers as tests.<module> under plain `pytest` (as CI runs it)
