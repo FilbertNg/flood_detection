@@ -22,7 +22,8 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - **Healthy gauges are flat most of the time.** Sg. Binjai at Pekan Meru stays within 1.5 cm for 6 h or more in **91% of its readings** (base flow). Yet on 12 Nov 2024 it rose **2.94 → 4.06 m in 90 minutes**. Flat means "nothing is happening", not "broken".
 - **The fault signature is flat during heavy nearby rain.** On 12 Nov 2024, 07:00–11:00, the same storm (**67.5 mm in 1 h, 79 mm in 3 h** at gauges within 10 km of both stations) hit Pekan Meru and Kg. Perepat (Sg. Kapar Kechil, `26558`). Pekan Meru rose 1.32 m; **Kg. Perepat stayed at exactly −0.78 m** for the whole period.
 - The Kg. Perepat gauge does work at other times: it has read up to 1.08 m (above its 1.0 m warning level) and was at alert on 27 days.
-- **So:** a QC rule should flag a river gauge as *unresponsive* when it stays flat while ≥ 30 mm/3 h falls nearby, and the engine should treat it as stale rather than as "river normal". (Follow-up to WP1.)
+- **So:** a QC rule flags a river gauge as *unresponsive* when it stays flat while ≥ 30 mm/3 h falls nearby, and the engine treats it as stale rather than as "river normal" (PR #24).
+- **How common:** on the 16 Oct archive the rule flags 12,644 readings at 9 of 15 river stations; **83% of them are one gauge, Kg. Perepat** (runs of up to 7 days at −0.78 m or 0.36 m), and Seri Kembangan (`3017107_`) sits pinned near 36.5 m for up to 9 days. *(Provisional: under review for false positives at base-flow rivers.)*
 - **Pitch line:** "We don't just read sensors, we check them against each other: a river that doesn't react to a 68 mm storm is a broken gauge, not a safe street."
 
 ### A4. Warning time is limited by when rain is first seen
@@ -69,7 +70,14 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 ### C3. ML warns earlier; the rules catch more on their own
 - Inland, out of sample (nested threshold, pre-registered gate v2): rules alone detect **391 / 433** crossings with **90 min** median warning; rules + ML Watch detect **413 / 433** with **135 min**, at 1.33× the false alarms (limit 1.5×). Gate passes *(provisional; fresh-station check pending the full archive)*.
 - The extra false alarms concentrate at a few stations (Sg. Damansara at Kg. Melayu Subang: 5.6 → 16.4 per month).
-- **So:** ML may raise a street to *Watch* only; Warning and Danger stay with JPS's official thresholds.
+- **So:** ML may raise a street to *Watch* only; Warning and Danger stay with JPS's official thresholds. This is enforced in code, not only in config.
+
+### C5. Adding rain gauges changes the rule baseline too
+- As more gauges were archived (38 → 50 within 25 km), the rule floor's inland detections rose from **391 to 399 of 433** and its false alarms from **5.72 to 6.14** per station-month. ML alone stayed near 352–359.
+- **So:** every comparison must use the floor from the *same* run and data; numbers from different days are not comparable.
+
+### C6. The river forecast helps most where the tide drives the river
+- Out of sample, median error vs "level stays the same": **tidal stations 0.068 vs 0.262 m** (+1 h), **inland 0.045 vs 0.068 m**. At two inland stations it is no better than persistence *(provisional)*.
 
 ### C4. Forecasting the river level beats "no change", but under-forecasts flash rises
 - Median forecast error vs persistence: **+1 h 0.049 vs 0.097 m; +2 h 0.083 vs 0.173 m**; during rises 0.144 vs 0.392 m *(provisional)*.
@@ -82,12 +90,16 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - **10 km is the smallest radius that gives every street ≥ 2 gauges.** With it, the memorandum streets are at Warning by 09:00 (38 of 61 segments), as with the old township-wide alert.
 - Per-street alerts cut Warning + Danger alerts in Nov 2024 by a third (**4,526 → 3,032**).
 
+### D1b. Notification volume decides whether people keep listening
+- In Nov 2024 (a stormy month), issuing Watch as well as Warning/Danger gives about **17.5 messages per street** (alerts + all-clears; max 34). Pushing only Warning and Danger gives **3.2 per street** (max 8). Longer Watch cooldowns barely help (8.7 → 8.3 alerts per street).
+- **So:** Watch is shown in the app; push is for Warning and Danger (config `alerts.push_levels`, pending the team's decision).
+
 ### D2. Flow paths on a 30 m DEM fail on the flat coast
 - D8 flow tracing links inland stations correctly (Damansara → Sri Muda; Kuyoh, Penchala → Puchong Drop) but finds **nothing upstream of Bandar Klang**: the coastal plain is too flat. Same-river links there are added by name with stated evidence.
 - Upstream gauges far away dilute the signal: for Bandar Klang, the max rise over all 28 upstream gauges correlates 0.09 with its own next-hour rise; over gauges within 12 km, 0.29. Upstream features are capped at 15 km (2 h × 1–2 m/s flood-wave speed).
 
 ### D3. Removing trees from the elevation map helps; distance to drains matters most
-- Memorandum street segments in the top two susceptibility classes (40% = chance): **GLO-30 62% → FABDEM 70% → FABDEM + new features 79%** *(61 segments, 38 from Jalan Makyong; 95% interval about 67–87%)*.
+- Memorandum street segments in the top two susceptibility classes (40% = chance): GLO-30 38/61, FABDEM 43/61, FABDEM + new features 48/61. The shipped variant was **pre-specified**; this check confirms it, it does not measure an improvement. The segments are not independent (38 of 61 are Jalan Makyong; Jalan Sumazau went 80% → 75%), so do not quote "62% → 79%" as a gain.
 - The gain comes mostly from **distance to the nearest drain or river** (dropping it → 59%).
 - GLO-30 minus FABDEM over BBR: built-up cells drop ~1.9 m, non-built cells ~3.2 m, so the correction is mostly **vegetation canopy**, not buildings.
 - Built-up share looks "wrong" on these streets only because the township is 83% built-up; it is kept for physical reasons, not tuned.
