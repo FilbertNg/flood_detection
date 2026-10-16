@@ -571,6 +571,8 @@ river level within 1.5 cm for >= 3 h while rain at the gauges within 10 km total
 
 ## 3a. `wl_unresponsive`: evidence and false-positive risk
 
+> **Pending regeneration.** The tables below were computed with the first version of the rule (3 h flat window, no response lag, no alert guard). The rule now needs 4.5 h flat with rain from the 3 h ending 90 min earlier and never flags a level at or above the alert level. Re-run `python scripts/qc_report.py` when the archive is rebuilt. On 26558 alone (own gauge): 8,307 flags in 20 runs, longest 2,986 readings.
+
 **12 Nov 2024, 06:00-12:00:** Kg. Perepat (26558) read -0.79 m throughout while Pekan Meru rose; 23 readings of 26558 are flagged (from 06:00), 0 readings of PEKANMERU are flagged (regression test `tests/test_qc_unresponsive.py::test_12_nov_2024_26558_is_flagged_and_pekan_meru_is_not`).
 
 **Flags per station** (runs = separate flat stretches; the three stations with most flags are examined below):
@@ -640,7 +642,7 @@ river level within 1.5 cm for >= 3 h while rain at the gauges within 10 km total
 
 - A river that is mostly base flow and drains a large or slow catchment can stay within 1.5 cm for 3 h of heavy rain at one nearby gauge (the rule takes the largest of the gauges within the radius, so a rain cell over one gauge counts). Pekan Meru shows this: its flags sit at base-flow levels and the level after the run is within a few cm.
 - A run lasts until the level moves, so it continues after the rain stops. A genuinely flat river is kept NaN until it moves.
-- A station whose gauge really is stuck for days or weeks (a repeated constant level) is flagged for all of it once any heavy rain has occurred, which is intended; the engine then treats it as stale (low confidence). The cost of a false flag is a lower confidence at a station that was reading normal base flow, never a lower level.
+- A station whose gauge really is stuck for days or weeks is flagged for all of it once heavy rain has occurred, which is intended. A flag makes the value NaN: the rule engine forward-fills a level for 2 h, so staleness starts after that, and confidence is low only when no township station reports; ML features lose the readings at once. A wrong flag can hide a rising river, hence the alert-level guard and the 90 min lag.
 
 ## 4. Completeness and gaps per station (after QC)
 

@@ -21,19 +21,30 @@ wl_spike            a river level more than WL_SPIKE_M away from BOTH neighbours
                     the neighbours are close to each other (|next - prev| <= max(WL_REVERT_M, 0.5 * |jump|)).
                     Works on a rising or falling river. Negative levels are valid (tidal stations' datum is
                     below sea level); only a single-reading excursion is flagged.
-wl_unresponsive     a river level that stayed within WL_FLAT_M for >= WL_FLAT_HOURS while the rain gauges within
-                    WL_RAIN_RADIUS_KM of the station (the largest rolling sum over those gauges, after rain QC)
-                    totalled >= WL_RAIN_MM over the same window. A flat level alone is base flow (Sg. Binjai at
-                    Pekan Meru stays flat for 6 h in 91 % of its readings); flat during heavy rain is a gauge that
-                    has stopped responding (Kg. Perepat, 26558, 12 Nov 2024). Flagged from the reading where the
-                    condition is first met until the level moves again (> WL_FLAT_M from the flat level).
-                    Causal (past readings only). Needs `stations` (coordinates); skipped without it. Flagged
-                    values become NaN, so the engine sees a stale station and lowers confidence.
+wl_unresponsive     a river level that stayed within WL_FLAT_M for 4.5 h (3 h rain window + WL_RESPONSE_LAG_MIN
+                    of response lag) while the rain gauges within WL_RAIN_RADIUS_KM of the station (largest rolling
+                    3 h sum over those gauges, after rain QC) totalled >= WL_RAIN_MM in the 3 h that ended 90 min
+                    before the reading. A flat level alone is base flow (Sg. Binjai at Pekan Meru stays flat for 6 h
+                    in 91 % of its readings); flat during heavy rain is a gauge that has stopped responding (Kg.
+                    Perepat, 26558, 12 Nov 2024). The 90 min lag lets a slow river answer the rain before it counts
+                    as unresponsive. Flagged from the reading where the condition is first met until the level moves
+                    (> WL_FLAT_M from the flat level). Causal. Needs `stations` (coordinates); skipped without it.
+                    Fail safe: never applied when the flat level is >= the station's wl_alert_m (a gauge stuck high
+                    or a plateau in a flood keeps its value; a run also ends if the level reaches alert).
+                    Flagged values become NaN. Downstream: the rule engine forward-fills a level for 2 h, so
+                    staleness starts after that; the township's river rule then has no reading from that station and
+                    its confidence is low only if no township station reports. ML features have no forward-fill and
+                    lose the readings at once. A false flag can therefore hide a rising river, hence the guards above.
 
 Live mode: wl_spike and rain_after_gap need the NEXT reading. When a gauge's latest reading has no
 next reading yet, it is KEPT and judged when the next one arrives (a real rise or storm after an outage
 must not be hidden). The archive cleaning therefore sees t+15 min, while live cleaning does not: a small
 train/serve difference (about 100 readings in 8 M).
+
+Live vs replay: a flat run lasts until the level moves, so whether a long run is flagged depends on how
+much history is loaded. Archive cleaning sees the whole history; live cleaning sees only the live files
+(since - 1 day), so a stuck gauge whose heavy rain fell before that window is not flagged live. Live rows
+override archive rows in the runner. Not fixed (follow-up: run QC over archive + live together).
 
 Precondition: one row per (graph_id, kind, time_local); the loaders de-duplicate.
 """
@@ -58,7 +69,8 @@ WL_SPIKE_M = 1.0
 WL_REVERT_M = 0.2
 WL_FLAT_M = 0.015
 WL_FLAT_HOURS = 3
-WL_FLAT_MIN_READINGS = 11          # of the 13 readings that span 3 h; tolerates short gaps
+WL_RESPONSE_LAG_MIN = 90           # the river may answer rain this late: the rain window ends this long before the reading
+WL_FLAT_MIN_FRAC = 11 / 13         # share of the flat window's readings that must be valid (tolerates short gaps)
 WL_RAIN_MM = 30.0
 WL_RAIN_RADIUS_KM = 10.0
 STEP = pd.Timedelta(minutes=15)
@@ -149,7 +161,12 @@ def _wl_unresponsive_mask(wl: pd.DataFrame, rain: pd.DataFrame, stations: pd.Dat
     rf_xy = rf_xy[rf_xy.index.isin(rain["graph_id"].astype(str).unique())]
     if wl_xy.empty or rf_xy.empty:
         return out
-    n_win = int(WL_FLAT_HOURS * 4)
+    n_win = int(WL_FLAT_HOURS * 4)                          # rain window, 12 readings
+    lag = WL_RESPONSE_LAG_MIN // 15                         # 6 readings
+    n_flat = n_win + lag                                    # flat window: 18 steps = 4.5 h, 19 readings
+    min_valid = int(np.ceil(WL_FLAT_MIN_FRAC * (n_flat + 1)))
+    alert = (st[st.kind == "wl"].drop_duplicates("graph_id").set_index("graph_id")["wl_alert_m"]
+             if "wl_alert_m" in st.columns else pd.Series(dtype=float))
     rain_by_gauge = {gid: g for gid, g in rain.groupby(rain["graph_id"].astype(str))}
     for gid, g in wl.groupby("graph_id"):
         gid = str(gid)
@@ -157,28 +174,33 @@ def _wl_unresponsive_mask(wl: pd.DataFrame, rain: pd.DataFrame, stations: pd.Dat
             continue
         d = _haversine_km(wl_xy.at[gid, "lat"], wl_xy.at[gid, "lon"], rf_xy["lat"].to_numpy(), rf_xy["lon"].to_numpy())
         near = rf_xy.index[d <= WL_RAIN_RADIUS_KM]
-        if len(near) == 0 or g["wl_m"].notna().sum() < WL_FLAT_MIN_READINGS:
+        if len(near) == 0 or g["wl_m"].notna().sum() < min_valid:
             continue
         grid = pd.date_range(g["time_local"].min(), g["time_local"].max(), freq=STEP)
-        lvl = g.set_index("time_local")["wl_m"].reindex(grid)
-        rain_sum = pd.DataFrame({r: rain_by_gauge[r].set_index("time_local")["rain_15min_mm"].reindex(grid).fillna(0.0)
-                                 for r in near}).rolling(n_win, min_periods=1).sum().max(axis=1)
-        roll = lvl.rolling(n_win + 1, min_periods=WL_FLAT_MIN_READINGS)
+        lvl = g.drop_duplicates("time_local", keep="last").set_index("time_local")["wl_m"].reindex(grid)
+        rain_sum = pd.DataFrame({r: rain_by_gauge[r].drop_duplicates("time_local", keep="last").set_index("time_local")["rain_15min_mm"]
+                                 .reindex(grid).fillna(0.0) for r in near}).rolling(n_win, min_periods=1).sum().max(axis=1)
+        rain_lagged = rain_sum.shift(lag, fill_value=0.0)    # rain in the 3 h that ended 90 min before each reading
+        roll = lvl.rolling(n_flat + 1, min_periods=min_valid)
         flat = ((roll.max() - roll.min()) <= WL_FLAT_M + 1e-9).to_numpy()
-        cand = np.flatnonzero(flat & (rain_sum.to_numpy() >= WL_RAIN_MM))
+        cand = np.flatnonzero(flat & (rain_lagged.to_numpy() >= WL_RAIN_MM))
+        alert_m = float(alert.get(gid, np.nan))
         v = lvl.to_numpy()
         hit = np.zeros(len(v), dtype=bool)
         i_next = 0
         for i in cand:
             if i < i_next:
                 continue
-            ref = float(np.nanmedian(v[max(0, i - n_win): i + 1]))
-            moved = np.flatnonzero(np.abs(v[i:] - ref) > WL_FLAT_M + 1e-9)       # NaN compares False: gaps do not end a run
+            ref = float(np.nanmedian(v[max(0, i - n_flat): i + 1]))
+            if ref >= alert_m:                                # NaN alert: unknown, rule applies
+                continue                                      # stuck high or plateau in a flood: fail safe, keep the value
+            stop = np.abs(v[i:] - ref) > WL_FLAT_M + 1e-9
+            stop |= v[i:] >= alert_m                          # NaN compares False: gaps do not end a run
+            moved = np.flatnonzero(stop)
             end = i + moved[0] if len(moved) else len(v)
             hit[i:end] = True
             i_next = end
-        flagged = pd.Series(hit, index=grid).reindex(g["time_local"]).to_numpy() & g["wl_m"].notna().to_numpy()
-        out.loc[g.index] = flagged
+        out.loc[g.index] = pd.Series(hit, index=grid).reindex(g["time_local"]).to_numpy() & g["wl_m"].notna().to_numpy()
     return out
 
 

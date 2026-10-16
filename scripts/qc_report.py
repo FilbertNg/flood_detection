@@ -155,6 +155,16 @@ def false_positive_checks(readings: pd.DataFrame, clean: pd.DataFrame, flags: pd
     return out
 
 
+def mask_runs(flagged_times: pd.Series, level: pd.Series) -> pd.Series:
+    """Run id per flagged reading, following the rule's own runs: a gap of missing readings does not split a run,
+    a valid reading that was not flagged does."""
+    t = flagged_times.sort_values()
+    lv = level[~level.index.duplicated()].dropna().sort_index()
+    ok = pd.Series(~lv.index.isin(t), index=lv.index).astype(int).cumsum()      # unflagged valid readings up to each time
+    pos = ok.reindex(t.to_numpy(), method="ffill").fillna(0).to_numpy()
+    return pd.Series((np.diff(pos, prepend=pos[0]) > 0).cumsum(), index=t.index)
+
+
 def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: pd.DataFrame, names: dict[str, str]) -> list[str]:
     f = flags[flags.rule == "wl_unresponsive"].sort_values(["graph_id", "time_local"])
     out = ["## 3a. `wl_unresponsive`: evidence and false-positive risk\n"]
@@ -172,12 +182,12 @@ def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: 
     s0, s1 = STORM
     pm = flags[(flags.graph_id == "PEKANMERU") & (flags.time_local >= s0) & (flags.time_local <= s1)]
     case = f[(f.graph_id == "26558") & (f.time_local >= s0) & (f.time_local <= s1)]
-    out.append(f"**12 Nov 2024, 06:00-12:00:** Kg. Perepat (26558) read {case.value.min() if len(case) else float('nan'):g} m throughout while "
+    out.append(f"**12 Nov 2024, 06:00-12:00:** Kg. Perepat (26558) read {case.value.mode().iloc[0] if len(case) else float('nan'):g} m throughout while "
                f"Pekan Meru rose; {len(case)} readings of 26558 are flagged"
                + (f" (from {case.time_local.min():%H:%M})" if len(case) else "") + f", {len(pm)} readings of PEKANMERU are flagged "
                "(regression test `tests/test_qc_unresponsive.py::test_12_nov_2024_26558_is_flagged_and_pekan_meru_is_not`).\n")
     out.append("**Flags per station** (runs = separate flat stretches; the three stations with most flags are examined below):\n")
-    runs = f.groupby("graph_id").time_local.apply(lambda t: int((t.diff() > pd.Timedelta(minutes=15)).sum() + 1))
+    runs = pd.Series({gid: int(mask_runs(g.time_local, lvl[gid]).nunique()) for gid, g in f.groupby("graph_id")})
     per = f.groupby("graph_id").agg(readings=("value", "size"), first=("time_local", "min"), last=("time_local", "max")).assign(runs=runs)
     per.insert(0, "name", per.index.map(names))
     per["gauges_within_radius"] = [rain3h(g)[1] for g in per.index]
@@ -185,13 +195,14 @@ def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: 
     out.append(md_table(per.sort_values("readings", ascending=False).reset_index()) + "\n")
     for gid in per.sort_values("readings", ascending=False).index[:3]:
         g, (nr, _), lv = f[f.graph_id == gid], rain3h(gid), lvl[gid]
-        run_id = (g.time_local.diff() > pd.Timedelta(minutes=15)).cumsum()
+        run_id = mask_runs(g.time_local, lv)
+        nr = nr.shift(qc.WL_RESPONSE_LAG_MIN // 15)
         rows = []
         for _, r in g.groupby(run_id):
             a, b = r.time_local.min(), r.time_local.max()
             after = lv[(lv.index > b) & (lv.index <= b + pd.Timedelta(hours=3))].dropna()
             rows.append({"run_start": f"{a:%Y-%m-%d %H:%M}", "readings": len(r), "flat_level_m": r.value.iloc[0],
-                         "rain_3h_at_start_mm": round(float(nr.get(a, np.nan)), 1), "max_rain_3h_in_run_mm": round(float(nr[a:b].max()), 1),
+                         "rain_3h_90min_before_start_mm": round(float(nr.get(a, np.nan)), 1), "max_rain_3h_90min_before_in_run_mm": round(float(nr[a:b].max()), 1),
                          "first_level_after_run_m": after.iloc[0] if len(after) else ""})
         out.append(f"**{gid} {names.get(gid, '')}** (level range {lv.min():g} to {lv.max():g} m); the {min(8, len(rows))} longest runs:\n")
         out.append(md_table(pd.DataFrame(rows).sort_values("readings", ascending=False).head(8)) + "\n")
@@ -208,14 +219,21 @@ def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: 
                + ("No exclusion is needed." if tidal.flagged_readings.sum() == 0 else "These flags need review: consider excluding them.")
                + "\n")
     out.append(md_table(ac.head(5)) + "\n")
+    out.append("**What a flag does downstream**: the value becomes NaN. The rule engine forward-fills a level for 2 h, so a station goes stale "
+               "only after that; the township's river rule then has no reading from it, and confidence is `low` only when no township station "
+               "reports. The ML features have no forward-fill and lose the readings at once. A wrong flag can therefore hide a rising river. "
+               "Two guards limit it: a flat level at or above the station's alert level is never flagged (a gauge stuck high or a plateau in a flood "
+               "keeps its value), and the rain window ends 90 min before the reading so a slow river has time to answer.\n")
     out.append("**False-positive risks** (read the run tables above):\n\n"
-               "- A river that is mostly base flow and drains a large or slow catchment can stay within 1.5 cm for 3 h of heavy rain "
-               "at one nearby gauge (the rule takes the largest of the gauges within the radius, so a rain cell over one gauge counts). "
-               "Pekan Meru shows this: its flags sit at base-flow levels and the level after the run is within a few cm.\n"
+               "- A river that is mostly base flow and drains a large or slow catchment can stay within 1.5 cm for 4.5 h after heavy rain "
+               "at one nearby gauge (the rule takes the largest of the gauges within the radius, so a rain cell over one gauge counts).\n"
                "- A run lasts until the level moves, so it continues after the rain stops. A genuinely flat river is kept NaN until it moves.\n"
-               "- A station whose gauge really is stuck for days or weeks (a repeated constant level) is flagged for all of it once any heavy rain "
-               "has occurred, which is intended; the engine then treats it as stale (low confidence). The cost of a false flag is a lower confidence at a "
-               "station that was reading normal base flow, never a lower level.\n")
+               "- A station whose gauge really is stuck for days or weeks is flagged for all of it once heavy rain has occurred, which is intended.\n"
+               "- **Live vs replay**: a run is judged on the history that is loaded. Archive cleaning (replay, training) sees the whole history; live "
+               "cleaning sees the live files from `since - 1 day`, so a long stuck run whose triggering rain fell earlier is not flagged live, and live "
+               "rows override archive rows in the runner. Follow-up: run QC over archive and live together.\n"
+               "- **Merging changes the training data** (`train_trigger.py` and the backfill load through `load_archive_readings`): the stored "
+               "trigger model and its out-of-fold probabilities need retraining.\n")
     return out
 
 

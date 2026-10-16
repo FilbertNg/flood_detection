@@ -130,7 +130,8 @@ def test_12_nov_2024_26558_is_flagged_and_pekan_meru_is_not():
     stations = pd.read_parquet(FIXTURES / "stations_storm.parquet")
     clean, flags = qc.clean_readings(storm_df, stations=stations)
     f = wl_flags(flags)
-    assert set(f.graph_id) == {"26558"} and (f.value == -0.78).all() and len(f) >= 10
+    assert set(f.graph_id) == {"26558"} and f.value.round(2).isin([-0.78, -0.79]).all() and len(f) >= 5
+    assert f.time_local.min() >= pd.Timestamp("2024-11-12 09:00")        # needs 4.5 h of flat level and rain 90 min earlier
     assert set(flags.rule) == {"wl_unresponsive"}
     pm = clean[(clean.graph_id == "PEKANMERU") & (clean.kind == "wl")]
     assert pm.wl_m.notna().all() and pm.wl_m.max() > 4.2
