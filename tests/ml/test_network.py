@@ -25,3 +25,17 @@ def test_shipped_network_is_well_formed():
 
 def test_default_network_is_the_shipped_file():
     assert dataset.default_network() == network.load_network(ROOT / "config" / "river_network.yaml")
+
+
+def test_load_network_drops_self_links_and_duplicates(tmp_path):
+    p = tmp_path / "n.yaml"
+    p.write_text(yaml.safe_dump({"B": [{"id": "B"}, {"id": "A"}, {"id": "A"}]}), encoding="utf-8")
+    assert network.load_network(p) == {"B": ["A"]}
+
+
+def test_shipped_links_respect_the_distance_cap():
+    raw = yaml.safe_load((ROOT / "config" / "river_network.yaml").read_text(encoding="utf-8"))
+    for links in raw.values():
+        for link in links:
+            if link["path_km"] is not None:
+                assert link["path_km"] <= dataset.UPSTREAM_MAX_KM

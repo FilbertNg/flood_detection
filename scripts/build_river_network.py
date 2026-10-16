@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from floodready.gis import flow, terrain  # noqa: E402
+from floodready.ml.dataset import UPSTREAM_MAX_KM, haversine_km  # noqa: E402
 
 DEM = ROOT / "data" / "raw" / "dem" / "Copernicus_DSM_COG_10_N03_00_E101_00_DEM.tif"
 OUT = ROOT / "config" / "river_network.yaml"
@@ -34,6 +35,9 @@ ALIAS_M = 60        # JPS lists some sites twice (e.g. "(F2)" copies): same plac
 
 # river (as named in "Sg. X di Y") -> rivers it joins. Every pair is backed by D8 paths from the tributary's
 # stations reaching the main river's stations with additive distances (a -> c == a -> b + b -> c); see the PR.
+# Binjai/Bakul -> Kapar Kechil: not provable by D8 (flat coast); supported by the cached OSM waterways
+# (data/raw/osm/BBR_waterways_r5000): "Sungai Kapar Kechil" runs west along lat 3.112 from lon 101.423 to 101.394
+# (the Perepat station is on it) and "Sungai Bakul" runs west at ~3.13 N, 101.48 E, towards it.
 # Not listed (so rejected): the reverse of a listed pair, which is a snap artefact where two channels are
 # within 150 m (e.g. Klang -> Gombak, Selangor -> Kuang), and anything whose name carries no river.
 TRIBUTARIES: dict[str, set[str]] = {
@@ -65,6 +69,7 @@ HEADER = """# River network between JPS river stations: for each downstream stat
 #      Puchong Drop -> Taman Sri Muda -> Bandar Klang (same named river; the DEM path leaves the tile at lat 3.0),
 #      and every link that goes through it (closed transitively). Stations outside the DEM tile get no flow links.
 #   path_km is the flow-path distance from the upstream station to the downstream one (null for `name` links).
+#   4. Links longer than 15 km (flow-path distance; straight-line for `name` links) are dropped: see UPSTREAM_MAX_KM.
 # Duplicate JPS listings of one site (within 60 m) are treated as the same station and share links.
 """
 
@@ -164,6 +169,17 @@ def main() -> None:
         print(f"manual: {names[up]} -> {names[down]}: {why}")
 
     close_transitively(kept)
+    coords = {r.graph_id: (r.lat, r.lon) for r in stations.itertuples()}
+    capped = []
+    for down, ups in kept.items():
+        for up in list(ups):
+            km = ups[up][1]
+            if km is None:      # `name` link: no flow path, use the straight-line distance
+                km = float(haversine_km(*coords[up], *coords[down]))
+            if km > UPSTREAM_MAX_KM:
+                capped.append((up, down, km))
+                del ups[up]
+    print(f"dropped {len(capped)} links farther than {UPSTREAM_MAX_KM} km")
     out: dict[str, list[dict]] = {}
     for down, ups in sorted(kept.items()):
         links = [{"id": m, "method": meth, "path_km": km} for up, (meth, km) in sorted(ups.items()) for m in sorted(members[up])]

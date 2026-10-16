@@ -110,3 +110,34 @@ def test_required_station_ids_adds_upstream_and_rain_gauges(stations):
     ids = dataset.required_station_ids(stations, ["PEKANMERU"], network={"PEKANMERU": ["UPSTREAM1", "UPSTREAM2"], "OTHER": ["Z"]})
     assert {"UPSTREAM1", "UPSTREAM2"} <= set(ids) and set(base) <= set(ids) and "Z" not in ids
     assert ids == sorted(set(ids))
+
+
+def test_tide_coupling_is_nan_not_inf_for_a_flat_level_and_stays_in_range():
+    r, s, tide = _synthetic()
+    r.loc[r.graph_id == "A", "wl_m"] = 1.5
+    c = dataset.build_features(r, s, tide, ["A"], network={}).tide_coupling_3d
+    assert not np.isinf(c).any() and c.isna().all()
+    r, s, tide = _synthetic()
+    c = dataset.build_features(r, s, tide, ["A"], network={}).tide_coupling_3d.dropna()
+    assert c.between(-1, 1).all()
+
+
+def test_no_feature_looks_ahead_even_when_tide_changes_after_the_cut():
+    r, s, tide = _synthetic()
+    cut = pd.Timestamp("2024-03-04 00:00")
+    net = {"A": ["B"]}
+    before = dataset.build_features(r, s, tide, ["A"], network=net)
+    r2, t2 = r.copy(), tide.copy()
+    r2.loc[r2.time_local > cut, "wl_m"] = 50.0
+    t2.loc[t2.time_local > cut, "tide_height_m"] = 99.0
+    after = dataset.build_features(r2, s, t2, ["A"], network=net)
+    cols = [c for c in dataset.FEATURES if c != "hours_to_high_tide"]
+    pd.testing.assert_frame_equal(before[before.time_local <= cut][cols].reset_index(drop=True),
+                                  after[after.time_local <= cut][cols].reset_index(drop=True))
+
+
+def test_self_links_and_duplicates_are_ignored_in_features():
+    r, s, tide = _synthetic()
+    a = dataset.build_features(r, s, tide, ["A"], network={"A": ["B"]})
+    b = dataset.build_features(r, s, tide, ["A"], network={"A": ["A", "B", "B"]})
+    pd.testing.assert_frame_equal(a, b)

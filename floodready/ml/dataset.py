@@ -20,6 +20,9 @@ RAIN_WINDOWS = {"1h": 4, "2h": 8, "3h": 12, "6h": 24, "24h": 96}
 RADII_KM = (10, 25)
 UPSTREAM_FEATURES = ["up_rise_60m_max", "up_rise_120m_max", "up_level_rel_max"]
 TIDE_COUPLING_STEPS, TIDE_COUPLING_MIN_PAIRS = 288, 96     # last 3 days, at least 24 h of valid pairs
+# Label horizon is 2 h and flood-wave celerity on these rivers is ~1-2 m/s, so a station more than ~15 km
+# upstream cannot influence the window. Applied when scripts/build_river_network.py writes the network.
+UPSTREAM_MAX_KM = 15
 FEATURES = (
     ["d_warning", "level_rel", "rise_15m", "rise_60m", "rise_120m"]
     + [f"rain_{w}_max_{r}km" for w in RAIN_WINDOWS for r in RADII_KM]
@@ -118,10 +121,11 @@ def build_features(readings: pd.DataFrame, stations: pd.DataFrame, tide: pd.Data
         if tide_grid is not None:
             f["tide_change_1h"] = tide_grid["tide_height_m"] - tide_grid["tide_height_m"].shift(4)
             # how much this station's level moves with the tide over the last 3 days: tells a tide-driven river from a rain-driven one
-            f["tide_coupling_3d"] = level.rolling(TIDE_COUPLING_STEPS, min_periods=TIDE_COUPLING_MIN_PAIRS).corr(tide_grid["tide_height_m"])
+            coupling = level.rolling(TIDE_COUPLING_STEPS, min_periods=TIDE_COUPLING_MIN_PAIRS).corr(tide_grid["tide_height_m"])
+            f["tide_coupling_3d"] = coupling.replace([np.inf, -np.inf], np.nan).clip(-1, 1)   # a flat-lined gauge has no correlation
         else:
             f["tide_change_1h"] = f["tide_coupling_3d"] = np.nan
-        up_states = [st for st in (state_of(u) for u in network.get(graph_id, [])) if st is not None]
+        up_states = [st for st in (state_of(u) for u in dict.fromkeys(network.get(graph_id, [])) if u != graph_id) if st is not None]
         for col, src in zip(UPSTREAM_FEATURES, ("rise_60m", "rise_120m", "level_rel")):
             f[col] = pd.concat([st[src] for st in up_states], axis=1).max(axis=1) if up_states else np.nan
         f["hour"], f["month"] = grid.hour + grid.minute / 60, grid.month

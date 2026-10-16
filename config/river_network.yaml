@@ -11,6 +11,7 @@
 #      Puchong Drop -> Taman Sri Muda -> Bandar Klang (same named river; the DEM path leaves the tile at lat 3.0),
 #      and every link that goes through it (closed transitively). Stations outside the DEM tile get no flow links.
 #   path_km is the flow-path distance from the upstream station to the downstream one (null for `name` links).
+#   4. Links longer than 15 km (flow-path distance; straight-line for `name` links) are dropped: see UPSTREAM_MAX_KM.
 # Duplicate JPS listings of one site (within 60 m) are treated as the same station and share links.
 
 '26350':
@@ -20,16 +21,13 @@
 - {id: '26424', method: flow, path_km: 9.5}
 - {id: '26515', method: flow, path_km: 3.9}
 - {id: '3116439_', method: flow, path_km: 3.9}
-- {id: '26557', method: flow, path_km: 16.7}
 - {id: '26533', method: flow, path_km: 9.5}
 - {id: '3114114_', method: flow, path_km: 9.5}
 - {id: '3116074_', method: flow, path_km: 3.4}
 - {id: '26530', method: flow, path_km: 3.9}
 - {id: '3116435_', method: flow, path_km: 3.9}
 - {id: '3117403_', method: flow, path_km: 6.7}
-- {id: '3117482_', method: flow, path_km: 16.9}
 - {id: '3216067_', method: flow, path_km: 15.0}
-- {id: '3217002_', method: flow, path_km: 18.6}
 - {id: BTU10_, method: flow, path_km: 12.0}
 '26353':
 - {id: '3017107_', method: flow, path_km: 6.6}
@@ -54,16 +52,12 @@
 - {id: '26424', method: flow, path_km: 10.6}
 - {id: '26515', method: flow, path_km: 4.9}
 - {id: '3116439_', method: flow, path_km: 4.9}
-- {id: '26557', method: flow, path_km: 17.7}
 - {id: '26533', method: flow, path_km: 10.6}
 - {id: '3114114_', method: flow, path_km: 10.6}
 - {id: '3116074_', method: flow, path_km: 4.5}
 - {id: '26530', method: flow, path_km: 5.0}
 - {id: '3116435_', method: flow, path_km: 5.0}
 - {id: '3117403_', method: flow, path_km: 7.8}
-- {id: '3117482_', method: flow, path_km: 18.0}
-- {id: '3216067_', method: flow, path_km: 16.1}
-- {id: '3217002_', method: flow, path_km: 19.7}
 - {id: BTU10_, method: flow, path_km: 13.1}
 '26424':
 - {id: '26396', method: flow, path_km: 2.1}
@@ -78,115 +72,37 @@
 - {id: '3117482_', method: flow, path_km: 7.3}
 - {id: '3217002_', method: flow, path_km: 9.0}
 '26558':
-- {id: '26039', method: flow, path_km: 19.9}
 - {id: PEKANMERU, method: flow, path_km: 14.6}
 '3014080_':
-- {id: '26350', method: name, path_km: null}
-- {id: '26353', method: name, path_km: null}
-- {id: '26376', method: name, path_km: null}
-- {id: '26388', method: name, path_km: null}
-- {id: '26396', method: name, path_km: null}
-- {id: '26399', method: name, path_km: null}
-- {id: '26411', method: name, path_km: null}
-- {id: '26413', method: name, path_km: null}
-- {id: '26424', method: name, path_km: null}
-- {id: '26515', method: name, path_km: null}
-- {id: '3116439_', method: name, path_km: null}
-- {id: '26557', method: name, path_km: null}
-- {id: '3015001_', method: name, path_km: null}
 - {id: '3015084_', method: name, path_km: null}
-- {id: '3016002_', method: name, path_km: null}
-- {id: '3016080_', method: name, path_km: null}
-- {id: '3017107_', method: name, path_km: null}
-- {id: '26533', method: name, path_km: null}
-- {id: '3114114_', method: name, path_km: null}
-- {id: '3116074_', method: name, path_km: null}
-- {id: '26530', method: name, path_km: null}
-- {id: '3116435_', method: name, path_km: null}
-- {id: '3117403_', method: name, path_km: null}
-- {id: '3117482_', method: name, path_km: null}
-- {id: '3216067_', method: name, path_km: null}
-- {id: '3217002_', method: name, path_km: null}
-- {id: BTU10_, method: name, path_km: null}
 - {id: DESAKEMUNING, method: name, path_km: null}
 '3015001_':
-- {id: '26350', method: flow, path_km: 16.1}
 - {id: '26353', method: flow, path_km: 14.7}
-- {id: '26376', method: flow, path_km: 23.0}
-- {id: '26388', method: flow, path_km: 22.7}
-- {id: '26396', method: flow, path_km: 27.8}
-- {id: '26399', method: flow, path_km: 26.2}
-- {id: '26411', method: flow, path_km: 22.0}
 - {id: '26413', method: flow, path_km: 15.0}
-- {id: '26424', method: flow, path_km: 25.6}
-- {id: '26515', method: flow, path_km: 20.0}
-- {id: '3116439_', method: flow, path_km: 20.0}
-- {id: '26557', method: flow, path_km: 32.8}
 - {id: '3016002_', method: flow, path_km: 11.0}
 - {id: '3016080_', method: flow, path_km: 6.5}
-- {id: '3017107_', method: flow, path_km: 21.4}
-- {id: '26533', method: flow, path_km: 25.7}
-- {id: '3114114_', method: flow, path_km: 25.7}
-- {id: '3116074_', method: flow, path_km: 19.6}
-- {id: '26530', method: flow, path_km: 20.1}
-- {id: '3116435_', method: flow, path_km: 20.1}
-- {id: '3117403_', method: flow, path_km: 22.9}
-- {id: '3117482_', method: flow, path_km: 33.1}
-- {id: '3216067_', method: flow, path_km: 31.1}
-- {id: '3217002_', method: flow, path_km: 34.8}
-- {id: BTU10_, method: flow, path_km: 28.2}
 '3015083_':
 - {id: '3115084_', method: flow, path_km: 7.0}
 '3015084_':
-- {id: '26350', method: name, path_km: null}
-- {id: '26353', method: name, path_km: null}
-- {id: '26376', method: name, path_km: null}
-- {id: '26388', method: name, path_km: null}
-- {id: '26396', method: name, path_km: null}
-- {id: '26399', method: name, path_km: null}
-- {id: '26411', method: name, path_km: null}
-- {id: '26413', method: name, path_km: null}
-- {id: '26424', method: name, path_km: null}
-- {id: '26515', method: name, path_km: null}
-- {id: '3116439_', method: name, path_km: null}
-- {id: '26557', method: name, path_km: null}
 - {id: '3015001_', method: name, path_km: null}
-- {id: '3016002_', method: name, path_km: null}
 - {id: '3016080_', method: name, path_km: null}
-- {id: '3017107_', method: name, path_km: null}
-- {id: '26533', method: name, path_km: null}
-- {id: '3114114_', method: name, path_km: null}
-- {id: '3116074_', method: name, path_km: null}
-- {id: '26530', method: name, path_km: null}
-- {id: '3116435_', method: name, path_km: null}
-- {id: '3117403_', method: name, path_km: null}
-- {id: '3117482_', method: name, path_km: null}
-- {id: '3216067_', method: name, path_km: null}
-- {id: '3217002_', method: name, path_km: null}
-- {id: BTU10_, method: name, path_km: null}
 - {id: DESAKEMUNING, method: flow, path_km: 4.9}
 '3016002_':
 - {id: '26350', method: flow, path_km: 4.9}
 - {id: '26376', method: flow, path_km: 11.9}
 - {id: '26388', method: flow, path_km: 11.6}
-- {id: '26396', method: flow, path_km: 16.7}
 - {id: '26399', method: flow, path_km: 15.0}
 - {id: '26411', method: flow, path_km: 10.9}
 - {id: '26413', method: flow, path_km: 3.8}
 - {id: '26424', method: flow, path_km: 14.5}
 - {id: '26515', method: flow, path_km: 8.9}
 - {id: '3116439_', method: flow, path_km: 8.9}
-- {id: '26557', method: flow, path_km: 21.7}
 - {id: '26533', method: flow, path_km: 14.6}
 - {id: '3114114_', method: flow, path_km: 14.6}
 - {id: '3116074_', method: flow, path_km: 8.4}
 - {id: '26530', method: flow, path_km: 8.9}
 - {id: '3116435_', method: flow, path_km: 8.9}
 - {id: '3117403_', method: flow, path_km: 11.8}
-- {id: '3117482_', method: flow, path_km: 22.0}
-- {id: '3216067_', method: flow, path_km: 20.0}
-- {id: '3217002_', method: flow, path_km: 23.7}
-- {id: BTU10_, method: flow, path_km: 17.1}
 '3114114_': *id001
 '3116074_':
 - {id: '26376', method: flow, path_km: 3.3}
@@ -203,7 +119,6 @@
 - {id: '3117403_', method: flow, path_km: 3.2}
 - {id: '3117482_', method: flow, path_km: 13.4}
 - {id: '3216067_', method: flow, path_km: 11.5}
-- {id: '3217002_', method: flow, path_km: 15.1}
 - {id: BTU10_, method: flow, path_km: 8.5}
 '3116439_': *id002
 '3118104_':
