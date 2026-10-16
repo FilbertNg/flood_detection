@@ -40,6 +40,8 @@ class EngineContext:
     forecast: Callable[[datetime], list[dict]] | None = None              # rain_next_12h for live mode
     radar: Callable[[datetime], Reason | None] | None = None              # informational radar_approaching (live only)
     street_stations: dict | None = None                                   # street_id -> {wl, rf, method, distance_m}; None = township-wide trigger
+    # (readings, graph_id, at, live) -> RiverForecast dict | None; the station's level at +1 h / +2 h
+    river_forecast: Callable[[pd.DataFrame, str, datetime, bool], dict | None] | None = None
 
 
 @dataclass

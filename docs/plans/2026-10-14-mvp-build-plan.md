@@ -180,7 +180,7 @@ docs/api-contract.md         # §4.2 as a living document
   "data_time": "2024-11-12T09:00:00+08:00",
   "rain_next_12h": [{"time": "2024-11-12T10:00:00+08:00", "mm": 2.1}],
   "tide": [{"time": "2024-11-12T10:00:00+08:00", "height_m": 1.9}],
-  "river_forecast": {"graph_id": "PEKANMERU", "points": [{"time": "2024-11-12T10:00:00+08:00", "wl_m": 4.05, "wl_m_p90": 4.25}]},  // Should (ML5); null if unavailable
+  "river_forecast": {"graph_id": "PEKANMERU", "name": "Sg. Binjai di Pekan Meru", "wl_now_m": 3.52, "wl_now_time": "2024-11-12T09:00:00+08:00", "warning_m": 4.0, "points": [{"time": "2024-11-12T10:00:00+08:00", "wl_m": 4.05, "wl_m_p10": 3.8, "wl_m_p90": 4.25}]},  // ML5 (shape updated by PR #18, see api-contract.md); null if unavailable
   "stations": ["26558", "PEKANMERU"],
   "active_alert": {"alert_id": "a_01", "level": "warning", "issued_at": "2024-11-12T09:00:00+08:00"},
   "history": [{"alert_id": "a_01", "street_id": "BBR-jalan-makyong", "horizon": "nowcast", "kind": "alert", "level": "warning",

@@ -92,3 +92,41 @@ def test_street_detail_lists_the_streets_own_stations_river_first(runner, client
 def test_street_detail_without_a_mapping_lists_the_township_stations(client):
     replay_until(client, "09:00")
     assert len(client.get("/api/v1/streets/BBR-prone-street").json()["stations"]) == 7
+
+
+def test_street_detail_river_forecast_is_null_without_a_model(client):
+    replay_until(client, "09:00")
+    assert client.get("/api/v1/streets/BBR-prone-street").json()["river_forecast"] is None
+
+
+def test_a_failing_forecast_does_not_break_the_street_page(client, runner):
+    def boom(*a):
+        raise KeyError("['n_rf_10km'] not in index")
+
+    runner.ctx.river_forecast = boom
+    replay_until(client, "09:00")
+    r = client.get("/api/v1/streets/BBR-prone-street")
+    assert r.status_code == 200 and r.json()["river_forecast"] is None
+
+
+def test_street_detail_uses_the_station_closest_to_warning_with_a_fresh_reading(client, runner):
+    seen = []
+    runner.ctx.river_forecast = lambda readings, gid, at, live: seen.append(gid) or {
+        "graph_id": gid, "wl_now_m": 3.5, "wl_now_time": "2024-11-12T09:00:00+08:00", "warning_m": 4.0, "points": []}
+    replay_until(client, "09:00")
+    d = client.get("/api/v1/streets/BBR-prone-street").json()
+    assert seen[-1] == "PEKANMERU"              # 26558 reads a flat, stuck level on 12 Nov 2024
+    assert d["river_forecast"]["name"] == "Sg. Binjai di Pekan Meru"
+
+
+def test_river_forecast_uses_the_streets_own_station_and_falls_back_to_the_pick(runner, client):
+    seen = []
+    runner.ctx.river_forecast = lambda readings, gid, at, live: seen.append(gid) or {
+        "graph_id": gid, "wl_now_m": 3.5, "wl_now_time": "2024-11-12T09:00:00+08:00", "warning_m": 4.0, "points": []}
+    runner.ctx.street_stations = {"BBR-prone-street": {"wl": "PANDAMARAN", "rf": [], "method": "flow", "distance_m": 5.0},
+                                  "BBR-safe-street": {"wl": None, "rf": ["TELOKGONG"], "method": None, "distance_m": None}}
+    replay_until(client, "09:00")
+    own = client.get("/api/v1/streets/BBR-prone-street").json()["river_forecast"]
+    assert seen[-1] == "PANDAMARAN" and own["graph_id"] == "PANDAMARAN"
+    client.get("/api/v1/streets/BBR-safe-street")
+    assert seen[-1] == "PEKANMERU"                  # no station of its own: nearest to warning with a fresh reading

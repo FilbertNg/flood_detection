@@ -106,7 +106,17 @@ export const streetDetail: StreetDetail = {
     { time: T('11:00'), height_m: 2.2 },
     { time: T('12:00'), height_m: 2.0 },
   ],
-  river_forecast: null,
+  river_forecast: {
+    graph_id: 'PEKANMERU',
+    name: 'Sg. Binjai di Pekan Meru',
+    wl_now_m: 3.52,
+    wl_now_time: T('09:00'),
+    warning_m: 4.0,
+    points: [
+      { time: T('10:00'), wl_m: 3.9, wl_m_p10: 3.7, wl_m_p90: 4.1 },
+      { time: T('11:00'), wl_m: 4.1, wl_m_p10: 3.8, wl_m_p90: 4.4 },
+    ],
+  },
   stations: ['26558', 'PEKANMERU'],
   active_alert: { alert_id: 'a_01', level: 'warning', issued_at: T('09:00') },
   history: [alertSummary],
