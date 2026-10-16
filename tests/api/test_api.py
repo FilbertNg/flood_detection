@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -130,3 +131,23 @@ def test_river_forecast_uses_the_streets_own_station_and_falls_back_to_the_pick(
     assert seen[-1] == "PANDAMARAN" and own["graph_id"] == "PANDAMARAN"
     client.get("/api/v1/streets/BBR-safe-street")
     assert seen[-1] == "PEKANMERU"                  # no station of its own: nearest to warning with a fresh reading
+
+
+def test_street_detail_tide_points_flag_harmonic_fill(runner, client):
+    times = pd.date_range("2024-11-12 08:00", periods=14, freq="h")
+    runner.ctx.tide = pd.DataFrame({"time_local": times, "tide_height_m": [1.0 + 0.1 * i for i in range(14)],
+                                    "tide_filled": [i in (3, 4) for i in range(14)]})
+    replay_until(client, "09:00")
+    tide = client.get("/api/v1/streets/BBR-prone-street").json()["tide"]
+    assert tide and all(set(p) == {"time", "height_m", "filled"} for p in tide)
+    by_time = {p["time"]: p["filled"] for p in tide}
+    assert by_time["2024-11-12T11:00:00+08:00"] is True and by_time["2024-11-12T12:00:00+08:00"] is True
+    assert by_time["2024-11-12T10:00:00+08:00"] is False and by_time["2024-11-12T13:00:00+08:00"] is False
+
+
+def test_street_detail_tide_without_a_filled_column_is_not_flagged(runner, client):
+    times = pd.date_range("2024-11-12 08:00", periods=6, freq="h")
+    runner.ctx.tide = pd.DataFrame({"time_local": times, "tide_height_m": [1.0] * 6})
+    replay_until(client, "09:00")
+    tide = client.get("/api/v1/streets/BBR-prone-street").json()["tide"]
+    assert tide and all(p["filled"] is False for p in tide)
