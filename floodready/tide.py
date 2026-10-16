@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+log = logging.getLogger(__name__)
 MARINE_URL = "https://marine-api.open-meteo.com/v1/marine"
 PORT_KLANG_OFFSHORE = (2.95, 101.25)
 
@@ -211,27 +213,79 @@ def tide_features(series: pd.Series, filled: pd.Series | None = None, fit: Harmo
                          "tide_filled": (filled.reindex(series.index, fill_value=False).to_numpy(bool)
                                          if filled is not None else np.zeros(len(series), bool))})
 
+def parse_marine_text(text: str) -> pd.Series:
+    """Validated hourly series from a marine API response body; ValueError if it is not a usable payload."""
+    try:
+        hourly = json.loads(text)["hourly"]
+        times, values = hourly["time"], hourly["sea_level_height_msl"]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise ValueError(f"not a marine payload: {exc!r}") from exc
+    if len(times) != len(values) or len(times) < 24 or all(v is None for v in values):
+        raise ValueError(f"marine payload unusable: {len(times)} times, {len(values)} values")
+    return series_from_marine({"hourly": hourly})
+
+
 def load_cached(raw_dir: Path) -> pd.Series:
-    """All cached marine chunks in `raw_dir`; where chunks overlap (a later, longer download) the latest file wins."""
+    """All parseable cached marine chunks in `raw_dir`; an unparseable file is skipped with a warning. Where chunks
+    overlap the latest file wins, but a null never overrides a real value from an older chunk."""
     from . import storage
-    parts = [series_from_marine(json.loads(storage.read_raw(p))) for p in sorted(Path(raw_dir).glob("*.json.gz"))]
-    series = pd.concat(parts[::-1])
+    parts = []
+    for p in sorted(Path(raw_dir).glob("*.json.gz")):
+        try:
+            parts.append(parse_marine_text(storage.read_raw(p)))
+        except Exception as exc:
+            log.warning("tide chunk %s skipped: %s", p.name, exc)
+    if not parts:
+        raise ValueError(f"no usable tide chunks in {raw_dir}")
+    series = pd.concat(parts[::-1]).dropna()
     return series[~series.index.duplicated()].sort_index()
 
 
-def build_hourly_table(raw_dir: Path, out_path: Path) -> pd.DataFrame:
+def _replace_with_retry(tmp: Path, target: Path, tries: int = 5, wait_s: float = 0.2) -> None:
+    for attempt in range(tries):
+        try:
+            tmp.replace(target)
+            return
+        except PermissionError:                  # Windows: a reader has the file open
+            if attempt == tries - 1:
+                raise
+            time.sleep(wait_s)
+
+
+def build_hourly_table(raw_dir: Path, out_path: Path, seed_from_existing: bool = True) -> pd.DataFrame:
     """Rebuild the hourly tide table (tide_features with the sub-hourly +shifted high waters) from the cached raw
-    chunks and write it to `out_path` atomically (a reader never sees a half-written file)."""
+    chunks and write it to `out_path` atomically.
+
+    With `seed_from_existing`, the real (not harmonically filled) hours of the current table fill what the raw
+    chunks lack, so a host without the raw history keeps it. The table is never allowed to shrink: if the result
+    starts later or has fewer rows than the current one, nothing is written and RuntimeError is raised.
+    A table file that cannot be replaced (a reader holds it) also raises, leaving the old file."""
+    out_path = Path(out_path)
+    old = pd.read_parquet(out_path) if out_path.exists() else None
     series = load_cached(raw_dir)
+    if seed_from_existing and old is not None and len(old):
+        real = old[~old.tide_filled.astype(bool)].set_index("time_local").tide_height_m.dropna()
+        real.index = pd.DatetimeIndex(real.index).as_unit("ns")
+        series = series.copy()
+        series.index = pd.DatetimeIndex(series.index).as_unit("ns")
+        series = series.combine_first(real).sort_index()
     filled, mask = fill_gaps(series)
     features = tide_features(filled, mask, fit=fit_harmonics(series))
-    out_path = Path(out_path)
+    if old is not None and len(old) and (features.time_local.min() > old.time_local.min() or len(features) < len(old)):
+        msg = (f"tide rebuild refused: {len(features)} rows from {features.time_local.min()} would replace "
+               f"{len(old)} rows from {old.time_local.min()}")
+        log.error(msg)
+        raise RuntimeError(msg)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = out_path.with_name(out_path.name + ".tmp")
     features.to_parquet(tmp, index=False)
-    tmp.replace(out_path)
+    try:
+        _replace_with_retry(tmp, out_path)
+    except Exception as exc:
+        tmp.unlink(missing_ok=True)
+        log.error("tide table %s not replaced, keeping the old one: %s", out_path, exc)
+        raise RuntimeError(f"tide table not replaced: {exc}") from exc
     return features
-
 
 class TideTable:
     """The hourly tide parquet, re-read whenever its modification time changes (one stat per `get`).
@@ -252,5 +306,5 @@ class TideTable:
             try:
                 self._table = pd.read_parquet(self.path)
             except Exception:
-                logging.getLogger(__name__).exception("tide table %s unreadable, keeping the previous one", self.path)
+                log.exception("tide table %s unreadable, keeping the previous one", self.path)
         return self._table
