@@ -399,9 +399,9 @@ Each task lists: **Owner · Depends on · Files · Interfaces · Acceptance test
   - on the spike configuration (PEKANMERU, same archive snapshot) the harness reproduces the Watch-rule baseline: 23 / 50 detected, 4.9 false alarms per month.
 
 #### ML3. Gate and thresholds
-**Depends:** ML2 · **Files:** `config/ml.yaml` (`p_watch`, `p_warning`, `smoothing_min`, `ml_drives_alerts`), the ML section of `docs/evaluation-report.md`
-- Pick `p_watch` and `p_warning` on validation folds only.
-- **Gate:** (a) detection ≥ the Watch rule with false alarms ≤ the Watch rule, **or** (b) equal detection with ≥ 20 min more median lead and ≤ 1.2× false alarms. Pass → `ml_drives_alerts: true`. Fail → `false`, and the report says so plainly.
+**Depends:** ML2 · **Files:** `config/ml.yaml` (`p_watch`, `ml_max_level`, `smoothing_min`, `ml_drives_alerts`, `gate`), the ML section of `docs/evaluation-report.md`
+- Pick `p_watch` (the calibrated Watch threshold θ) by nested selection (gate v2, `docs/plans/2026-10-16-IMP-ml-data-street-improvements.md` §3): per outer fold, on the other folds only, the θ with the most detections whose false alarms stay within the gate criterion; ship the median. There is no Warning threshold to pick: ML raises to Watch at most (`ml_max_level: watch`).
+- **Gate (v1, superseded by gate v2 in `config/ml.yaml` `gate:`):** (a) detection ≥ the Watch rule with false alarms ≤ the Watch rule, **or** (b) equal detection with ≥ 20 min more median lead and ≤ 1.2× false alarms. Pass → `ml_drives_alerts: true`. Fail → `false`, and the report says so plainly.
 - **Done when:** the out-of-sample rules-vs-ML table is in the evaluation report and on the deck's evaluation slide.
 
 #### ML4. Inference in the engine
