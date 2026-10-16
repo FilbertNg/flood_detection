@@ -146,27 +146,57 @@ def test_12_nov_2024_26558_is_flagged_and_pekan_meru_is_not():
 
 
 def _run_with_gap(gap_steps):
-    lvl = np.full(70, 1.20)
+    lvl = np.full(120, 1.20)
     lvl[30:30 + gap_steps] = np.nan
-    clean, flags = qc.clean_readings(pd.concat([wet(np.full(70, 4.0)), level("R", lvl)], ignore_index=True), stations=STATIONS)
+    clean, flags = qc.clean_readings(pd.concat([wet(np.full(120, 4.0)), level("R", lvl)], ignore_index=True), stations=STATIONS)
     return set(steps(wl_flags(flags))), 30 + gap_steps
 
 
-def test_run_persists_over_a_short_gap_but_a_gap_over_2_h_ends_it():
-    assert qc.WL_RUN_MAX_GAP_MIN == 120
-    short, after = _run_with_gap(4)                          # 1 h of missing readings: same run
-    assert {after, after + 1, after + 2} <= short and 29 in short
-    long_, after = _run_with_gap(12)                         # 3 h: the run ends; the flat level must be proven again
-    assert 29 in long_ and not ({after, after + 1, after + 2, after + 3} & long_)
-    edge, after = _run_with_gap(7)                           # 7 missing readings = 2 h between valid ones: still the same run
-    assert after in edge
+def test_run_persists_over_a_gap_when_the_level_is_unchanged_after_it():
+    for gap in (4, 12, 40):                                  # 1 h, 3 h, 10 h of missing readings
+        flagged, after = _run_with_gap(gap)
+        assert {after, after + 1, after + 2} <= flagged and 29 in flagged
+
+
+def test_run_ends_after_a_gap_when_the_level_has_changed():
+    lvl = np.full(70, 1.20)
+    lvl[30:42] = np.nan
+    lvl[42:] = 1.50                                          # repaired or moved during the outage
+    df = pd.concat([wet(np.full(70, 4.0)), level("R", lvl)], ignore_index=True)
+    flagged = set(steps(wl_flags(qc.clean_readings(df, stations=STATIONS)[1])))
+    assert 29 in flagged and not ({42, 43, 44} & flagged)
+
+
+def _stuck_with_blip(blip):
+    lvl = np.full(80, 1.20)
+    for k, v in enumerate(blip):
+        lvl[40 + k] = v
+    df = pd.concat([wet(np.full(80, 4.0)), level("R", lvl)], ignore_index=True)
+    return set(steps(wl_flags(qc.clean_readings(df, stations=STATIONS)[1])))
+
+
+def test_run_resumes_when_the_level_returns_to_the_stuck_value_within_4_readings():
+    assert qc.WL_RUN_REENTRY_READINGS == 4
+    f = _stuck_with_blip([1.23])                             # one reading 3 cm off: kept, then the same run again
+    assert 39 in f and 40 not in f and {41, 42, 43} <= f
+    f = _stuck_with_blip([1.23, 1.24, 1.23, 1.25, 1.23])     # back within the band only at the 5th reading after the exit: too late
+    assert 39 in f and not ({40, 41, 42, 43, 44, 45, 46} & f)
+    f = _stuck_with_blip([1.23, 1.23, 1.23, 1.23, 1.21])     # back at the 4th reading after the exit: resumes there
+    assert 44 in f and not ({40, 41, 42, 43} & f)
+
+
+def test_run_does_not_resume_after_a_real_move():
+    values = np.concatenate([np.full(40, 1.20), np.full(40, 1.60)])
+    df = pd.concat([wet(np.full(80, 4.0)), level("R", values)], ignore_index=True)
+    f = set(steps(wl_flags(qc.clean_readings(df, stations=STATIONS)[1])))
+    assert 39 in f and not ({40, 41, 42, 43} & f)
 
 
 def test_readings_before_the_first_detection_stay_unflagged_and_exposed_constants():
     df = pd.concat([wet(storm()), level("R", np.full(40, 1.20))], ignore_index=True)
     idx = steps(wl_flags(qc.clean_readings(df, stations=STATIONS)[1]))
     assert idx[0] >= 10                                      # no look-back over the flat readings before detection
-    assert qc.QC_HISTORY_DAYS >= qc.RAIN_MONTH_STEPS / 96 and qc.QC_HISTORY_DAYS * 96 >= qc.WL_FLAT_HOURS * 4 + qc.WL_RESPONSE_LAG_MIN // 15
+    assert qc.QC_HISTORY_DAYS == 40 and qc.QC_HISTORY_DAYS >= qc.RAIN_MONTH_STEPS / 96 + 7
 
 
 def test_one_wet_gauge_is_not_enough_it_needs_a_second_gauge_to_agree():
@@ -182,9 +212,11 @@ def test_one_wet_gauge_is_not_enough_it_needs_a_second_gauge_to_agree():
 
 def test_fewer_than_two_gauges_within_10_km_fails_safe_and_never_flags():
     only_g = STATIONS[STATIONS.graph_id != "G2"]
-    df = pd.concat([rain("G", storm(mm=20.0)), level("R", np.full(40, 1.20))], ignore_index=True)
+    df = pd.concat([rain("G", storm(mm=10.0)), level("R", np.full(40, 1.20))], ignore_index=True)    # 80 mm at the one gauge
     clean, flags = qc.clean_readings(df, stations=only_g)
-    assert wl_flags(flags).empty and clean[clean.kind == "wl"].wl_m.notna().all()
+    assert flags.empty and clean[clean.kind == "wl"].wl_m.notna().all()          # no rain flag eats the storm: the rule itself holds back
+    both = pd.concat([wet(storm(mm=10.0)), level("R", np.full(40, 1.20))], ignore_index=True)
+    assert not wl_flags(qc.clean_readings(both, stations=STATIONS)[1]).empty     # the same rain at two gauges does flag
 
 
 def test_second_gauge_in_range_but_without_data_does_not_count_as_wet():

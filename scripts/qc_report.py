@@ -39,14 +39,20 @@ RULE_TEXT = {
                         f"({qc.WL_FLAT_HOURS} h rain window + the fixed {qc.WL_RESPONSE_LAG_MIN} min response lag) while at least "
                         f"{qc.WL_MIN_RAIN_GAUGES} rain gauges within {qc.WL_RAIN_RADIUS_KM:g} km each total >= {qc.WL_RAIN_MM:g} mm over the "
                         f"{qc.WL_FLAT_HOURS} h that ended {qc.WL_RESPONSE_LAG_MIN} min before the reading (the second-wettest gauge decides, so one local rain "
-                        "cell is not enough). Flagged from the first reading where both hold until the level moves again; a flat level alone is base flow "
-                        "and is kept. Never applied (value kept) at a station with fewer than 2 gauges in range, with untrusted or missing thresholds "
-                        "(`thresholds_ok` False, no alert level), or flat at or above its alert level"),
+                        "cell is not enough). Flagged from the first reading where both hold until the level moves out of its band; a run resumes if the "
+                        f"level is back in the band within {qc.WL_RUN_REENTRY_READINGS} readings; a flat level alone is base flow and is kept. "
+                        f"Dead-gauge state: {qc.WL_DEAD_EVENTS} storms (the nearest gauge and the second-wettest gauge both >= {qc.WL_RAIN_MM:g} mm in 3 h, "
+                        f">= {qc.WL_DEAD_EVENTS_APART_H} h apart, within {qc.WL_DEAD_WINDOW_DAYS} days) with no response (range < {qc.WL_DEAD_NO_RESPONSE_M:g} m within "
+                        f"{qc.WL_DEAD_RESPONSE_HOURS} h) while a river station within {qc.WL_DEAD_NEIGHBOUR_KM:g} km rose >= {qc.WL_DEAD_NEIGHBOUR_RISE_M:g} m make the gauge "
+                        "dead: every reading below alert is flagged until it rises >= "
+                        f"{qc.WL_DEAD_EXIT_RISE_M:g} m within {qc.WL_DEAD_RESPONSE_HOURS} h. Nothing at or above the alert level is ever flagged. "
+                        "Not flagged (no evidence): stations with fewer than 2 gauges in range (a gauge stuck low there is not caught) or untrusted/missing thresholds"),
     "rain_monthly_implausible": (f"rolling {qc.RAIN_MONTH_STEPS // 96}-day rain total > {qc.RAIN_MONTH_MIN_MM:g} mm and > {qc.RAIN_MONTH_RATIO:g}x the median "
                                  f"total of the gauges within {qc.RAIN_MONTH_RADIUS_KM:g} km (at least {qc.RAIN_MONTH_MIN_NEIGHBOURS} neighbours, each with data in "
-                                 f"{qc.RAIN_MONTH_MIN_COVERAGE:.0%} of the window). Causal: readings are flagged from the moment the total passes the test, until the "
-                                 "bad readings leave the window. Floor and ratio were fixed before looking at 12 Nov 2024; on the partial archive "
-                                 "(which does not yet hold 26405) no healthy gauge is flagged, the wettest 30-day totals being about 750 mm"),
+                                 f"{qc.RAIN_MONTH_MIN_COVERAGE:.0%} of the window; a gappy neighbour is left out, never counted as dry), and the same test on the last 7 days. "
+                                 "Causal: readings > 0 are flagged from the moment both totals pass the test until the 7-day total is normal again. A gauge with no "
+                                 "coordinates in the lookup (the DBKL (F2) gauges, 26405 among them) is compared with its district instead. Floor and ratio were fixed "
+                                 "before looking at 12 Nov 2024; on the partial archive (which does not yet hold 26405) no healthy gauge is flagged, the wettest 30-day totals being about 750 mm"),
 }
 
 
@@ -242,7 +248,13 @@ def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: 
                "cell over one gauge no longer counts; a station with fewer than two gauges in range is never flagged. Before this change "
                "the largest gauge decided and Pekan Meru had 247 base-flow flags.\n"
                "- A run lasts until the level moves, so it continues after the rain stops. A genuinely flat river is kept NaN until it moves.\n"
-               "- A station whose gauge really is stuck for days or weeks is flagged for all of it once heavy rain has occurred, which is intended.\n"
+               "- A gauge that is stuck for months (Kg. Perepat 26558: -0.78 m, then 0.36 m since 22 Nov 2024) is flagged only from the run or the dead-gauge "
+               "state that proves it: the first weeks before two storms have shown no response are kept, and after every real jump the proof starts again "
+               "(on the partial archive about 87 % of 26558's readings since 1 Aug 2024 are flagged, not all). A station with fewer than two rain "
+               "gauges in range, or with untrusted thresholds, is not checked at all, and a gauge stuck low there reports a normal level unnoticed.\n"
+               "- The dead-gauge state hides readings below the alert level until the gauge shows a rise of 0.2 m; a healthy but sluggish river that missed two "
+               "storms over its station would lose its first rising readings (never those at or above alert). The nearest-gauge and 48 h conditions exist "
+               "to keep that from happening: without them Pekan Meru (27 Feb 2025), 3115084_ and 26039 were wrongly called dead.\n"
                "- **Live vs replay**: a run is judged on the history that is loaded. Archive cleaning (replay, training) sees the whole history; live "
                "cleaning sees the live files from `since - 1 day`, so a long stuck run whose triggering rain fell earlier is not flagged live, and live "
                "rows override archive rows in the runner. Follow-up: run QC over archive and live together.\n"
