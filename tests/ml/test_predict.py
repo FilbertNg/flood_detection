@@ -88,3 +88,15 @@ def test_past_events_use_the_model_that_never_saw_them(tmp_path):
     assert past["model"] == {"tag": f"trigger_v1_oof{fold}"} and past["out_of_sample"] is True
     live = predict.bundle_for(tmp_path, datetime(2026, 10, 15, 9, 0), live=True)
     assert live["model"] == {"tag": "trigger_v1"} and live["out_of_sample"] is False
+
+
+def test_a_model_trained_on_other_features_falls_back_to_rules_not_a_crash(caplog):
+    """A bundle trained on an older FEATURES list must not crash replay/live: no ML result, one warning."""
+    feats = pd.DataFrame({"graph_id": ["PEKANMERU"], "name": ["Sg. Binjai"], "time_local": [T("09:00")],
+                          "d_warning": [0.9]})
+    with caplog.at_level("WARNING"):
+        assert predict.station_probabilities(FixedModel(), ["d_warning", "n_rf_10km"], feats, ["PEKANMERU"],
+                                             T("09:00"), CFG) == {}
+        assert predict.township_probability(FixedModel(), ["d_warning", "n_rf_10km"], feats, ["PEKANMERU"],
+                                            T("09:00"), CFG) is None
+    assert any("n_rf_10km" in r.message for r in caplog.records)
