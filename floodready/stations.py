@@ -47,3 +47,11 @@ def build_lookup(wl_live: pd.DataFrame, rf_live: pd.DataFrame, old: pd.DataFrame
     ordered = (lookup.wl_normal_m < lookup.wl_alert_m) & (lookup.wl_alert_m < lookup.wl_warning_m) & (lookup.wl_warning_m < lookup.wl_danger_m)
     lookup["thresholds_ok"] = np.where(lookup.kind == "wl", ordered, True)
     return lookup[LOOKUP_COLUMNS]
+
+
+def load_default() -> pd.DataFrame | None:
+    """The station table at data/interim/stations.parquet (scripts/build_station_lookup.py), or None if it is not built.
+    Used by the readings loaders so QC rules that need station coordinates work without callers passing the table."""
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / "data" / "interim" / "stations.parquet"
+    return pd.read_parquet(path) if path.exists() else None

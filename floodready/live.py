@@ -13,6 +13,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import qc
+from . import stations as stations_mod
 
 COLUMNS = ["graph_id", "kind", "time_local", "rain_15min_mm", "wl_m"]
 
@@ -42,8 +43,10 @@ def level_readings(wl: pd.DataFrame) -> pd.DataFrame:
                          "rain_15min_mm": float("nan"), "wl_m": wl["wl_m"]})[COLUMNS].reset_index(drop=True)
 
 
-def load_live_readings(live_dir: Path, since: datetime, graph_ids: set[str] | None = None) -> pd.DataFrame:
-    """Readings from data/raw/jps_live/{wl,rf}/<date>.parquet since `since`."""
+def load_live_readings(live_dir: Path, since: datetime, graph_ids: set[str] | None = None,
+                       stations: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Readings from data/raw/jps_live/{wl,rf}/<date>.parquet since `since`, after QC.
+    `stations` (coordinates) enables wl_unresponsive; default: data/interim/stations.parquet if built."""
     frames = []
     for kind, convert in (("wl", level_readings), ("rf", rain_readings)):
         files = [f for f in sorted(glob.glob(str(Path(live_dir) / kind / "*.parquet")))
@@ -56,5 +59,6 @@ def load_live_readings(live_dir: Path, since: datetime, graph_ids: set[str] | No
         frames.append(convert(df))
     if not frames:
         return pd.DataFrame(columns=COLUMNS)
-    out, _ = qc.clean_readings(pd.concat(frames, ignore_index=True))  # on the full loaded span, then cut
+    out, _ = qc.clean_readings(pd.concat(frames, ignore_index=True),
+                                 stations=stations if stations is not None else stations_mod.load_default())  # on the full loaded span, then cut
     return out[out.time_local >= pd.Timestamp(since)]
