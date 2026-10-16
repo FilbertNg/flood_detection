@@ -39,10 +39,10 @@ export interface LocalizedText {
 }
 
 export interface Reason {
-  /** rain_1h | rain_2to4h | river_level | ml_probability | tide_high | forecast_rain | met_warning | stale_data */
+  /** rain_1h | rain_2to4h | river_level | ml_probability | tide_high | forecast_rain | met_warning | stale_data | radar_approaching (informational; unit "min" = ETA; never changes the level) */
   code: string;
   value: number;
-  /** mm | m | p | h */
+  /** mm | m | p | h | min */
   unit: string;
   station: string | null;
   text: LocalizedText;

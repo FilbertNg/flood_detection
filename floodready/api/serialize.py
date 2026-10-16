@@ -1,12 +1,15 @@
 """Engine records -> API contract shapes (docs/api-contract.md, packages/shared/src/api/types.ts)."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
 import pandas as pd
 
 from ..engine.types import Reason, StreetState
 from .runner import EngineContext, Snapshot, iso
+
+log = logging.getLogger(__name__)
 
 
 def reason(r: Reason) -> dict:
@@ -53,6 +56,15 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
     active = ({"alert_id": latest["alert_id"], "level": latest["level"], "issued_at": latest["issued_at"]}
               if latest and latest["kind"] == "alert" else None)
     rain_next = ctx.forecast(data_time) if (ctx.forecast is not None and snap.mode == "live") else []
+    reasons = [reason(r) for r in state.reasons] if state else []
+    if ctx.radar is not None and snap.mode == "live":
+        try:
+            radar_reason = ctx.radar(datetime.now())   # informational: appended after, never part of the level
+        except Exception:  # a bad radar frame must not break the street page
+            log.exception("radar reason failed")
+            radar_reason = None
+        if radar_reason is not None:
+            reasons.append(reason(radar_reason))
     return {
         "street_id": street_id, "name": row["name"], "township_id": row["township_id"],
         "susceptibility": int(row["susceptibility"]),
@@ -62,7 +74,7 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
         "flood_probability": round(state.flood_probability, 3) if state and state.flood_probability is not None else None,
         "fired_by": list(state.fired_by) if state else [],
         "window": {"start": iso(state.window_start), "end": iso(state.window_end)} if state and state.window_start else None,
-        "reasons": [reason(r) for r in state.reasons] if state else [],
+        "reasons": reasons,
         "data_time": iso(data_time),
         "rain_next_12h": rain_next,
         "tide": _tide(ctx, data_time),
