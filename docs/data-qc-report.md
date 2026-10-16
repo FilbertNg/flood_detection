@@ -16,7 +16,8 @@ Rules live in `floodready/qc.py` and run inside `engine/replay.py::load_archive_
 | rain_after_gap | 3 | 2 | rain >= 30 mm in the first reading after >= 2 h without readings, unless the next reading is >= 10 mm and different (a storm that continues); an identical repeat right after is removed too. A gauge's latest reading is kept until the next arrives |
 | rain_stuck | 0 | 0 | the same value >= 20 mm at least 3 times within 24 h at one gauge (only readings not already removed by the rules above) |
 | wl_spike | 132 | 9 | river level more than 1 m from both neighbours in the same direction, with the neighbours within max(0.2 m, half the jump) of each other. A station's latest reading is kept until the next arrives |
-| wl_unresponsive | 10302 | 4 | river level within 1.5 cm for >= 3 h while rain at the gauges within 10 km totals >= 30 mm over the same window (largest rolling sum over those gauges). Flagged from the first reading where both hold until the level moves again; a flat level alone is base flow and is kept |
+| wl_unresponsive | 10302 | 4 | river level within 1.5 cm for 4.5 h (3 h rain window + the fixed 90 min response lag) while at least 2 rain gauges within 10 km each total >= 30 mm over the 3 h that ended 90 min before the reading (the second-wettest gauge decides, so one local rain cell is not enough). Flagged from the first reading where both hold until the level moves again; a flat level alone is base flow and is kept. Never applied (value kept) at a station with fewer than 2 gauges in range, with untrusted or missing thresholds (`thresholds_ok` False, no alert level), or flat at or above its alert level |
+| rain_monthly_implausible | (not in this run; counts at the next regeneration) | | rolling 30-day rain total > 600 mm and > 3x the median total of the gauges within 10 km (at least 2 neighbours, each with data in 50% of the window). Causal: readings are flagged from the moment the total passes the test, until the bad readings leave the window. Floor and ratio were fixed before looking at 12 Nov 2024; on the partial archive (which does not yet hold 26405) no healthy gauge is flagged, the wettest 30-day totals being about 750 mm |
 
 92 of 3,999,611 rain readings (0.0023%) and 10434 river readings removed.
 
@@ -389,7 +390,7 @@ river level more than 1 m from both neighbours in the same direction, with the n
 
 ### `wl_unresponsive`: 10302 readings, 4 stations
 
-river level within 1.5 cm for >= 3 h while rain at the gauges within 10 km totals >= 30 mm over the same window (largest rolling sum over those gauges). Flagged from the first reading where both hold until the level moves again; a flat level alone is base flow and is kept.
+river level within 1.5 cm for 4.5 h (3 h rain window + the fixed 90 min response lag) while at least 2 rain gauges within 10 km each total >= 30 mm over the 3 h that ended 90 min before the reading (the second-wettest gauge decides, so one local rain cell is not enough). Flagged from the first reading where both hold until the level moves again; a flat level alone is base flow and is kept. Never applied (value kept) at a station with fewer than 2 gauges in range, with untrusted or missing thresholds (`thresholds_ok` False, no alert level), or flat at or above its alert level.
 
 | graph_id | name | count | min_value | max_value | first | last |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -495,7 +496,7 @@ river level within 1.5 cm for >= 3 h while rain at the gauges within 10 km total
 
 **False-positive risks** (read the run tables above):
 
-- A river that is mostly base flow and drains a large or slow catchment can stay within 1.5 cm for 4.5 h after heavy rain at one nearby gauge (the rule takes the largest of the gauges within the radius, so a rain cell over one gauge counts).
+- A river that is mostly base flow and drains a large or slow catchment can stay within 1.5 cm for 4.5 h after heavy rain over the catchment. The rule needs two gauges within the radius to each reach the threshold (the second-wettest decides), so a rain cell over one gauge no longer counts; a station with fewer than two gauges in range is never flagged. Before this change the largest gauge decided and Pekan Meru had 247 base-flow flags.
 - A run lasts until the level moves, so it continues after the rain stops. A genuinely flat river is kept NaN until it moves.
 - A station whose gauge really is stuck for days or weeks is flagged for all of it once heavy rain has occurred, which is intended.
 - **Live vs replay**: a run is judged on the history that is loaded. Archive cleaning (replay, training) sees the whole history; live cleaning sees the live files from `since - 1 day`, so a long stuck run whose triggering rain fell earlier is not flagged live, and live rows override archive rows in the runner. Follow-up: run QC over archive and live together.

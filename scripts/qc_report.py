@@ -35,9 +35,18 @@ RULE_TEXT = {
                    "(only readings not already removed by the rules above)"),
     "wl_spike": (f"river level more than {qc.WL_SPIKE_M:g} m from both neighbours in the same direction, with the neighbours within "
                  f"max({qc.WL_REVERT_M:g} m, half the jump) of each other. A station's latest reading is kept until the next arrives"),
-    "wl_unresponsive": (f"river level within {qc.WL_FLAT_M * 100:g} cm for >= {qc.WL_FLAT_HOURS} h while rain at the gauges within "
-                        f"{qc.WL_RAIN_RADIUS_KM:g} km totals >= {qc.WL_RAIN_MM:g} mm over the same window (largest rolling sum over those gauges). "
-                        "Flagged from the first reading where both hold until the level moves again; a flat level alone is base flow and is kept"),
+    "wl_unresponsive": (f"river level within {qc.WL_FLAT_M * 100:g} cm for {qc.WL_FLAT_HOURS + qc.WL_RESPONSE_LAG_MIN / 60:g} h "
+                        f"({qc.WL_FLAT_HOURS} h rain window + the fixed {qc.WL_RESPONSE_LAG_MIN} min response lag) while at least "
+                        f"{qc.WL_MIN_RAIN_GAUGES} rain gauges within {qc.WL_RAIN_RADIUS_KM:g} km each total >= {qc.WL_RAIN_MM:g} mm over the "
+                        f"{qc.WL_FLAT_HOURS} h that ended {qc.WL_RESPONSE_LAG_MIN} min before the reading (the second-wettest gauge decides, so one local rain "
+                        "cell is not enough). Flagged from the first reading where both hold until the level moves again; a flat level alone is base flow "
+                        "and is kept. Never applied (value kept) at a station with fewer than 2 gauges in range, with untrusted or missing thresholds "
+                        "(`thresholds_ok` False, no alert level), or flat at or above its alert level"),
+    "rain_monthly_implausible": (f"rolling {qc.RAIN_MONTH_STEPS // 96}-day rain total > {qc.RAIN_MONTH_MIN_MM:g} mm and > {qc.RAIN_MONTH_RATIO:g}x the median "
+                                 f"total of the gauges within {qc.RAIN_MONTH_RADIUS_KM:g} km (at least {qc.RAIN_MONTH_MIN_NEIGHBOURS} neighbours, each with data in "
+                                 f"{qc.RAIN_MONTH_MIN_COVERAGE:.0%} of the window). Causal: readings are flagged from the moment the total passes the test, until the "
+                                 "bad readings leave the window. Floor and ratio were fixed before looking at 12 Nov 2024; on the partial archive "
+                                 "(which does not yet hold 26405) no healthy gauge is flagged, the wettest 30-day totals being about 750 mm"),
 }
 
 
@@ -177,7 +186,10 @@ def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: 
     def rain3h(gid):
         d = qc._haversine_km(wl_xy.at[gid, "lat"], wl_xy.at[gid, "lon"], rf_xy.lat.to_numpy(), rf_xy.lon.to_numpy())
         ids = [i for i in rf_xy.index[d <= qc.WL_RAIN_RADIUS_KM] if i in rain.columns]
-        return rain[ids].rolling(qc.WL_FLAT_HOURS * 4, min_periods=1).sum().max(axis=1), len(ids)
+        sums = rain[ids].rolling(qc.WL_FLAT_HOURS * 4, min_periods=1).sum()
+        k = qc.WL_MIN_RAIN_GAUGES
+        second = sums.apply(lambda row: row.nlargest(k).iloc[-1] if len(ids) >= k else np.nan, axis=1)    # the second-wettest gauge decides
+        return second, len(ids)
 
     s0, s1 = STORM
     pm = flags[(flags.graph_id == "PEKANMERU") & (flags.time_local >= s0) & (flags.time_local <= s1)]
@@ -226,7 +238,9 @@ def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: 
                "keeps its value), and the rain window ends 90 min before the reading so a slow river has time to answer.\n")
     out.append("**False-positive risks** (read the run tables above):\n\n"
                "- A river that is mostly base flow and drains a large or slow catchment can stay within 1.5 cm for 4.5 h after heavy rain "
-               "at one nearby gauge (the rule takes the largest of the gauges within the radius, so a rain cell over one gauge counts).\n"
+               "over the catchment. The rule needs two gauges within the radius to each reach the threshold (the second-wettest decides), so a rain "
+               "cell over one gauge no longer counts; a station with fewer than two gauges in range is never flagged. Before this change "
+               "the largest gauge decided and Pekan Meru had 247 base-flow flags.\n"
                "- A run lasts until the level moves, so it continues after the rain stops. A genuinely flat river is kept NaN until it moves.\n"
                "- A station whose gauge really is stuck for days or weeks is flagged for all of it once heavy rain has occurred, which is intended.\n"
                "- **Live vs replay**: a run is judged on the history that is loaded. Archive cleaning (replay, training) sees the whole history; live "

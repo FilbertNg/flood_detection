@@ -21,20 +21,34 @@ wl_spike            a river level more than WL_SPIKE_M away from BOTH neighbours
                     the neighbours are close to each other (|next - prev| <= max(WL_REVERT_M, 0.5 * |jump|)).
                     Works on a rising or falling river. Negative levels are valid (tidal stations' datum is
                     below sea level); only a single-reading excursion is flagged.
-wl_unresponsive     a river level that stayed within WL_FLAT_M for 4.5 h (3 h rain window + WL_RESPONSE_LAG_MIN
-                    of response lag) while the rain gauges within WL_RAIN_RADIUS_KM of the station (largest rolling
-                    3 h sum over those gauges, after rain QC) totalled >= WL_RAIN_MM in the 3 h that ended 90 min
-                    before the reading. A flat level alone is base flow (Sg. Binjai at Pekan Meru stays flat for 6 h
-                    in 91 % of its readings); flat during heavy rain is a gauge that has stopped responding (Kg.
-                    Perepat, 26558, 12 Nov 2024). The 90 min lag lets a slow river answer the rain before it counts
-                    as unresponsive. Flagged from the reading where the condition is first met until the level moves
+wl_unresponsive     a river level that stayed within WL_FLAT_M for 4.5 h (the 3 h rain window plus the fixed 90 min
+                    response lag, WL_RESPONSE_LAG_MIN) while at least TWO rain gauges within WL_RAIN_RADIUS_KM of
+                    the station (the second-wettest gauge's rolling 3 h sum, after rain QC) each totalled >= WL_RAIN_MM
+                    in the 3 h window that ended 90 min before the reading, so the river had 90 min to answer that
+                    rain. One wet gauge is not enough: a single local cell over one gauge is not evidence that the
+                    catchment got wet (gauges are 5-9 km apart; the same two-gauge rule as street warnings). A flat
+                    level alone is base flow (Sg. Binjai at Pekan Meru stays flat for 6 h in 91 % of its readings);
+                    flat during widespread heavy rain is a gauge that has stopped responding (Kg. Perepat, 26558,
+                    12 Nov 2024). Flagged from the reading where the condition is first met until the level moves
                     (> WL_FLAT_M from the flat level). Causal. Needs `stations` (coordinates); skipped without it.
-                    Fail safe: never applied when the flat level is >= the station's wl_alert_m (a gauge stuck high
-                    or a plateau in a flood keeps its value; a run also ends if the level reaches alert).
+                    Fail safe, never applied (the value is kept) when: the station has fewer than two rain gauges
+                    within the radius; the stations table says its thresholds are not trustworthy (`thresholds_ok`
+                    False) or gives no alert level; or the flat level is >= the station's wl_alert_m (a gauge stuck
+                    high or a plateau in a flood keeps its value; a run also ends if the level reaches alert). A
+                    stations table without a `thresholds_ok` column (or without `wl_alert_m`) keeps the older
+                    behaviour: an unknown alert level does not block the rule.
                     Flagged values become NaN. Downstream: the rule engine forward-fills a level for 2 h, so
                     staleness starts after that; the township's river rule then has no reading from that station and
                     its confidence is low only if no township station reports. ML features have no forward-fill and
                     lose the readings at once. A false flag can therefore hide a rising river, hence the guards above.
+rain_monthly_implausible  a gauge whose rolling 30-day rain total (after the rules above) is > RAIN_MONTH_MIN_MM and
+                    > RAIN_MONTH_RATIO times the median 30-day total of the gauges within RAIN_MONTH_RADIUS_KM
+                    (at least RAIN_MONTH_MIN_NEIGHBOURS neighbours that have data in half of the window). Catches a
+                    gauge that reads far too much for weeks (26405, May 2024: about 2,100 mm in a month) without
+                    single readings being implausible. Causal: a reading is flagged when the total ending at it
+                    passes the test, so the weeks before the total crossed the limit are kept (a live system
+                    cannot know yet), and flagging lasts until the bad readings leave the 30-day window. A wet month
+                    everywhere (neighbours as wet) is not flagged. Needs `stations`; skipped without it.
 
 Live mode: wl_spike and rain_after_gap need the NEXT reading. When a gauge's latest reading has no
 next reading yet, it is KEPT and judged when the next one arrives (a real rise or storm after an outage
@@ -73,6 +87,13 @@ WL_RESPONSE_LAG_MIN = 90           # the river may answer rain this late: the ra
 WL_FLAT_MIN_FRAC = 11 / 13         # share of the flat window's readings that must be valid (tolerates short gaps)
 WL_RAIN_MM = 30.0
 WL_RAIN_RADIUS_KM = 10.0
+WL_MIN_RAIN_GAUGES = 2             # gauges that must each reach WL_RAIN_MM (the second-wettest gauge decides)
+RAIN_MONTH_STEPS = 30 * 96         # 30 days of 15-min readings
+RAIN_MONTH_MIN_MM = 600.0          # chosen before looking at 12 Nov 2024; see docs/data-qc-report.md
+RAIN_MONTH_RATIO = 3.0
+RAIN_MONTH_RADIUS_KM = 10.0
+RAIN_MONTH_MIN_NEIGHBOURS = 2
+RAIN_MONTH_MIN_COVERAGE = 0.5      # a neighbour counts only if it has data in this share of the window
 STEP = pd.Timedelta(minutes=15)
 
 
@@ -99,7 +120,7 @@ def _rebound_mask(rf: pd.DataFrame) -> pd.Series:
     return out
 
 
-def _rain_masks(rf: pd.DataFrame) -> dict[str, pd.Series]:
+def _rain_masks(rf: pd.DataFrame, stations: pd.DataFrame | None = None) -> dict[str, pd.Series]:
     """Boolean masks (index of `rf`) per rain rule, before precedence is applied."""
     r = rf["rain_15min_mm"]
     gap = _prev_valid_gap_min(rf, "rain_15min_mm")
@@ -127,7 +148,40 @@ def _rain_masks(rf: pd.DataFrame) -> dict[str, pd.Series]:
         pos = np.unique(np.concatenate([start + k for k in range(RAIN_STUCK_COUNT)])) if len(start) else []
         stuck.loc[cand.index[pos]] = True
     masks["rain_stuck"] = stuck
+    prior = pd.concat(list(masks.values()), axis=1).any(axis=1)
+    masks["rain_monthly_implausible"] = _rain_monthly_mask(rf, r.where(~prior), stations)
     return masks
+
+
+def _rain_monthly_mask(rf: pd.DataFrame, rain: pd.Series, stations: pd.DataFrame | None) -> pd.Series:
+    """Readings at a gauge whose rolling 30-day total is implausibly high against its neighbours (see module docstring).
+    `rain` is the rain after the earlier rules (NaN where removed). Returns a mask on rf's index."""
+    out = pd.Series(False, index=rf.index)
+    if stations is None or stations.empty or not {"graph_id", "kind", "lat", "lon"} <= set(stations.columns):
+        return out
+    xy = (stations[stations.kind == "rf"].dropna(subset=["lat", "lon"]).assign(graph_id=lambda d: d.graph_id.astype(str))
+          .drop_duplicates("graph_id").set_index("graph_id")[["lat", "lon"]])
+    d = rf[["graph_id", "time_local"]].assign(graph_id=rf["graph_id"].astype(str), v=rain.to_numpy())
+    d = d.drop_duplicates(["graph_id", "time_local"], keep="last")
+    p = d.pivot(index="time_local", columns="graph_id", values="v")
+    p = p.reindex(pd.date_range(p.index.min(), p.index.max(), freq=STEP))
+    n = RAIN_MONTH_STEPS
+    total = p.fillna(0.0).rolling(n, min_periods=1).sum()
+    covered = p.notna().rolling(n, min_periods=1).sum() >= RAIN_MONTH_MIN_COVERAGE * np.minimum(np.arange(1, len(p) + 1), n)[:, None]
+    for gid in total.columns[(total > RAIN_MONTH_MIN_MM).any()]:
+        if gid not in xy.index:
+            continue
+        dist = _haversine_km(xy.at[gid, "lat"], xy.at[gid, "lon"], xy["lat"].to_numpy(), xy["lon"].to_numpy())
+        nb = [g for g, km in zip(xy.index, dist) if g != gid and km <= RAIN_MONTH_RADIUS_KM and g in total.columns]
+        if len(nb) < RAIN_MONTH_MIN_NEIGHBOURS:
+            continue
+        nb_tot = total[nb].where(covered[nb])
+        median = nb_tot.median(axis=1)
+        bad = (total[gid] > RAIN_MONTH_MIN_MM) & (total[gid] > RAIN_MONTH_RATIO * median) & (nb_tot.notna().sum(axis=1) >= RAIN_MONTH_MIN_NEIGHBOURS)
+        if bad.any():
+            sel = (rf["graph_id"].astype(str) == gid) & rain.notna() & rf["time_local"].map(bad).fillna(False).astype(bool)
+            out |= sel
+    return out
 
 
 def _wl_spike_mask(wl: pd.DataFrame) -> pd.Series:
@@ -167,6 +221,8 @@ def _wl_unresponsive_mask(wl: pd.DataFrame, rain: pd.DataFrame, stations: pd.Dat
     min_valid = int(np.ceil(WL_FLAT_MIN_FRAC * (n_flat + 1)))
     alert = (st[st.kind == "wl"].drop_duplicates("graph_id").set_index("graph_id")["wl_alert_m"]
              if "wl_alert_m" in st.columns else pd.Series(dtype=float))
+    thresholds_ok = (st[st.kind == "wl"].drop_duplicates("graph_id").set_index("graph_id")["thresholds_ok"]
+                     .map(lambda x: x is True or x is np.True_).to_dict() if "thresholds_ok" in st.columns else {})
     rain_by_gauge = {gid: g for gid, g in rain.groupby(rain["graph_id"].astype(str))}
     for gid, g in wl.groupby("graph_id"):
         gid = str(gid)
@@ -174,17 +230,23 @@ def _wl_unresponsive_mask(wl: pd.DataFrame, rain: pd.DataFrame, stations: pd.Dat
             continue
         d = _haversine_km(wl_xy.at[gid, "lat"], wl_xy.at[gid, "lon"], rf_xy["lat"].to_numpy(), rf_xy["lon"].to_numpy())
         near = rf_xy.index[d <= WL_RAIN_RADIUS_KM]
-        if len(near) == 0 or g["wl_m"].notna().sum() < min_valid:
-            continue
+        if len(near) < WL_MIN_RAIN_GAUGES or g["wl_m"].notna().sum() < min_valid:
+            continue                                        # fail safe: one gauge cannot corroborate itself
+        if "thresholds_ok" in st.columns and thresholds_ok.get(gid) is not True:
+            continue                                        # untrusted or missing thresholds: do not compare to them
         grid = pd.date_range(g["time_local"].min(), g["time_local"].max(), freq=STEP)
         lvl = g.drop_duplicates("time_local", keep="last").set_index("time_local")["wl_m"].reindex(grid)
-        rain_sum = pd.DataFrame({r: rain_by_gauge[r].drop_duplicates("time_local", keep="last").set_index("time_local")["rain_15min_mm"]
-                                 .reindex(grid).fillna(0.0) for r in near}).rolling(n_win, min_periods=1).sum().max(axis=1)
+        sums = pd.DataFrame({r: rain_by_gauge[r].drop_duplicates("time_local", keep="last").set_index("time_local")["rain_15min_mm"]
+                             .reindex(grid).fillna(0.0) if r in rain_by_gauge else pd.Series(0.0, index=grid) for r in near}
+                            ).rolling(n_win, min_periods=1).sum()
+        rain_sum = pd.Series(-np.sort(-sums.to_numpy(), axis=1)[:, WL_MIN_RAIN_GAUGES - 1], index=grid)   # the 2nd-wettest gauge
         rain_lagged = rain_sum.shift(lag, fill_value=0.0)    # rain in the 3 h that ended 90 min before each reading
         roll = lvl.rolling(n_flat + 1, min_periods=min_valid)
         flat = ((roll.max() - roll.min()) <= WL_FLAT_M + 1e-9).to_numpy()
         cand = np.flatnonzero(flat & (rain_lagged.to_numpy() >= WL_RAIN_MM))
         alert_m = float(alert.get(gid, np.nan))
+        if "thresholds_ok" in st.columns and not np.isfinite(alert_m):
+            continue                                        # thresholds_ok but no alert level: cannot apply the guard, so do not flag
         v = lvl.to_numpy()
         hit = np.zeros(len(v), dtype=bool)
         i_next = 0
@@ -231,7 +293,7 @@ def clean_readings(readings: pd.DataFrame, stations: pd.DataFrame | None = None)
 
     rf = readings[readings["kind"] == "rf"].sort_values(["graph_id", "time_local"])
     if not rf.empty:
-        _collect(rf, _rain_masks(rf), "rain_15min_mm")
+        _collect(rf, _rain_masks(rf, stations), "rain_15min_mm")
     wl = readings[readings["kind"] == "wl"].sort_values(["graph_id", "time_local"])
     if not wl.empty:
         rf_clean = clean[clean["kind"] == "rf"]
