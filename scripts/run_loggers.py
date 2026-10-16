@@ -57,8 +57,8 @@ def maybe_refresh_tide(session):
     now = jobs.now_myt()
     if not jobs.tide_refresh_due(TIDE_OUT, now, jobs.read_tide_attempt(TIDE_OUT)):
         return
-    jobs.write_tide_attempt(TIDE_OUT, now)               # shared by loop and --once runs: no hammering after a failure
     try:
+        jobs.write_tide_attempt(TIDE_OUT, now)           # shared by loop and --once runs: no hammering after a failure
         log.info("tide_refresh %s", jobs.run_tide_refresh(session, TIDE_RAW, TIDE_OUT, now.date()))
     except Exception:
         log.exception("tide_refresh failed")

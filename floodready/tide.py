@@ -271,6 +271,7 @@ def build_hourly_table(raw_dir: Path, out_path: Path, seed_from_existing: bool =
         series = series.combine_first(real).sort_index()
     filled, mask = fill_gaps(series)
     features = tide_features(filled, mask, fit=fit_harmonics(series))
+    features['time_local'] = pd.DatetimeIndex(features.time_local).as_unit('us')   # one unit for seeded and fresh builds
     if old is not None and len(old) and (features.time_local.min() > old.time_local.min() or len(features) < len(old)):
         msg = (f"tide rebuild refused: {len(features)} rows from {features.time_local.min()} would replace "
                f"{len(old)} rows from {old.time_local.min()}")

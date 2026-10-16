@@ -308,10 +308,16 @@ def run_tide_refresh(session, raw_dir: Path, out_path: Path, today: date) -> dic
     end = today + timedelta(days=3)
     start = date(today.year, 1, 1)
     text = fetch_text(session, tide.MARINE_URL, tide.marine_params(start.isoformat(), end.isoformat()))
-    tide.parse_marine_text(text)                       # raises ValueError before anything is cached
+    new_series = tide.parse_marine_text(text)          # raises ValueError before anything is cached
     chunk = storage.save_raw(Path(raw_dir) / f"{start:%Y%m%d}_{end:%Y%m%d}.json.gz", text)
     table = tide.build_hourly_table(raw_dir, out_path)
     for old in Path(raw_dir).glob(f"{start:%Y%m%d}_*.json.gz"):
-        if old != chunk:
+        if old == chunk:
+            continue
+        try:
+            lost = tide.parse_marine_text(storage.read_raw(old)).dropna().index.difference(new_series.dropna().index)
+        except Exception:
+            lost = []                                  # unparseable: nothing real to keep
+        if len(lost) == 0:                             # keep a chunk that holds real hours the new one lacks
             old.unlink(missing_ok=True)
     return {"rows": len(table), "last_hour": str(table.time_local.max())}

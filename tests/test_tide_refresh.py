@@ -217,3 +217,41 @@ def test_a_locked_table_file_is_retried_then_the_old_one_is_kept(tmp_path, monke
         tide.build_hourly_table(tmp_path / "seed_raw", out)
     assert len(calls) >= 3 and out.read_bytes() == before
     assert not list(out.parent.glob("*.tmp"))
+
+def test_a_superseded_chunk_is_kept_if_it_has_real_hours_the_new_one_lacks(tmp_path):
+    raw, out = tmp_path / "raw", tmp_path / "t.parquet"
+    raw.mkdir()
+
+    class Nulls(MarineStub):
+        def get(self, url, params=None, timeout=None):
+            r = super().get(url, params, timeout)
+            body = json.loads(r.text)
+            body["hourly"]["sea_level_height_msl"][100:110] = [None] * 10
+            r._content = json.dumps(body).encode()
+            return r
+
+    jobs.run_tide_refresh(MarineStub(), raw, out, date(2026, 10, 16))
+    jobs.run_tide_refresh(Nulls(), raw, out, date(2026, 10, 17))
+    assert len(list(raw.glob("*.json.gz"))) == 2
+    real = tide.load_cached(raw)
+    assert real.index.min() == pd.Timestamp("2026-01-01") and real.iloc[100:110].notna().all()
+
+
+def test_seeded_and_fresh_rebuilds_write_the_same_timestamp_unit(tmp_path):
+    out = _two_year_table(tmp_path)
+    fresh = pd.read_parquet(out)
+    jobs.run_tide_refresh(MarineStub(), tmp_path / "empty_raw", out, date(2026, 10, 16))
+    seeded = pd.read_parquet(out)
+    assert str(fresh.time_local.dtype) == str(seeded.time_local.dtype) == "datetime64[us]"
+
+
+def test_a_failing_attempt_marker_write_is_logged_not_fatal(tmp_path, monkeypatch, caplog):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("run_loggers_mod", ROOT / "scripts" / "run_loggers.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    monkeypatch.setattr(mod, "TIDE_OUT", tmp_path / "t.parquet")
+    monkeypatch.setattr(mod.jobs, "write_tide_attempt", lambda *a: (_ for _ in ()).throw(OSError("disk full")))
+    monkeypatch.setattr(mod.jobs, "run_tide_refresh", lambda *a: {})
+    mod.maybe_refresh_tide(None)
+    assert "tide_refresh failed" in caplog.text
