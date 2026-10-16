@@ -1,0 +1,7739 @@
+{
+"BBR-aman-perdana-1a-ku-5": {
+"distance_m": 6210.8,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-3c-ku-5": {
+"distance_m": 6303.5,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-3e-ku-5": {
+"distance_m": 6488.9,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-3f-ku-5": {
+"distance_m": 6427.1,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-3g-ku-5": {
+"distance_m": 6612.5,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-5b-ku-5": {
+"distance_m": 6488.9,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-5c-ku-5": {
+"distance_m": 6550.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-5d-ku-5": {
+"distance_m": 6581.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-5e-ku-5": {
+"distance_m": 6983.3,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-5f-ku-5": {
+"distance_m": 6705.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-5g-ku-5": {
+"distance_m": 6767.0,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7b-ku-5": {
+"distance_m": 6736.1,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7c-ku-5": {
+"distance_m": 6705.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7d-ku-5": {
+"distance_m": 6797.9,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7e-ku-5": {
+"distance_m": 6890.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7n-ku-5": {
+"distance_m": 4974.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-aman-perdana-7p-ku-5": {
+"distance_m": 7261.4,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7q-ku-5": {
+"distance_m": 7076.0,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7r-ku-5": {
+"distance_m": 6952.4,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7s-ku-5": {
+"distance_m": 6828.8,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7t-ku-5": {
+"distance_m": 6859.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-aman-perdana-7u-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-aman-perdana-9b-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-aman-perdana-9c-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-aman-perdana-9d-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-aman-perdana-9e-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-aman-perdana-9f-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-aman-perdana-9g-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-aman-perdana-9h-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-aman-perdana-9j-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-budaya": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-budaya-lorong": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-canggung-2-ku-5": {
+"distance_m": 4914.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-dato-abd-rahman-lorong": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-dato-mahmud": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-datok-mohd-sidin": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-gamelan-9": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-harmoni-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-harmoni-1a-ku-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-harmoni-1b-ku-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-harmoni-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-harmoni-2a-ku-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-harmoni-2b-ku-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-harmoni-2c-ku-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11b-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11e-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11f-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11g-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11h-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11j-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11k-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11l-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11m-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-11n-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-aman-perdana-1d-ku5": {
+"distance_m": 6427.1,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-aman-perdana-7m-ku5": {
+"distance_m": 7014.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-arau": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-askata-4c-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-1-ku-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-1e-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-1f-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-2b-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-2c-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-3b-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-4b-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-4d-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astaka-5-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astana-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astana-1a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astana-1b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astana-1c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astana-1d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astana-1e": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-astana-1f-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-astana-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-astana-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bahagia": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bahagia-5-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-1-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-11-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-11b-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-11c-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-11d-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-11e-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-2-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-7-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bakti-batu-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-bangau": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-bayan": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-bukit-mertajam": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-canggung-1-ku-5": {
+"distance_m": 4956.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-canggung-3-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-canggung-4-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-canggung-5-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-canggung-6-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-cempakasari-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-cendana-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cendana-10": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-cendana-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-cendana-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cendana-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cendana-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-cendana-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cendana-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-cendana-8": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-cendana-9": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2e": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2f": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2g": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2h": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2j": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2k": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-cokmar-2l": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-damai": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-dataran-marvelane": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-dataran-marvelene": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-1d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-1e": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-1f": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-1g": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-3a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-3b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-gamelan-8": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-genting": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-goh-hock-huat": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-haji-musran": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-haji-sirat": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-harmoni": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-harmoni-12": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-harmoni-18-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-harmoni-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-harmoni-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-harmoni-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-harmoni-8": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-harmoni-9": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inai-2a-ku5": {
+"distance_m": 9331.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-inang-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-10": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-11": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-8": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-9": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-9a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-9b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-9c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-9d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-inang-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-1-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-10-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-11": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-13": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-14": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-16": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-16a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-16c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-16d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-indah-7-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-istimewa": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-istimewa-9-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-jasa": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-jasa-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-jasa-6-ku-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kakak-tua": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-kampong-batu-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kampong-batu-tiga": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-101": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-102-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-77-ku1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-79-ku1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-80a-ku1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-80b-ku1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-85": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-86": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-88": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-89": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-91": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-92": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-93": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-96": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kangar-99": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kapar": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kasawari-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-kasawari-8": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-kedah": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kelicap-41": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kelicap-43": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kelicap-44": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kelicap-45": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kelicap-46": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kelicap-47": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kelicap-48": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kelicap-49": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kelicap-52": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kereta-api-lama": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-keretapi-lama": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-klang-sentral-1-ku5": {
+"distance_m": 9795.1,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-klang-sentral-10-ku5": {
+"distance_m": 9980.5,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-klang-sentral-11-ku5": {
+"distance_m": 9517.0,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-klang-sentral-2-ku5": {
+"distance_m": 9949.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-klang-sentral-3-ku5": {
+"distance_m": 10073.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-klang-sentral-4-ku5": {
+"distance_m": 10104.1,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-klang-sentral-5-ku5": {
+"distance_m": 10135.0,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-klang-sentral-7-ku5": {
+"distance_m": 9640.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-klang-sentral-8-ku5": {
+"distance_m": 10011.4,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-klang-sentral-9-ku5": {
+"distance_m": 10196.8,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-kluang": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kuda-kepang-1-ku5": {
+"distance_m": 4853.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-kuda-kepang-10-ku5": {
+"distance_m": 4770.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-kuda-kepang-11-ku5": {
+"distance_m": 4839.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-kuda-kepang-12-ku5": {
+"distance_m": 4897.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-kuda-kepang-2-ku5": {
+"distance_m": 10907.5,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-kuda-kepang-3-ku5": {
+"distance_m": 4873.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-kuda-kepang-4-ku5": {
+"distance_m": 4949.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-kuda-kepang-5-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kuda-kepang-6-ku5": {
+"distance_m": 4851.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-kuda-kepang-7-ku5": {
+"distance_m": 4928.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-kuda-kepang-8-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-kuda-kepang-9-ku5": {
+"distance_m": 4701.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-kulim": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-labis": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-labis-100": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-labis-102": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-labis-102a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-labis-104": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-labis-105": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-labis-107": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-labis-109": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-lang": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-mahkota": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-1-ku-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-10": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-12": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-8": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-mahkota-9": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-1a-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-1b-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-1c-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-1e-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-1f-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-2a-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-2c-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-4a-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-4b-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-5b-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-5c-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-5d-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-5e-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-5f-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mahligai-5g-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-1-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-1c-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-1e-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-1f-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-1h-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2b-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2c-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2d-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2e-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2f-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2g-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2h-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2j-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2k-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2m-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2n-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2t-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-2u-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-3-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-3a-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-3b-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-3c-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-4-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-makyong-4b-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-4c-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-4d-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-4e-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-4f-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-4g-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-makyong-4h-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-makyong-4j-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-makyong-5-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-6-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-6a-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-6b-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-6c-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-6d-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-makyong-6e-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-merbuk": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-merpati": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-mersing": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-meru": {
+"distance_m": 10227.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-muar": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-23": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-24": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-27": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-32": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-68": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-68a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-69": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-70": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-73": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-73b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-73c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muda-76": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-muhibbah-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-murai": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-ngajat-1-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-ngajat-2-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-ngajat-3-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-ngajat-4-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-ngajat-5-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pasar-baru": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pasar-baru-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pasar-baru-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pasar-baru-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-patani": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pauh-kijang-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-25": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-26": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-27": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-28": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-29": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-30": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-31": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-32": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-33": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pekan-baru-38": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pengasah-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pengasah-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pengasah-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-perindustrian-haji-sirat": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-prai": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-prai-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-prai-14": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-prai-15": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-prai-17-ku1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-prai-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-prai-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pulau-pinang-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pulau-pinang-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pulau-pinang-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pulau-pinang-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-pulau-pinang-8": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-punai": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-rantau-panjang": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-10-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-12-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-13-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-14-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-15-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-16-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-17-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-18-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-19-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-rodat-20-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-21-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-2a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-rodat-7-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-rodat-8-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-9-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-rodat-ku-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-sekolah": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sekolah-cina": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-29": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-30": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-33": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-34": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-35": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-36": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-37": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-38": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-39": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-41": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-42": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-44": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-45": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-46": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-47": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-49": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-50": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-51": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-52": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-54": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-55": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-56": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-57": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-58": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-59": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-60": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-61a-ku1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-61b-ku1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-63": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-64": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-64b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sentosa-69": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-serindit": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-10": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-11": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-12": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-13": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-14": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-15": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-16": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-17": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-18": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-serindit-19": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-setia-dagang-af-u13-af": {
+"distance_m": 4096.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-dagang-ag-u13-ag": {
+"distance_m": 4172.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-dagang-ah-u13-ah": {
+"distance_m": 3791.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-damai-u13-15d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-damai-u13-15e": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-damai-u13-15f": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-damai-u13-15h": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-damai-u13-15j": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-damai-u13-15k": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-damai-u13-15l": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-damai-u13-15m": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-damai-u13-15n": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-impian-u13-2": {
+"distance_m": 4646.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2ac": {
+"distance_m": 4509.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2b": {
+"distance_m": 4491.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2c": {
+"distance_m": 4662.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2d": {
+"distance_m": 4601.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2e": {
+"distance_m": 4543.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2f": {
+"distance_m": 4486.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2g": {
+"distance_m": 4428.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2h": {
+"distance_m": 4370.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2j": {
+"distance_m": 4515.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2k": {
+"distance_m": 4585.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2l": {
+"distance_m": 4717.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2m": {
+"distance_m": 4660.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2n": {
+"distance_m": 4607.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2p": {
+"distance_m": 4550.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2q": {
+"distance_m": 4494.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-2r": {
+"distance_m": 4436.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3": {
+"distance_m": 4784.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3a": {
+"distance_m": 4659.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3b": {
+"distance_m": 4595.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3c": {
+"distance_m": 4795.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3d": {
+"distance_m": 4741.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3e": {
+"distance_m": 4683.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3f": {
+"distance_m": 4628.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3g": {
+"distance_m": 4572.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3h": {
+"distance_m": 4517.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3j": {
+"distance_m": 4643.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3k": {
+"distance_m": 4732.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3l": {
+"distance_m": 4876.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3m": {
+"distance_m": 4821.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3n": {
+"distance_m": 4768.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3p": {
+"distance_m": 4713.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3q": {
+"distance_m": 4658.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3r": {
+"distance_m": 4605.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-3s": {
+"distance_m": 4554.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4": {
+"distance_m": 10876.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-impian-u13-4a": {
+"distance_m": 4217.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4b": {
+"distance_m": 4163.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4c": {
+"distance_m": 11031.1,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-impian-u13-4d": {
+"distance_m": 11000.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-impian-u13-4e": {
+"distance_m": 11062.0,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-impian-u13-4f": {
+"distance_m": 4216.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4g": {
+"distance_m": 4276.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4h": {
+"distance_m": 4335.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4j": {
+"distance_m": 4252.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4l": {
+"distance_m": 4103.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4m": {
+"distance_m": 4168.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4n": {
+"distance_m": 4220.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4p": {
+"distance_m": 4287.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4q": {
+"distance_m": 4321.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-4r": {
+"distance_m": 4381.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5": {
+"distance_m": 4184.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5a": {
+"distance_m": 4401.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5b": {
+"distance_m": 4314.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5c": {
+"distance_m": 4189.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5d": {
+"distance_m": 4235.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5e": {
+"distance_m": 4283.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5f": {
+"distance_m": 4329.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5g": {
+"distance_m": 4375.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5h": {
+"distance_m": 4421.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5j": {
+"distance_m": 4466.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5k": {
+"distance_m": 4383.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5l": {
+"distance_m": 4479.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5m": {
+"distance_m": 4267.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5n": {
+"distance_m": 4335.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5p": {
+"distance_m": 4397.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5q": {
+"distance_m": 4457.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-5r": {
+"distance_m": 4515.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-6": {
+"distance_m": 10876.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-impian-u13-6c": {
+"distance_m": 3995.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-6d": {
+"distance_m": 3935.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-6e": {
+"distance_m": 3871.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-6f": {
+"distance_m": 3811.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-6g": {
+"distance_m": 3749.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-6h": {
+"distance_m": 11401.9,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-impian-u13-6k": {
+"distance_m": 11309.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-impian-u13-7b": {
+"distance_m": 4091.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-7c": {
+"distance_m": 4042.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-7d": {
+"distance_m": 3993.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-7e": {
+"distance_m": 3944.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-7f": {
+"distance_m": 3894.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-8a": {
+"distance_m": 4142.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-8b": {
+"distance_m": 4083.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-8c": {
+"distance_m": 4025.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-8d": {
+"distance_m": 3961.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-8e": {
+"distance_m": 3927.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-8f": {
+"distance_m": 3876.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-8g": {
+"distance_m": 3823.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-8h": {
+"distance_m": 3764.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-impian-u13-8j": {
+"distance_m": 3711.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-aa-u13-aa": {
+"distance_m": 4803.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-10a": {
+"distance_m": 4877.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-10b": {
+"distance_m": 4918.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-10c": {
+"distance_m": 4960.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-10d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-indah-u13-10e": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-indah-u13-10f": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-indah-u13-10g": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-indah-u13-11": {
+"distance_m": 4630.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11a": {
+"distance_m": 4855.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11b": {
+"distance_m": 4749.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11c": {
+"distance_m": 4614.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11d": {
+"distance_m": 4657.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11e": {
+"distance_m": 4707.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11f": {
+"distance_m": 4760.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11g": {
+"distance_m": 4814.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11h": {
+"distance_m": 4868.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11j": {
+"distance_m": 4921.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11k": {
+"distance_m": 4973.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11l": {
+"distance_m": 4874.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11m": {
+"distance_m": 4927.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11n": {
+"distance_m": 4656.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11p": {
+"distance_m": 4719.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11q": {
+"distance_m": 4762.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11r": {
+"distance_m": 4812.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11s": {
+"distance_m": 4862.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11t": {
+"distance_m": 4912.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11u": {
+"distance_m": 4962.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-11v": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-indah-u13-11w": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-setia-indah-u13-12c": {
+"distance_m": 4924.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12d": {
+"distance_m": 4889.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12e": {
+"distance_m": 4864.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12f": {
+"distance_m": 4843.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12g": {
+"distance_m": 4824.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12h": {
+"distance_m": 4799.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12j": {
+"distance_m": 4753.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12m": {
+"distance_m": 4791.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12n": {
+"distance_m": 4749.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12p": {
+"distance_m": 4708.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12q": {
+"distance_m": 4666.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12r": {
+"distance_m": 4624.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12s": {
+"distance_m": 4579.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-12t": {
+"distance_m": 4537.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-13c": {
+"distance_m": 4477.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-13d": {
+"distance_m": 4477.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-13k": {
+"distance_m": 4670.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-13l": {
+"distance_m": 4705.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-13m": {
+"distance_m": 4734.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-13n": {
+"distance_m": 4771.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-13p": {
+"distance_m": 4805.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-9m": {
+"distance_m": 4068.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-9n": {
+"distance_m": 4116.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-9t": {
+"distance_m": 4366.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-9u": {
+"distance_m": 4409.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-9v": {
+"distance_m": 4460.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-u13-9w": {
+"distance_m": 4504.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-x-u13-x": {
+"distance_m": 4842.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-y-u13-y": {
+"distance_m": 4905.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-indah-z-u13-z": {
+"distance_m": 4955.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-murni-af-u13-af": {
+"distance_m": 11000.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-murni-ag-u13-ag": {
+"distance_m": 11092.9,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-murni-ah-u13-ah": {
+"distance_m": 11154.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-murni-u13-50": {
+"distance_m": 10938.4,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-murni-u13-52": {
+"distance_m": 11525.5,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-prima-a-u13-a": {
+"distance_m": 4414.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-b-u13-b": {
+"distance_m": 4358.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-c-u13-c": {
+"distance_m": 4718.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-d-u13-d": {
+"distance_m": 4636.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-e-u13-e": {
+"distance_m": 4574.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-f-u13-f": {
+"distance_m": 4511.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-g-u13-g": {
+"distance_m": 4451.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-h-u13-h": {
+"distance_m": 4452.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-j-u13-j": {
+"distance_m": 4392.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-k-u13-k": {
+"distance_m": 4325.9,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-l-u13-l": {
+"distance_m": 4265.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-m-u13-m": {
+"distance_m": 4266.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-n-u13-n": {
+"distance_m": 4205.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-p-u13-p": {
+"distance_m": 4149.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-q-u13-q": {
+"distance_m": 4093.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-setia-prima-r-u13-r": {
+"distance_m": 10567.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-prima-s-u13-s": {
+"distance_m": 10536.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-prima-t-u13-t": {
+"distance_m": 10474.9,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-prima-u-u13-u": {
+"distance_m": 10474.9,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-setia-prima-v-u13-v": {
+"distance_m": 10783.9,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-singgahsana": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-singgahsana-10-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-singgahsana-1a-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-singgahsana-1b-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-singgahsana-1c-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-singgahsana-2-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-singgahsana-2b-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-singgahsana-5-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-singgahsana-6-ku2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sugai-puloh-13": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-1a-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-1b-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-1c-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-1d-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-1e-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-1f-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-1h-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-1j-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-2-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-2a-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-2b-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-3-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-3a-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-3b-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-3c-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-3e-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-4-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sumazau-4a-ku5": {
+"distance_m": 4995.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-sumazau-4b-ku5": {
+"distance_m": 4933.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-sumazau-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-agas-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-agas-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-agas-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-agas-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-agas-6a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-agas-6b-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-agas-7-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-agas-8-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-20-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-46": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-47": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-48": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-48a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-49": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-50": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-51": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-56a-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-56b-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-56c-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-56d-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-56e-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-57a-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-57a-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-batu-57b-ku6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-bilah-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-bilah-8": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-12": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-14": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-15": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-16": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-20": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-21": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-23": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-29": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-30": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-31": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-32": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-33": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-36": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-39": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-7a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-7b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-8a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-8b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-keramat-9": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-nibong-11-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-nibong-13-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-nibong-14c-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-nibong-2-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-nibong-3-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-nibong-4-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-nibong-5-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-nibong-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-puloh": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-puloh-10": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-puloh-14": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-puloh-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-puloh-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-puloh-9": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-putus-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-putus-41": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-putus-42a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-putus-43": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-sungai-putus-44": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-permai-5-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-shawal-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-shawal-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-syawal": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-syawal-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-syawal-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-syawal-9a-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-syawal-9b-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-syawal-9c-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-syawal-9d-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tanjung-syawal-9e-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-tembikai": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-terkukur": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-tiara-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-u13-25e": {
+"distance_m": 4073.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-u13-25f": {
+"distance_m": 4024.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-u13-25g": {
+"distance_m": 3978.4,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-ulek-mayang-1-ku5": {
+"distance_m": 7663.1,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-1a-ku5": {
+"distance_m": 7168.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-1b-ku5": {
+"distance_m": 7014.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-1c-ku5": {
+"distance_m": 7014.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-1d-ku5": {
+"distance_m": 6983.3,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-1e-ku5": {
+"distance_m": 6890.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-1f-ku5": {
+"distance_m": 6890.6,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-1g-ku5": {
+"distance_m": 6767.0,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-2-ku5": {
+"distance_m": 7323.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-2a-ku5": {
+"distance_m": 7076.0,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-2b-ku5": {
+"distance_m": 4765.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-ulek-mayang-2c-ku5": {
+"distance_m": 4817.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-ulek-mayang-2d-ku5": {
+"distance_m": 4870.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-ulek-mayang-2e-ku5": {
+"distance_m": 4922.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-ulek-mayang-3a-ku5": {
+"distance_m": 4497.1,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-ulek-mayang-3b-ku5": {
+"distance_m": 7663.1,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-3c-ku5": {
+"distance_m": 7539.5,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-3d-ku5": {
+"distance_m": 7477.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-3e-ku5": {
+"distance_m": 7415.9,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-jalan-ulek-mayang-4e-ku5": {
+"distance_m": 4755.0,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-jalan-undan-putih": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-jalan-waja": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-zapin-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-2a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-2b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-2c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-2d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-2e": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-3f-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-3g-ku5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-jalan-zapin-4b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-4d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-5b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-5c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-jalan-zapin-5d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-kangar": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-lang": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-lebuh-prai": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-pulau-pinang": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-pulau-pinang-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-pulau-pinang-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-pulau-pinang-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-pulau-pinang-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-pulau-pinang-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-pulau-pinang-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-pulau-pinang-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-seri-pekan": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuh-sungai-keramat-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuhraya-baru-selat-klang-utara": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lebuhraya-nkve": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-lebuhraya-pesisiran-pantai-barat": {
+"distance_m": 6550.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-lebuhraya-pintasan-selat-klang-utara": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lengkok-muda-69a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lengkok-sentosa-41": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lengkuk-muda-70": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lengkuk-sungai-keramat-7b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lintang-patani": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lintang-sungai-keramat-10b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lintang-sungai-keramat-6": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lintang-sungai-keramat-6c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lintang-sungai-keramat-7b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lintang-sungai-keramat-7c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lintang-sungai-keramat-7d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lintang-sungai-keramat-7e": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lintang-sungai-keramat-8a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-ahmad": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-aman-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-arau": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-bahagia": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-bangau": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-lorong-bukit-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-haji-abdullah": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-haji-musran": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-haji-salam": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-haji-salehudin": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-haji-tahir": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-haji-yusof": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-indah-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-indah-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-indah-3a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-indah-3b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-istimewa-10-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-istimewa-11-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-istimewa-15-ku3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-jasa-2a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-jasa-2b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-kampung-nordin": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-kasawari-4b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-lorong-kasawari-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-lorong-kedah": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-kulim": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-labis": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-mahkota-2a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-lorong-mahkota-2b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-lorong-mahkota-2c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-lorong-mahkota-2d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-lorong-muda-70": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-muda-73c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-patani": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-pauh-kijang": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-pauh-kijang-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-pauh-kijang-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-pauh-kijang-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-pauh-kijang-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-pauh-kijang-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-pengasah-2a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-prai": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-pusara": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-rosdi": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sentosa-39a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sentosa-39b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sugai-puloh-9a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-beting-1": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-beting-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-beting-4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-beting-5": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-keramat-10a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-keramat-10c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-keramat-22": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-keramat-27": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-keramat-28": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-keramat-7f": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-nibong-1a-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-nibong-1b-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-nibong-1c-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-nibong-6a-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-nibong-6c-ku4": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-11a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-11b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-13b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-13c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-14b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-14c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-14d": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-5a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-5c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-5e": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-7a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-7b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-7c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-8": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-8a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-8b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-8c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-9a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-9b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-puloh-9c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-putus": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-putus-22": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-putus-23": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-sungai-putus-24": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-lorong-temerloh-1a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-north-klang-straits-bypass": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-persiaran-aman-perdana-1": {
+"distance_m": 6241.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-persiaran-astana-ku-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-persiaran-bandar-bukit-raja-ku5": {
+"distance_m": 7261.4,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-persiaran-batu-belah": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-persiaran-batu-belah-ku5": {
+"distance_m": 4894.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-persiaran-bukit-raja": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-persiaran-bukit-raja-impian-ku5": {
+"distance_m": 4161.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-persiaran-klang-sentral-1-ku-5": {
+"distance_m": 9455.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-persiaran-klang-sentral-2-ku-5": {
+"distance_m": 9455.2,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-persiaran-klang-sentral-3-ku5": {
+"distance_m": 9702.4,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-persiaran-klang-sentral-4-ku-5": {
+"distance_m": 9918.7,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-persiaran-pulau-pinang": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-persiaran-rajawali": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-persiaran-setia-alam": {
+"distance_m": 4706.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-persiaran-setia-dagang": {
+"distance_m": 3462.7,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-persiaran-setia-damai": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-persiaran-setia-impian": {
+"distance_m": 4278.6,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-persiaran-setia-indah": {
+"distance_m": 3870.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-persiaran-setia-indah-13-10": {
+"distance_m": 4671.2,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-persiaran-setia-murni": {
+"distance_m": 11865.4,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-persiaran-setia-perdana": {
+"distance_m": 11896.3,
+"method": "flow",
+"rf": [
+"PEKANMERU"
+],
+"wl": "26558"
+},
+"BBR-persiaran-setia-prima": {
+"distance_m": null,
+"method": null,
+"rf": [
+"PEKANMERU",
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-persiaran-setia-utama": {
+"distance_m": 3744.3,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-persiaran-setia-wawasan": {
+"distance_m": 4165.8,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+},
+"BBR-persiaran-sungai-keramat": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-persiaran-waja": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-pintasan-selat-klang-utara": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-bahagia-1b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-kelicap": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-mahkota-1f": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-solok-muda-68a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-muda-68b": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-muda-68c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-muda-71": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-rajawali": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PANDAMARAN"
+],
+"wl": null
+},
+"BBR-solok-sungai-keramat-21c": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-sungai-keramat-7a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-sungai-puloh-7": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-sungai-puloh-7a": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG"
+],
+"wl": null
+},
+"BBR-solok-waja-2": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-solok-waja-3": {
+"distance_m": null,
+"method": null,
+"rf": [
+"KGRANTAUPANJANG",
+"PEKANMERU"
+],
+"wl": null
+},
+"BBR-u-turn": {
+"distance_m": 4666.5,
+"method": "nearest",
+"rf": [
+"PEKANMERU"
+],
+"wl": "PEKANMERU"
+}
+}

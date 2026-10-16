@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
+from ..engine import street_stations
 from ..engine.types import Reason, StreetState
 from ..jobs import now_myt
 from .runner import EngineContext, Snapshot, iso
@@ -80,7 +81,8 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
         "rain_next_12h": rain_next,
         "tide": _tide(ctx, data_time),
         "river_forecast": None,
-        "stations": [s["graph_id"] for s in ctx.township["stations"]],
+        "stations": list(street_stations.stations_for(ctx.street_stations, street_id)
+                         or [s["graph_id"] for s in ctx.township["stations"]]),
         "active_alert": active,
         "history": history[:10],
         "is_replay": snap.mode == "replay",

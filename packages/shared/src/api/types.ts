@@ -127,7 +127,7 @@ export interface StreetDetail {
   tide: { time: ISODateTime; height_m: number }[];
   /** Should (task ML5); null until available. */
   river_forecast: RiverForecast | null;
-  /** graph_ids of the stations watching this street. */
+  /** graph_ids of the stations that decide this street (its river station first, then its rain gauges); the township's stations when no mapping is loaded. */
   stations: string[];
   active_alert: { alert_id: string; level: Level; issued_at: ISODateTime } | null;
   history: AlertSummary[];

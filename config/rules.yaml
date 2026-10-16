@@ -14,7 +14,7 @@ stale_after_min: 120          # a station with no reading for longer is stale
 
 alerts:
   cooldown_min: 60            # no repeat alert for a street unless its level rises
-  alert_levels: [warning, danger]
+  alert_levels: [watch, warning, danger]
 
 nowcast_window_min: {start: 30, end: 90}   # expected flooding window after issue
 

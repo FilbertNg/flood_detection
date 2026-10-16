@@ -46,7 +46,7 @@ def test_combine_never_returns_a_level_below_the_rules():
 def test_ml_raises_the_level_only_when_the_gate_allows_it():
     on = dict(CFG, ml_drives_alerts=True)
     raised = levels.combine(rule(Level.NORMAL), ml(0.8, on), on)
-    assert raised.level is Level.WARNING and raised.fired_by == ("model",)
+    assert raised.level is Level.WATCH and raised.fired_by == ("model",)     # two-tier: ML is capped at Watch
     kept = levels.combine(rule(Level.NORMAL), ml(0.8), CFG)
     assert kept.level is Level.NORMAL
     assert kept.reasons[0].code == "ml_probability"            # still shown

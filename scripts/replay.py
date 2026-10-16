@@ -20,7 +20,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from floodready.engine import replay  # noqa: E402
+from floodready.engine import replay, street_stations  # noqa: E402
 from floodready.ml import dataset, predict  # noqa: E402
 from floodready.engine.types import Level  # noqa: E402
 
@@ -35,6 +35,7 @@ def main() -> None:
     parser.add_argument("--township", default="BBR")
     parser.add_argument("--from", dest="start", default="06:00")
     parser.add_argument("--to", dest="end", default="14:00")
+    parser.add_argument("--no-street-stations", action="store_true", help="one township-wide trigger for every street (old behaviour)")
     args = parser.parse_args()
 
     town = next(t for t in load_yaml("townships.yaml")["townships"] if t["id"] == args.township)
@@ -53,6 +54,8 @@ def main() -> None:
     tide = pd.read_parquet(tide_path) if tide_path.exists() else None
     streets = gpd.read_file(ROOT / "assets" / "geo" / f"{args.township.lower()}_streets.geojson")[["street_id", "name", "susceptibility"]]
     names = dict(zip(streets.street_id, streets.name))
+    mapping = None if args.no_street_stations else street_stations.load(
+        ROOT / "assets" / "geo" / f"{args.township.lower()}_street_stations.json")
 
     print(f"Replay {args.township} {args.event} {args.start}-{args.end}: {len(streets)} streets, "
           f"{readings.graph_id.nunique()} stations with data; ML trigger: "
@@ -61,7 +64,7 @@ def main() -> None:
     last_line, total_alerts = None, Counter()
     for step in replay.run(start, end, timedelta(minutes=15), readings, stations, streets, station_ids,
                            load_yaml("rules.yaml"), load_yaml("risk_matrix.yaml")["matrix"],
-                           ml_bundle=bundle, ml_cfg=ml_cfg, wl_ids=wl_ids, tide=tide):
+                           ml_bundle=bundle, ml_cfg=ml_cfg, wl_ids=wl_ids, tide=tide, street_stations=mapping):
         counts = Counter(s.level for s in step.states)
         summary = " ".join(f"{lv.json}:{counts[lv]}" for lv in (Level.WATCH, Level.WARNING, Level.DANGER) if counts[lv])
         reason = step.trigger.reasons[0].text_en if step.trigger.reasons else ""

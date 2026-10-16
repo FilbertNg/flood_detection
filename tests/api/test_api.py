@@ -75,5 +75,20 @@ def test_stations_and_series(client):
 def test_alerts_for_a_street(client):
     replay_until(client, "10:00")
     alerts = client.get("/api/v1/alerts", params={"street_id": "BBR-prone-street"}).json()
-    assert [a["level"] for a in alerts] == ["danger", "warning"]   # newest first
+    assert [a["level"] for a in alerts] == ["danger", "warning", "watch"]   # newest first; Watch is an alert level
     assert alerts[0]["window"]["start"] == "2024-11-12T10:30:00+08:00"
+
+
+def test_street_detail_lists_the_streets_own_stations_river_first(runner, client):
+    runner.ctx.street_stations = {"BBR-prone-street": {"wl": "PEKANMERU", "rf": ["26558"], "method": "flow", "distance_m": 5.0},
+                                  "BBR-safe-street": {"wl": None, "rf": ["KGRANTAUPANJANG", "TELOKGONG"], "method": None, "distance_m": None}}
+    replay_until(client, "09:30")
+    assert client.get("/api/v1/streets/BBR-prone-street").json()["stations"] == ["PEKANMERU", "26558"]
+    safe = client.get("/api/v1/streets/BBR-safe-street").json()
+    assert safe["stations"] == ["KGRANTAUPANJANG", "TELOKGONG"] and safe["level"] == "normal"
+    assert client.get("/api/v1/streets/BBR-prone-street").json()["level"] == "warning"
+
+
+def test_street_detail_without_a_mapping_lists_the_township_stations(client):
+    replay_until(client, "09:00")
+    assert len(client.get("/api/v1/streets/BBR-prone-street").json()["stations"]) == 7
