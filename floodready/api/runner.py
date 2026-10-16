@@ -101,6 +101,7 @@ class Runner:
                     "issued_at": iso(a.issued_at),
                     "window": {"start": iso(a.window_start), "end": iso(a.window_end)} if a.window_start else None,
                     "outcome": "unverified", "is_replay": is_replay,
+                    "push": a.kind == "alert" and a.level.json in self.ctx.rules_cfg["alerts"].get("push_levels", ["warning", "danger"]),
                 })
 
     # ---------- live ----------

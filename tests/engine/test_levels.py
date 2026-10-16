@@ -36,7 +36,7 @@ def test_flood_prone_street_gets_warning_with_time_window_and_reasons(rules_cfg,
 
 def test_less_prone_streets_get_lower_levels_and_no_window(rules_cfg, matrix_cfg):
     states = {s.street_id: s for s in levels.street_states(STREETS, trigger(Level.WARNING), rules_cfg, matrix_cfg)}
-    assert states["BBR-b"].level is Level.WATCH and states["BBR-b"].window_start == T("09:30")   # Watch is an alert level now
+    assert states["BBR-b"].level is Level.WATCH and states["BBR-b"].window_start is None
     assert states["BBR-c"].level is Level.NORMAL
 
 

@@ -69,7 +69,7 @@ def main() -> None:
         summary = " ".join(f"{lv.json}:{counts[lv]}" for lv in (Level.WATCH, Level.WARNING, Level.DANGER) if counts[lv])
         reason = step.trigger.reasons[0].text_en if step.trigger.reasons else ""
         p = step.states[0].flood_probability if step.states else None
-        p_txt = f"p={p:.2f}" if p is not None else ""
+        p_txt = f"p(street 1)={p:.2f}" if p is not None else ""
         line = (step.trigger.level, summary, round(p, 1) if p is not None else None)
         for alert in step.alerts:
             total_alerts[(alert.kind, alert.level.json)] += 1

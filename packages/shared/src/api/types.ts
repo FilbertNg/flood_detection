@@ -101,6 +101,8 @@ export interface AlertSummary {
   window: TimeWindow | null;
   outcome: Outcome;
   is_replay: boolean;
+  /** Whether a notifier should push this alert (alerts.push_levels); Watch alerts are in-app only by default. */
+  push: boolean;
 }
 
 export interface RiverForecast {

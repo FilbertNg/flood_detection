@@ -61,7 +61,7 @@ def stations_for(mapping: dict | None, street_id: str) -> tuple[str, ...] | None
     entry = (mapping or {}).get(street_id)
     if entry is None:
         return None
-    return tuple(([entry["wl"]] if entry.get("wl") else []) + list(entry.get("rf", [])))
+    return tuple(dict.fromkeys(([entry["wl"]] if entry.get("wl") else []) + list(entry.get("rf", []))))
 
 
 def wl_for(mapping: dict | None, street_id: str) -> str | None:

@@ -29,20 +29,26 @@ def test_wl_station_first_on_the_flow_path_within_15_km():
     assert ss.pick_wl(hits, wl, 3.2, 101.4) == ("W2", "flow", 9_000.0)
 
 
-def test_flow_hit_beyond_15_km_is_ignored_and_nearest_within_5_km_used():
+def test_flow_hit_beyond_15_km_is_ignored_and_nearest_within_the_river_radius_used():
     wl = [("W1", 3.10, 101.40), ("W2", 3.30, 101.40)]
     wl_id, method, dist = ss.pick_wl([("W2", 16_000.0)], wl, 3.102, 101.40)
     assert (wl_id, method) == ("W1", "nearest") and 200 < dist < 250
 
 
-def test_no_flow_and_no_river_within_5_km_gives_null():
-    assert ss.pick_wl([], [("W1", 3.30, 101.40)], 3.10, 101.40) == (None, None, None)
+def test_no_flow_and_no_river_within_the_radius_gives_null():
+    assert ss.pick_wl([], [("W1", 3.30, 101.40)], 3.10, 101.40, {"river_radius_km": 5}) == (None, None, None)
 
 
 def test_load_returns_none_and_warns_when_the_file_is_missing(tmp_path, caplog):
     with caplog.at_level(logging.WARNING):
         assert ss.load(tmp_path / "nope.json") is None
     assert "township" in caplog.text.lower()
+
+
+def test_stations_for_drops_duplicates(tmp_path):
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps({"S": {"wl": "26558", "rf": ["26558", "R2"], "method": "flow", "distance_m": 1.0}}))
+    assert ss.stations_for(ss.load(path), "S") == ("26558", "R2")
 
 
 def test_stations_for_puts_the_river_station_first(tmp_path):

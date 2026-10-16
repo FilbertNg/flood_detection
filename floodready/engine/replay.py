@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+import logging
 from typing import Iterator
 
 import pandas as pd
@@ -19,6 +20,8 @@ from . import levels, rules
 from .features import compute_station_features
 from .types import Alert, StreetState, TriggerResult
 
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -73,8 +76,12 @@ def run(start: datetime, end: datetime, step: timedelta, readings: pd.DataFrame,
     rows = []
     for street_id, susceptibility in zip(streets["street_id"], streets["susceptibility"]):
         entry = (street_stations or {}).get(street_id)
-        group = (entry.get("wl") or None, tuple(entry.get("rf", ()))) if entry is not None else None
+        group = (entry.get("wl") or None, tuple(sorted(entry.get("rf", ())))) if entry is not None else None
         rows.append((street_id, int(susceptibility), group))
+    unmapped = sum(1 for _, _, g in rows if g is None)
+    if street_stations is not None and unmapped:
+        log.warning("%d of %d streets are not in the street-stations mapping: they get the township-wide trigger",
+                    unmapped, len(rows))
 
     prev: dict[str, StreetState] = {}
     last_alerts: dict[str, Alert] = {}

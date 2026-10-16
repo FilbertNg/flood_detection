@@ -126,9 +126,64 @@ def test_gate_closed_means_rules_only():
     assert out.level is Level.NORMAL
 
 
-def test_max_level_can_be_raised_in_config():
-    out = levels.combine(rule(Level.NORMAL), ml(Level.WARNING), {"ml_drives_alerts": True, "ml_max_level": "warning"})
-    assert out.level is Level.WARNING
+def test_config_cannot_let_ml_set_warning_or_danger():
+    for cap in ("warning", "danger"):
+        out = levels.combine(rule(Level.NORMAL), ml(Level.DANGER), {"ml_drives_alerts": True, "ml_max_level": cap})
+        assert out.level is Level.WATCH
+
+
+def test_config_can_lower_the_ml_cap_to_normal():
+    out = levels.combine(rule(Level.NORMAL), ml(Level.WATCH), {"ml_drives_alerts": True, "ml_max_level": "normal"})
+    assert out.level is Level.NORMAL
+
+
+def trigger_of(level):
+    return TriggerResult(level=level, confidence="high", fired_by=("rule_rain",), reasons=(RAIN,),
+                         data_time=T("09:00"), stale_stations=())
+
+
+def test_watch_streets_get_no_window_by_default_but_warning_does(rules_cfg, matrix_cfg):
+    assert rules_cfg["alerts"]["window_from"] == "warning"
+    watch = levels.street_state("s", 5, trigger_of(Level.WATCH), rules_cfg, matrix_cfg)
+    warn = levels.street_state("s", 5, trigger_of(Level.WARNING), rules_cfg, matrix_cfg)
+    assert watch.level is Level.WATCH and watch.window_start is None
+    assert warn.window_start is not None
+
+
+def test_group_cache_ignores_gauge_order(readings, stations, rules_cfg, matrix_cfg):
+    from floodready.engine import rules
+    calls = []
+    real = rules.township_trigger
+    rules.township_trigger = lambda *a, **k: (calls.append(1), real(*a, **k))[1]
+    try:
+        streets = pd.DataFrame({"street_id": ["a", "b"], "susceptibility": [5, 5]})
+        m = {"a": {"wl": None, "rf": ["26558", "TELOKGONG"]}, "b": {"wl": None, "rf": ["TELOKGONG", "26558"]}}
+        list(replay.run(T("09:00"), T("09:00"), timedelta(minutes=15), readings, stations, streets, BBR_STATIONS,
+                        rules_cfg, matrix_cfg, street_stations=m))
+    finally:
+        rules.township_trigger = real
+    assert len(calls) == 2      # township + one shared group
+
+
+def test_unmapped_streets_are_logged_once(readings, stations, rules_cfg, matrix_cfg, caplog):
+    import logging
+    with caplog.at_level(logging.WARNING):
+        run(readings, stations, rules_cfg, matrix_cfg)
+    assert sum("not in the street-stations mapping" in r.message for r in caplog.records) == 1
+
+
+def test_station_probabilities_survive_a_duplicate_index():
+    t = pd.Timestamp(T("09:00"))
+    feats = pd.DataFrame({"graph_id": ["A", "A"], "name": ["Sg A"] * 2, "time_local": [t, t - timedelta(minutes=15)],
+                          "d_warning": [0.2, 0.6]}, index=[0, 0])
+    cfg = {"p_watch": 0.35, "p_warning": 0.95, "smoothing_min": 30, "horizon_h": 2}
+    assert predict.station_probabilities(FixedModel(), ["d_warning"], feats, ["A"], T("09:00"), cfg)["A"].p == 0.6
+
+
+def test_no_station_message_is_not_zero_of_zero():
+    from floodready.engine import rules
+    out = rules.township_trigger(pd.DataFrame(columns=["graph_id", "time_local", "is_stale", "kind"]), [], {"rain": {}, "river": {}})
+    assert "0 of 0" not in out.reasons[0].text_en and out.confidence == "low"
 
 
 # ---- watch notices ----

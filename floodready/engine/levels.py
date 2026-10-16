@@ -12,11 +12,12 @@ from .types import Level, MLResult, StreetState, TriggerResult
 def combine(rule: TriggerResult, ml: MLResult | None, ml_cfg: dict) -> TriggerResult:
     """Two-tier trigger: the rules decide Warning and Danger. ML may raise the trigger only while
     `ml_drives_alerts` is true (set by the evaluation gate), and then only up to `ml_max_level`
-    (default watch). ML never lowers a rule level. The ML probability is always shown as a reason."""
+    (default watch, and never above watch whatever the config says). ML never lowers a rule level. The ML probability is always shown as a reason."""
     if ml is None:
         return rule
     drives = bool(ml_cfg.get("ml_drives_alerts", False))
-    ml_level = min(ml.level, Level.parse(ml_cfg.get("ml_max_level", "watch")))
+    # Hard cap in code: config may only lower it. Warning and Danger come only from the rules.
+    ml_level = min(ml.level, Level.WATCH, Level.parse(ml_cfg.get("ml_max_level", "watch")))
     level = max(rule.level, ml_level) if drives else rule.level
     fired = list(rule.fired_by) if rule.level == level else []
     if drives and ml_level == level and level > Level.NORMAL:
@@ -43,7 +44,7 @@ def street_state(street_id: str, susceptibility: int, trigger: TriggerResult, ru
     """One street's state from its own trigger. Streets at an alert level get the nowcast window."""
     window = rules_cfg["nowcast_window_min"]
     level = street_level(susceptibility, trigger.level, matrix_table)
-    has_window = level >= min_alert_level(rules_cfg)
+    has_window = level >= Level.parse(rules_cfg["alerts"].get("window_from", "warning"))
     return StreetState(
         street_id=street_id, level=level, trigger_level=trigger.level, confidence=trigger.confidence,
         flood_probability=flood_probability, fired_by=trigger.fired_by,

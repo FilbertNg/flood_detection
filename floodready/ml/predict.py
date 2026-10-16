@@ -61,7 +61,7 @@ def station_probabilities(model, features: list[str], feats: pd.DataFrame, wl_st
     rows = rows.assign(_p=model.predict_proba(rows[features])[:, 1])
     results = {}
     for graph_id, group in rows.groupby("graph_id", sort=False):
-        best = group.loc[group["_p"].idxmax()]
+        best = group.iloc[int(group["_p"].to_numpy().argmax())]
         results[str(graph_id)] = ml_result(float(best["_p"]), str(best["name"]), cfg)
     return results
 

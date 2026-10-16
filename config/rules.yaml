@@ -14,11 +14,14 @@ stale_after_min: 120          # a station with no reading for longer is stale
 
 alerts:
   cooldown_min: 60            # no repeat alert for a street unless its level rises
-  alert_levels: [watch, warning, danger]
+  alert_levels: [watch, warning, danger]   # issued and stored (in-app)
+  push_levels: [warning, danger]          # only these are flagged push: true for a notifier (change here to push Watch)
+  window_from: warning                    # the "flooding expected" nowcast window is only set from this level up
 
 # Which stations decide a street (scripts/build_street_stations.py). Radii follow a redundancy rule: the smallest
 # rain radius that gives every street at least `min_rain_gauges` gauges, from the spacing of the gauge network
 # (BBR's 7 gauges are 2.6-9.2 km from their nearest neighbour; 8 km covers 888/943 streets, 10 km covers all).
+# Note: min_rain_gauges already guarantees >= 2 gauges at any radius; the radius decides how many EXTRA gauges a street sees.
 # River station: first one on the street's flow path within 15 km, else the nearest within river_radius_km.
 street_stations: {rain_radius_km: 10, min_rain_gauges: 2, river_radius_km: 10}
 
