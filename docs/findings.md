@@ -26,6 +26,11 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - **How common:** on the 16 Oct archive the rule flags 12,644 readings at 9 of 15 river stations; **83% of them are one gauge, Kg. Perepat** (runs of up to 7 days at −0.78 m or 0.36 m), and Seri Kembangan (`3017107_`) sits pinned near 36.5 m for up to 9 days. *(Provisional: under review for false positives at base-flow rivers.)*
 - **Pitch line:** "We don't just read sensors, we check them against each other: a river that doesn't react to a 68 mm storm is a broken gauge, not a safe street."
 
+### A3b. Rivers answer rain late, and a stuck gauge at flood level must fail safe
+- **The most dangerous moment looks like a broken gauge:** heavy rain has started and the river hasn't moved yet. A first version of the stuck-gauge rule would have blanked Pekan Meru for up to 1.5 h at the start of a flood if the river responded 90 min after the rain. The rule now requires the rain to have ended ≥ 90 min earlier and the level to have stayed flat for 4.5 h. In tests, Pekan Meru then has 0 flags at any response delay from 0 to 120 min, and Kg. Perepat keeps 98% of its flags (8,307 vs 8,521 on its own gauge).
+- **A gauge that is flat at or above its alert level is never blanked.** A sensor stuck high, or a river plateauing over its banks, would otherwise turn an official Danger into "no data" after the 2 h forward-fill. Failing safe means keeping the last value.
+- **So:** data-quality rules are safety-critical too; every QC rule is checked for whether it can *lower* an alert, not only whether it removes bad data.
+
 ### A4. Warning time is limited by when rain is first seen
 - On 12 Nov 2024 rain at the gauges within 10 km started building at 08:00 (14 mm/h) and peaked at 67.5 mm/h at 09:15. The river crossed alert at 09:15, warning at 09:30, danger at 10:00.
 - Rain-gauge signals cannot fire before rain reaches a gauge, so about 90 minutes is the ceiling for rain-driven warning on this kind of storm. Seeing storms *before* they arrive needs radar (§E2).
