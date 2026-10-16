@@ -69,11 +69,13 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - Only **0.6% of quarter hours** precede a crossing. A model that always says "no flood" is **99.4% accurate**. We report detection, warning time and false alarms per crossing event instead.
 
 ### C2. Raw ML probabilities were 10× too confident
-- Before calibration, a predicted 50–70% meant **4.6%** observed; 90–100% meant 57%. After isotonic calibration: **54%** and **97%** *(provisional; a consistency fix is in progress, #22)*.
+- Before calibration, a predicted 50–70% meant **4.6%** observed; 90–100% meant 57%.
+- **The cause was the training setting, not the model:** `class_weight="balanced"` up-weights the 0.6% positives ~80×. Trained without it, the model is calibrated on its own (out of sample: Brier 0.0027, calibration error 0.0009) and ranks slightly better (PR-AUC 0.731 vs 0.714 balanced + isotonic). That variant now ships *(provisional, 15 stations)*.
 - **So:** the probability shown to residents is calibrated, or not shown.
 
 ### C3. ML warns earlier; the rules catch more on their own
-- Inland, out of sample (nested threshold, pre-registered gate v2): rules alone detect **391 / 433** crossings with **90 min** median warning; rules + ML Watch detect **413 / 433** with **135 min**, at 1.33× the false alarms (limit 1.5×). Gate passes *(provisional; fresh-station check pending the full archive)*.
+- Inland, out of sample (nested threshold, pre-registered gate v2; retrained 16 Oct on QC-cleaned data): rules alone detect **382 / 423** crossings with **75 min** median warning; rules + ML Watch detect **405 / 423** with **135 min**, at 1.43× the false alarms (limit 1.5×). Gate passes *(provisional; fresh-station check pending the full archive)*.
+- On 12 Nov 2024 the ML alone raised 449 BBR streets to Watch at **08:30**, an hour before Sg. Binjai crossed warning (09:30) and 30 min before the rain rule's first Warning (09:00).
 - The extra false alarms concentrate at a few stations (Sg. Damansara at Kg. Melayu Subang: 5.6 → 16.4 per month).
 - **So:** ML may raise a street to *Watch* only; Warning and Danger stay with JPS's official thresholds. This is enforced in code, not only in config.
 

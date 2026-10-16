@@ -1,39 +1,30 @@
 {
   "features": [
-    "d_alert",
     "d_warning",
-    "d_danger",
     "level_rel",
     "rise_15m",
     "rise_60m",
     "rise_120m",
     "rain_1h_max_10km",
     "rain_1h_max_25km",
-    "rain_1h_mean_10km",
-    "rain_1h_mean_25km",
     "rain_2h_max_10km",
     "rain_2h_max_25km",
-    "rain_2h_mean_10km",
-    "rain_2h_mean_25km",
     "rain_3h_max_10km",
     "rain_3h_max_25km",
-    "rain_3h_mean_10km",
-    "rain_3h_mean_25km",
     "rain_6h_max_10km",
     "rain_6h_max_25km",
-    "rain_6h_mean_10km",
-    "rain_6h_mean_25km",
     "rain_24h_max_10km",
     "rain_24h_max_25km",
-    "rain_24h_mean_10km",
-    "rain_24h_mean_25km",
     "rain_2to4h_max_10km",
     "rain_2to4h_max_25km",
     "rain_72h_ante_max_25km",
-    "n_rf_10km",
-    "n_rf_25km",
     "tide_height_m",
     "hours_to_high_tide",
+    "tide_change_1h",
+    "tide_coupling_3d",
+    "up_rise_60m_max",
+    "up_rise_120m_max",
+    "up_level_rel_max",
     "hour",
     "month"
   ],
@@ -42,11 +33,11 @@
     "learning_rate": 0.05,
     "max_leaf_nodes": 31,
     "l2_regularization": 1.0,
-    "class_weight": "balanced",
+    "class_weight": null,
     "random_state": 0
   },
   "data_from": "2024-04-01 00:30:00",
-  "data_to": "2026-10-16 14:45:00",
+  "data_to": "2026-10-16 16:45:00",
   "river_stations": [
     "26039",
     "26558",
@@ -64,37 +55,37 @@
     "PANDAMARAN",
     "PEKANMERU"
   ],
-  "rain_stations": 40,
-  "rows": 1054498,
-  "positives": 6318,
+  "rain_stations": 21,
+  "rows": 1042322,
+  "positives": 6264,
   "validation": "4 time-blocked folds (calendar quarters, round-robin); out-of-fold probabilities",
-  "calibration": "balanced + isotonic",
+  "calibration": "no class weight, raw",
   "calibration_scores": {
     "balanced + isotonic": {
-      "brier": 0.002843661171074638,
-      "ece": 0.0011196604146343652,
-      "pr_auc": 0.7049998733075271,
-      "roc_auc": 0.9803084667065569
+      "brier": 0.0028179221049811124,
+      "ece": 0.0008044871981495226,
+      "pr_auc": 0.713821814302898,
+      "roc_auc": 0.9820299862241619
     },
     "no class weight + isotonic": {
-      "brier": 0.0028676408860829044,
-      "ece": 0.0006422367602325726,
-      "pr_auc": 0.6973146789193876,
-      "roc_auc": 0.9820570431790993
+      "brier": 0.002724351227756419,
+      "ece": 0.000707503575952353,
+      "pr_auc": 0.7262787070278669,
+      "roc_auc": 0.9830788434153427
     },
     "no class weight, raw": {
-      "brier": 0.0028732061828459802,
-      "ece": 0.0009717275484431829,
-      "pr_auc": 0.7009458221186127,
-      "roc_auc": 0.9821266515406729
+      "brier": 0.0027000451694505147,
+      "ece": 0.0008870793083941589,
+      "pr_auc": 0.7306068568774424,
+      "roc_auc": 0.9831887126878134
     }
   },
-  "p_watch": 0.075,
+  "p_watch": 0.03,
   "theta_by_fold": {
-    "0": 0.075,
-    "1": 0.075,
-    "2": 0.075,
-    "3": 0.075
+    "0": 0.03,
+    "1": 0.03,
+    "2": 0.03,
+    "3": 0.03
   },
   "gate_version": 2,
   "gate_passed": true,

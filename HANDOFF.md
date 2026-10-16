@@ -56,15 +56,17 @@ npx pnpm@9.15.0 dev:resident                                                    
 
 ## 4. Results to know before the pitch (honest numbers)
 
-- **12 Nov 2024 replay (BBR), real JPS data:** Watch 08:45 (45 mm/1 h at Kg. Perepat) → Warning 09:00 (61.5 mm) → Danger 10:00 (Sg. Binjai 4.21 m). Persiaran Sungai Keramat, which really flooded that morning, shows Warning, window 09:30–10:30, ML 54% (out-of-sample).
-- **ML gate: FAIL → `ml_drives_alerts: false`.** ML is shown as an informational probability; JPS rules decide alert levels. Out-of-fold over the stations archived so far (`docs/evaluation-report.md`):
-  - rule floor: 862/870 crossings, 45 min median lead, 6.74 false alarms per station-month;
-  - ML (p ≥ 0.25): 819/870, 150 min, 6.66.
-  - The tidal Bandar Klang station holds ~67% of crossings. Without it, ML gives ~30 min more lead with slightly fewer false alarms but misses more. At BBR's own river (Pekan Meru) the floor is clearly better.
-- **Terrain map (no flood labels used):** 62% of memorandum street segments rank in the top two fifths, vs 40% by chance. A real but modest signal.
-- **Tide vs news:** the tide model puts the 12 Nov 2024 morning at **low** tide (high ≈ 02:00 and ≈ 14:00), while the news said "high tide". Don't say "high tide" in the pitch until it's checked against JUPEM tables.
+*Updated 16 Oct 2026 after the improvement plan (`docs/plans/2026-10-16-IMP-ml-data-street-improvements.md`). Numbers are provisional: 15 river stations; final retrain after the full archive. Facts for the pitch: `docs/findings.md`.*
+
+- **12 Nov 2024 replay (BBR), per-street, real JPS data:** 08:30 ML raises **449 streets to Watch** (an hour before the river crosses warning at 09:30) → 09:00 rain rule: 227 streets at Warning → 09:30: 367 at Warning → 10:00: 298 at Danger (Sg. Binjai 4.21 m).
+- **ML gate v2 (pre-registered): PASS → `ml_drives_alerts: true`, but ML may raise a street to *Watch* only** (clamped in code); Warning and Danger come only from JPS thresholds. Inland stations, out of sample, nested threshold (`docs/evaluation-report.md`):
+  - rules alone: 382/423 crossings, 75 min median lead, 5.50 false alarms per station-month;
+  - rules + ML Watch: **405/423, 135 min**, 7.86 false alarms (1.43×, limit 1.5×). Fresh-station check (criterion 3) pending the full archive.
+  - Probabilities are calibrated (Brier 0.0027); the tidal Bandar Klang station is reported separately.
+- **Alerts are per street** (each street's own river station and ≥ 2 rain gauges within 10 km). Push only Warning/Danger by default (`alerts.push_levels`); Watch shows in the app.
+- **Terrain map v2 (FABDEM + distance to drains):** 48 of 61 memorandum segments in the top two fifths (40% by chance). Pre-specified, not tuned on those streets.
+- **Tide:** checked against the Port Kelang gauge: the model runs ~40 min early (corrected). 12 Nov 2024 08:00–09:00 was **low** water; say "tide was running high that week", never "flooded at high tide" (`docs/tide-check.md`).
 - **Gridded rain is useless for flash floods:** 8 Open-Meteo sources showed ≤ 6.8 mm vs 79 mm at the gauge on 12 Nov 2024 (`docs/ml-feasibility.md`). That's why everything uses JPS station rain.
-- **Alerts are township-wide:** at Warning, ~40% of BBR streets alert together. Per-street triggers (nearest stations) are a later refinement.
 
 ## 5. Data and running processes
 
