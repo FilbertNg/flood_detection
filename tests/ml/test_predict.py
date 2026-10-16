@@ -99,4 +99,5 @@ def test_a_model_trained_on_other_features_falls_back_to_rules_not_a_crash(caplo
                                              T("09:00"), CFG) == {}
         assert predict.township_probability(FixedModel(), ["d_warning", "n_rf_10km"], feats, ["PEKANMERU"],
                                             T("09:00"), CFG) is None
-    assert any("n_rf_10km" in r.message for r in caplog.records)
+    warnings = [r for r in caplog.records if "n_rf_10km" in r.message]
+    assert len(warnings) == 1   # once per model, not at every 15-min step of a replay

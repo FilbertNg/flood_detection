@@ -15,6 +15,7 @@ import pandas as pd
 from ..engine.types import Level, MLResult, Reason
 
 log = logging.getLogger(__name__)
+_warned_missing: set[tuple[str, ...]] = set()   # feature mismatches already logged (once per model, not per step)
 
 
 def load_or_none(path: Path) -> dict | None:
@@ -58,10 +59,12 @@ def station_probabilities(model, features: list[str], feats: pd.DataFrame, wl_st
     rows = feats[feats.graph_id.isin(wl_station_ids) & (feats.time_local >= window_start) & (feats.time_local <= pd.Timestamp(at))]
     if rows.empty:
         return {}
-    missing = [f for f in features if f not in rows.columns]
+    missing = tuple(f for f in features if f not in rows.columns)
     if missing:  # bundle trained on another FEATURES list: rules only until the model is retrained
-        log.warning("ML model expects %d features the pipeline no longer builds (%s): rules only; retrain the model",
-                    len(missing), ", ".join(missing[:5]) + ("…" if len(missing) > 5 else ""))
+        if missing not in _warned_missing:
+            _warned_missing.add(missing)
+            log.warning("ML model expects %d features the pipeline no longer builds (%s): rules only; retrain the model",
+                        len(missing), ", ".join(missing[:5]) + ("…" if len(missing) > 5 else ""))
         return {}
     rows = rows.assign(_p=model.predict_proba(rows[features])[:, 1])
     results = {}
