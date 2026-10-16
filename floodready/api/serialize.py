@@ -9,6 +9,7 @@ import pandas as pd
 from ..engine import street_stations
 from ..engine.types import Reason, StreetState
 from ..jobs import now_myt
+from ..ml import forecast as river
 from .runner import EngineContext, Snapshot, iso
 
 log = logging.getLogger(__name__)
@@ -46,6 +47,28 @@ def _tide(ctx: EngineContext, start: datetime) -> list[dict]:
     return [{"time": iso(x), "height_m": round(float(h), 2)} for x, h in zip(t.time_local, t.tide_height_m) if pd.notna(h)]
 
 
+def river_forecast_for(ctx: EngineContext, snap: Snapshot, at: datetime, graph_id: str | None = None) -> dict | None:
+    """+1 h / +2 h level with a range. `graph_id`: the street's own station (WP5); until then None picks,
+    among the township's river stations with a fresh level, the one closest to its warning level.
+    Never raises: the forecast is informational and must not break the street page."""
+    if ctx.river_forecast is None or snap.step is None or not len(snap.readings):
+        return None
+    try:
+        if graph_id is None:
+            wl_ids = [s["graph_id"] for s in ctx.township["stations"] if "WL" in s.get("types", [])]
+            graph_id = river.pick_station(snap.readings, ctx.stations, wl_ids, at)
+        if graph_id is None:
+            return None
+        out = ctx.river_forecast(snap.readings, graph_id, at, snap.mode == "live")
+        if not out:
+            return None
+        names = ctx.stations[ctx.stations.kind == "wl"].drop_duplicates("graph_id").set_index("graph_id").name
+        return {**out, "name": str(names.get(graph_id, graph_id))}
+    except Exception:
+        log.exception("river forecast failed")
+        return None
+
+
 def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | None:
     match = ctx.streets[ctx.streets.street_id == street_id]
     if match.empty:
@@ -80,7 +103,7 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
         "data_time": iso(data_time),
         "rain_next_12h": rain_next,
         "tide": _tide(ctx, data_time),
-        "river_forecast": None,
+        "river_forecast": river_forecast_for(ctx, snap, data_time, street_stations.wl_for(ctx.street_stations, street_id)),
         "stations": list(street_stations.stations_for(ctx.street_stations, street_id)
                          or [s["graph_id"] for s in ctx.township["stations"]]),
         "active_alert": active,

@@ -107,7 +107,16 @@ export interface AlertSummary {
 
 export interface RiverForecast {
   graph_id: string;
-  points: { time: ISODateTime; wl_m: number; wl_m_p90: number }[];
+  /** Station name, e.g. "Sg. Binjai di Pekan Meru". */
+  name: string;
+  /** Latest observed level (m). */
+  wl_now_m: number;
+  /** When that level was read; a forecast is only made when it is at most 30 min old. */
+  wl_now_time: ISODateTime;
+  /** The station's own JPS warning level (m), for reference; null if unknown. */
+  warning_m: number | null;
+  /** +1 h and +2 h: median and the p10-p90 range (m). wl_m_p10 <= wl_m <= wl_m_p90. */
+  points: { time: ISODateTime; wl_m: number; wl_m_p10: number; wl_m_p90: number }[];
 }
 
 export interface StreetDetail {
@@ -127,7 +136,7 @@ export interface StreetDetail {
   data_time: ISODateTime;
   rain_next_12h: { time: ISODateTime; mm: number }[];
   tide: { time: ISODateTime; height_m: number }[];
-  /** Should (task ML5); null until available. */
+  /** River-level forecast (improvement #12); null when no model or no current level. */
   river_forecast: RiverForecast | null;
   /** graph_ids of the stations that decide this street (its river station first, then its rain gauges); the township's stations when no mapping is loaded. */
   stations: string[];

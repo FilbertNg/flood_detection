@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import glob
 import os
+import threading
 from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -18,7 +19,7 @@ import yaml
 from .. import live, radar
 from ..engine import street_stations
 from ..engine.replay import load_archive_readings
-from ..ml import dataset, predict
+from ..ml import dataset, forecast as river, predict
 from .main import create_app
 from .runner import EngineContext, Runner, iso
 
@@ -62,15 +63,37 @@ def build_context(township_id: str = "BBR") -> EngineContext:
         return [{"time": iso(t), "mm": float(mm or 0)} for t, mm in zip(f.time_local, f.precip_mm)]
 
     tide_path = DATA / "interim" / "tide_hourly.parquet"
+    tide = pd.read_parquet(tide_path) if tide_path.exists() else None
+
+    bundles = river.BundleCache(ROOT / "models")
+    river_cache: dict = {}
+    river_lock = threading.Lock()
+
+    def river_forecast(readings: pd.DataFrame, graph_id: str, at: datetime, is_live: bool) -> dict | None:
+        """Forecast from the station's latest level (at most 30 min old); the replay uses the fold model
+        that never trained on that period."""
+        key = (graph_id, pd.Timestamp(at).floor("15min"), is_live)
+        with river_lock:
+            if key in river_cache:
+                return river_cache[key]
+        bundle = bundles.get(at, is_live)
+        out = river.forecast_from_readings(bundle, readings, stations, tide, graph_id, at) if bundle else None
+        if bundle is not None:                      # a missing model is retried later, never cached here
+            with river_lock:
+                if len(river_cache) >= 64:
+                    river_cache.pop(next(iter(river_cache)))
+                river_cache[key] = out
+        return out
+
     return EngineContext(
         township=town, streets=streets[["street_id", "name", "township_id", "susceptibility", "geometry"]],
         stations=stations, rules_cfg=_yaml("rules.yaml"), matrix=_yaml("risk_matrix.yaml")["matrix"],
-        ml_cfg=_yaml("ml.yaml"), tide=pd.read_parquet(tide_path) if tide_path.exists() else None,
+        ml_cfg=_yaml("ml.yaml"), tide=tide,
         load_readings=load_readings, load_live_readings=load_live,
         bundle_for=lambda when, is_live: predict.bundle_for(ROOT / "models", when, live=is_live),
-        forecast=forecast,
         radar=lambda now: radar.latest_reason(DATA / "raw" / "radar", town["centre"]["lat"], town["centre"]["lon"], now),
         street_stations=street_stations.load(ROOT / "assets" / "geo" / f"{township_id.lower()}_street_stations.json"),
+        forecast=forecast, river_forecast=river_forecast,
     )
 
 

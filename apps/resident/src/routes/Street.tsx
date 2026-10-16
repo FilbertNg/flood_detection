@@ -4,7 +4,7 @@ import type { Lang, Level } from '@floodready/shared';
 import { RainBars, TideLine } from '../components/Bars';
 import { LevelBadge } from '../components/LevelBadge';
 import { api } from '../lib/api';
-import { dayTime, percent, windowText } from '../lib/format';
+import { dayTime, percent, riverForecastText, windowText } from '../lib/format';
 import { t, type StringKey } from '../lib/i18n';
 
 const ADVICE: Record<Level, StringKey> = {
@@ -18,6 +18,8 @@ export function StreetPage({ lang }: { lang: Lang }) {
     queryFn: () => api.street(id),
     refetchInterval: 10_000,
   });
+
+  const river = data ? riverForecastText(data.river_forecast, lang) : null;
 
   if (isLoading) return <p className="pad">{t(lang, 'loading')}</p>;
   if (isError || !data) return <p className="pad">{t(lang, 'error')}</p>;
@@ -62,6 +64,21 @@ export function StreetPage({ lang }: { lang: Lang }) {
         <h2>{t(lang, 'whatToDo')}</h2>
         <p>{t(lang, ADVICE[data.level])}</p>
       </section>
+
+      {river && (
+        <section className="card" aria-labelledby="river-forecast">
+          <h2 id="river-forecast">{t(lang, 'riverForecast')}</h2>
+          <p>{river.now}</p>
+          <ul className="reasons">
+            {river.points.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          {river.warning && <p className="muted small">{river.warning}</p>}
+          {river.mayReachWarning && <p><strong>{t(lang, 'riverMayReach')}</strong></p>}
+          <p className="muted small">{t(lang, 'riverNote')}</p>
+        </section>
+      )}
 
       <section className="card">
         <h2>{t(lang, 'rainNext')}</h2>
