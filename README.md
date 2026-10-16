@@ -79,4 +79,4 @@ npx pnpm@9.15.0 test
 
 The API needs local data that is not in git. On a fresh clone see [HANDOFF.md §5](HANDOFF.md#5-data-and-running-processes). Logger, archive and deployment details are in [HANDOFF.md](HANDOFF.md) and [deploy/README.md](deploy/README.md).
 
-Data credits: © OpenStreetMap contributors · JPS Public Infobanjir · MET Malaysia (via data.gov.my) · Open-Meteo (CC BY 4.0).
+Data credits: © OpenStreetMap contributors · JPS Public Infobanjir · MET Malaysia (via data.gov.my) · Open-Meteo (CC BY 4.0) · Terrain: Copernicus GLO-30, FABDEM (© University of Bristol, CC BY-NC-SA 4.0, non-commercial), ESA WorldCover 2021 (CC BY 4.0).

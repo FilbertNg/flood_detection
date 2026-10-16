@@ -11,6 +11,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import rasterio
 from rasterio.transform import rowcol
 from rasterio.windows import from_bounds
@@ -77,7 +78,28 @@ def terrain_indices(dem_path: Path, stream_threshold: int = 200) -> dict:
     score = _percentile_rank(-hand) + _percentile_rank(twi)
     rank = _percentile_rank(score)
     index = np.where(np.isnan(rank), np.nan, np.minimum(1 + np.floor(rank * 5), 5))
-    return {"hand": hand, "twi": twi, "acc": acc, "score": score, "index": index, "transform": transform, "crs": crs}
+    return {"hand": hand, "twi": twi, "acc": acc, "score": score, "index": index, "transform": transform, "crs": crs,
+            "slope": np.degrees(slope), "cell_x": cell_x, "cell_y": cell_y}
+
+
+def street_terrain_means(streets: gpd.GeoDataFrame, result: dict) -> pd.DataFrame:
+    """Mean HAND (m), TWI and slope (degrees) along each street, one row per street in the same order."""
+    lines = streets.to_crs(result["crs"])
+    transform, shape = result["transform"], result["hand"].shape
+    rows = []
+    for geom in lines.geometry:
+        parts = list(geom.geoms) if geom.geom_type == "MultiLineString" else [geom]
+        vals: dict[str, list] = {"hand": [], "twi": [], "slope": []}
+        for part in parts:
+            n = max(int(part.length * M_PER_DEG / 10.0), 1)
+            for k in range(n + 1):
+                point = part.interpolate(k / n, normalized=True)
+                r, c = rowcol(transform, point.x, point.y, op=math.floor)
+                if 0 <= r < shape[0] and 0 <= c < shape[1]:
+                    for key in vals:
+                        vals[key].append(result[key][r, c])
+        rows.append({k: (float(np.nanmean(v)) if np.isfinite(v).any() else np.nan) for k, v in vals.items()})
+    return pd.DataFrame(rows, index=streets.index, columns=["hand", "twi", "slope"])
 
 
 def _sample(line, result, step_m: float = 10.0) -> tuple[list, list, list]:

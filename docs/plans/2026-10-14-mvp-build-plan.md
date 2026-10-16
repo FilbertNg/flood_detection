@@ -64,7 +64,7 @@
 - **Nowcast time window:** `issued_at + 30 min` to `issued_at + 90 min` (`config/rules.yaml`, tuned on events).
 - **Languages:** Resident app and push text in BM and English; Admin app in English.
 - **Privacy:** residents have no account (random `device_id`); location rounded to 3 decimals (~100 m); photo EXIF stripped; no names, phone numbers or addresses.
-- **Credits on every map:** © OpenStreetMap contributors · Data: JPS Public Infobanjir, MET Malaysia, Open-Meteo.
+- **Credits on every map:** © OpenStreetMap contributors · Data: JPS Public Infobanjir, MET Malaysia, Open-Meteo; terrain: FABDEM (Univ. of Bristol, CC BY-NC-SA 4.0), ESA WorldCover.
 - **Footer on every alert and street page:** "Advisory only. JPS, MET and NADMA are the official sources."
 - **Tests:** TDD; `pytest` for Python, `vitest` for TypeScript. CI must pass before merge.
 

@@ -68,3 +68,19 @@ def test_streets_are_ranked_within_the_township_in_fifths(tmp_path):
     assert set(counts.index) == {1, 2, 3, 4, 5}
     assert counts.max() - counts.min() <= 1
     assert "score_mean" in scored.columns
+
+
+def test_street_terrain_means_along_the_line(tmp_path):
+    path, _, n = valley_dem(tmp_path)
+    result = terrain.terrain_indices(path, stream_threshold=20)
+    assert np.nanmin(result["slope"]) >= 0 and np.nanmax(result["slope"]) < 90
+    lon_mid = 101.40 + (n // 2 + 0.5) * CELL_DEG
+    lon_ridge = 101.40 + 1.5 * CELL_DEG
+    lat_top, lat_bottom = 3.10 - 8 * CELL_DEG, 3.10 - (n - 8) * CELL_DEG
+    streets = gpd.GeoDataFrame({"street_id": ["valley", "ridge"]},
+                               geometry=[LineString([(lon_mid, lat_top), (lon_mid, lat_bottom)]),
+                                         LineString([(lon_ridge, lat_top), (lon_ridge, lat_bottom)])], crs=4326)
+    means = terrain.street_terrain_means(streets, result)
+    assert list(means.columns) == ["hand", "twi", "slope"]
+    assert means.loc[0, "hand"] < means.loc[1, "hand"]
+    assert means.loc[0, "twi"] > means.loc[1, "twi"]
