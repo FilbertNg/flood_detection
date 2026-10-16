@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from ..engine.types import Reason, StreetState
+from ..jobs import now_myt
 from .runner import EngineContext, Snapshot, iso
 
 log = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
     reasons = [reason(r) for r in state.reasons] if state else []
     if ctx.radar is not None and snap.mode == "live":
         try:
-            radar_reason = ctx.radar(datetime.now())   # informational: appended after, never part of the level
+            radar_reason = ctx.radar(now_myt())   # informational: appended after, never part of the level
         except Exception:  # a bad radar frame must not break the street page
             log.exception("radar reason failed")
             radar_reason = None

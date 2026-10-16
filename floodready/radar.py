@@ -18,8 +18,10 @@ lands within 2 px (~4 km) of the real position.
 from __future__ import annotations
 
 import io
+import logging
 import math
 import re
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -27,7 +29,8 @@ import numpy as np
 
 from .engine.types import Reason
 
-RADAR_URL = "https://www.met.gov.my/data/radar_peninsular.gif"
+log = logging.getLogger(__name__)
+RADAR_URL ="https://www.met.gov.my/data/radar_peninsular.gif"
 
 IMG_W, IMG_H = 826, 640
 MAP_W = 570                       # map occupies x < 570; the legend sits to the right
@@ -251,9 +254,9 @@ def to_reason(result: dict) -> Reason:
     return Reason(
         code="radar_approaching", value=float(eta), unit="min", station=None,
         text_en=f"Radar: rain cell about {km} km to the {result['direction']}, heading this way, "
-                f"arriving in about {eta} min (informational).",
+                f"arriving in about {eta} min (informational; source: MET Malaysia radar).",
         text_ms=f"Radar: sel hujan kira-kira {km} km ke {d_ms}, bergerak ke sini, "
-                f"tiba dalam lebih kurang {eta} min (makluman sahaja).",
+                f"tiba dalam lebih kurang {eta} min (makluman sahaja; sumber: radar MET Malaysia).",
     )
 
 
@@ -278,15 +281,45 @@ def frame_path(root: Path, when: datetime) -> Path:
 def latest_reason(root: Path, lat: float, lon: float, now: datetime,
                   max_age_min: float = MAX_FRAME_AGE_MIN) -> Reason | None:
     """`radar_approaching` from the two newest archived frames, or None (also when they are stale)."""
-    frames = list_frames(root)
+    key = (str(root), round(lat, 4), round(lon, 4))
+    entry = _CACHE.get(key)
+    if entry is None or _monotonic() - entry["checked"] > CACHE_TTL_S:
+        frames = list_frames(root)
+        sig = tuple((str(p), p.stat().st_mtime_ns) for _, p in frames[-2:])
+        if entry is None or entry["sig"] != sig:
+            entry = {"sig": sig, "newest": frames[-1][0] if frames else None, "reason": _compute(frames, lat, lon)}
+        entry["checked"] = _monotonic()
+        _CACHE[key] = entry
+    if entry["newest"] is None or now - entry["newest"] > timedelta(minutes=max_age_min):
+        return None
+    return entry["reason"]
+
+
+def _compute(frames, lat, lon) -> Reason | None:
     if len(frames) < 2:
         return None
     (t0, p0), (t1, p1) = frames[-2], frames[-1]
     dt = (t1 - t0).total_seconds() / 60
-    if now - t1 > timedelta(minutes=max_age_min) or not 5 <= dt <= 30:
+    if not 5 <= dt <= 30:
         return None
-    imgs = [read_image(p.read_bytes()) for p in (p0, p1)]
-    if not all(is_radar_frame(i) for i in imgs):
+    try:
+        imgs = [read_image(p.read_bytes()) for p in (p0, p1)]
+        if not all(is_radar_frame(i) for i in imgs):
+            return None
+        result = nowcast(decode_rate(imgs[0]), decode_rate(imgs[1]), dt, lat, lon)
+    except Exception as exc:  # corrupt or half-written frame: say nothing, warn once per frame pair
+        log.warning("radar frames %s / %s unreadable: %s", p0.name, p1.name, exc)
         return None
-    result = nowcast(decode_rate(imgs[0]), decode_rate(imgs[1]), dt, lat, lon)
     return to_reason(result) if result else None
+
+
+_CACHE: dict = {}
+CACHE_TTL_S = 15.0   # how often the archive directory is rescanned; frames arrive about every 10 min
+
+
+def _monotonic() -> float:
+    return time.monotonic()
+
+
+def clear_cache() -> None:
+    _CACHE.clear()

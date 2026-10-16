@@ -8,6 +8,11 @@ def test_radar_reason_is_shown_in_live_mode_only_and_never_changes_the_level(run
     monkeypatch.setenv("ADMIN_EMAIL", "admin@test")
     monkeypatch.setenv("ADMIN_PASSWORD", "secret")
     monkeypatch.setenv("JWT_SECRET", "test-secret-that-is-at-least-32-bytes-long")
+    from datetime import datetime
+
+    from floodready.api import serialize
+    fake_now = datetime(2026, 10, 16, 15, 25)   # MYT, whatever the host clock says
+    monkeypatch.setattr(serialize, "now_myt", lambda: fake_now)
     seen = []
     reason = radar.to_reason({"direction": "E", "distance_km": 30.0, "eta_min": 45.0})
     runner.ctx.radar = lambda now: seen.append(now) or reason
@@ -16,7 +21,7 @@ def test_radar_reason_is_shown_in_live_mode_only_and_never_changes_the_level(run
         assert [r["code"] for r in live["reasons"]] == ["radar_approaching"]
         assert live["reasons"][0]["unit"] == "min" and live["reasons"][0]["value"] == 45.0
         assert live["level"] == "normal" and live["trigger_level"] == "normal" and live["fired_by"] == []
-        assert len(seen) == 1
+        assert seen == [fake_now]
         token = client.post("/api/v1/admin/login", json={"email": "admin@test", "password": "secret"}).json()["token"]
         r = client.post("/api/v1/admin/replay", json={"event": "2024-11-12", "speed": 0, "stop_at": "09:00"},
                         headers={"Authorization": f"Bearer {token}"})
