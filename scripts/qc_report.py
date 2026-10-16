@@ -25,12 +25,16 @@ STORM = (pd.Timestamp("2024-11-12 06:00"), pd.Timestamp("2024-11-12 12:00"))
 
 RULE_TEXT = {
     "rain_negative": "rain < 0 (a counter cannot go down: 1 Jan reset, gauge restart)",
-    "rain_implausible": f"rain > {qc.RAIN_MAX_15MIN_MM:g} mm per 15 min (> 400 mm/h)",
+    "rain_implausible": f"rain > {qc.RAIN_MAX_15MIN_MM:g} mm per 15 min (> {4 * qc.RAIN_MAX_15MIN_MM:g} mm/h)",
+    "rain_counter_rebound": (f"a positive reading within 24 h after a dip of <= -{qc.REBOUND_MIN_DIP_MM:g} mm at the same gauge, "
+                             "equal to the dip within max(1 mm, 5 %): the counter dipped and was restored"),
     "rain_after_gap": (f"rain >= {qc.RAIN_GAP_MIN_MM:g} mm in the first reading after >= {qc.GAP_MIN_MISSING_MIN // 60} h "
-                       f"without readings, and the next reading < {qc.RAIN_CONTINUES_MM:g} mm (counter catch-up)"),
+                       f"without readings, unless the next reading is >= {qc.RAIN_CONTINUES_MM:g} mm and different (a storm that "
+                       "continues); an identical repeat right after is removed too. A gauge's latest reading is kept until the next arrives"),
     "rain_stuck": (f"the same value >= {qc.RAIN_STUCK_MIN_MM:g} mm at least {qc.RAIN_STUCK_COUNT} times within 24 h at one gauge "
-                   "(after the two rules above)"),
-    "wl_spike": f"river level jumps > {qc.WL_SPIKE_M:g} m in 15 min and is back within {qc.WL_REVERT_M:g} m on the next reading",
+                   "(only readings not already removed by the rules above)"),
+    "wl_spike": (f"river level more than {qc.WL_SPIKE_M:g} m from both neighbours in the same direction, with the neighbours within "
+                 f"max({qc.WL_REVERT_M:g} m, half the jump) of each other. A station's latest reading is kept until the next arrives"),
 }
 
 
@@ -94,14 +98,15 @@ def rule_sections(flags: pd.DataFrame, names: dict[str, str]) -> list[str]:
 def false_positive_checks(readings: pd.DataFrame, clean: pd.DataFrame, flags: pd.DataFrame) -> list[str]:
     out = ["## 3. False-positive checks (do real storms survive?)\n"]
     rf = readings[(readings.kind == "rf") & readings.rain_15min_mm.notna()]
-    removed = flags[flags.rule.isin(["rain_negative", "rain_implausible", "rain_after_gap", "rain_stuck"])]
+    removed = flags[flags.rule.str.startswith("rain")]
     kept = clean[(clean.kind == "rf") & clean.rain_15min_mm.notna()].nlargest(10, "rain_15min_mm")
     out.append(f"**Largest rain values kept** (all below the {qc.RAIN_MAX_15MIN_MM:g} mm limit; "
                f"{(clean.rain_15min_mm >= 60).sum()} readings >= 60 mm remain):\n")
     out.append(md_table(kept.assign(time_local=kept.time_local.dt.strftime("%Y-%m-%d %H:%M"))[["graph_id", "time_local", "rain_15min_mm"]]) + "\n")
     out.append(f"**Smallest positive rain values removed**: {removed[removed.value > 0].value.min():g} mm "
-               f"(`rain_after_gap` is the only rule that removes values under {qc.RAIN_MAX_15MIN_MM:g} mm; "
-               f"it removed {int((flags.rule == 'rain_after_gap').sum())} readings, listed in section 2).\n")
+               f"(removed by `{removed[removed.value > 0].sort_values('value').iloc[0].rule}`; "
+               f"`rain_after_gap` removed {int((flags.rule == 'rain_after_gap').sum())} readings, "
+               f"`rain_counter_rebound` {int((flags.rule == 'rain_counter_rebound').sum())}; all listed in section 2).\n")
     # candidates the rain_after_gap continuation test spared
     g = rf.sort_values(["graph_id", "time_local"]).copy()
     g["gap_min"] = (g.time_local - g.groupby("graph_id").time_local.shift(1)) / pd.Timedelta(minutes=1)
@@ -111,15 +116,18 @@ def false_positive_checks(readings: pd.DataFrame, clean: pd.DataFrame, flags: pd
                         on=["graph_id", "time_local"])
     spared = spared[spared.f.isna()]
     out.append(f"**`rain_after_gap` candidates spared because the storm continued** ({len(spared)}): a catch-up is a single "
-               "lump followed by silence; these are followed by >= 10 mm, so they look like a storm that began during the gap.\n")
+               "lump followed by silence; these are followed by a different reading of >= 10 mm (or are a gauge's latest reading), so they look "
+               "like a storm that began during the gap.\n")
     if len(spared):
         out.append(md_table(spared.assign(time_local=spared.time_local.dt.strftime("%Y-%m-%d %H:%M"))[
             ["graph_id", "time_local", "rain_15min_mm", "next"]].rename(columns={"next": "next_reading_mm"})) + "\n")
-    # stuck: how many repeated values >= 20 mm in 24 h are below the implausible limit?
-    out.append(f"**`rain_stuck`** flagged {int((flags.rule == 'rain_stuck').sum())} readings beyond those already removed as implausible. "
-               "The stuck gauge in the archive (27879, 287.5 / 296.5 mm repeated for three days in Nov 2025) is caught by "
-               "`rain_implausible`; the stuck rule is kept as a guard for a gauge that sticks below 100 mm, and has "
-               "not removed any genuine value.\n")
+    imp = flags[flags.rule == "rain_implausible"]
+    rep_ = imp.groupby(["graph_id", "value"]).size()
+    rep_ = rep_[rep_ >= qc.RAIN_STUCK_COUNT]
+    stuck_txt = "; ".join(f"{gid} repeats {val:g} mm {n} times" for (gid, val), n in rep_.items()) or "none"
+    out.append(f"**`rain_stuck`** removed {int((flags.rule == 'rain_stuck').sum())} readings that no earlier rule had caught. "
+               f"Repeated implausible values (already removed by `rain_implausible`): {stuck_txt}. "
+               "The stuck rule is a guard for a gauge that sticks below the implausible limit.\n")
     s = STORM
     in_storm = flags[(flags.time_local >= s[0]) & (flags.time_local <= s[1])]
     out.append(f"**12 Nov 2024, 06:00-12:00:** {len(in_storm)} readings flagged at any station"
@@ -127,11 +135,17 @@ def false_positive_checks(readings: pd.DataFrame, clean: pd.DataFrame, flags: pd
                + ". PEKANMERU river level and the rain gauges within 10 km are unchanged (regression test "
                "`tests/test_qc.py::test_12_nov_2024_storm_is_untouched`).\n")
     spikes = flags[flags.rule == "wl_spike"]
-    out.append(f"**`wl_spike`**: {len(spikes)} readings. {spikes.graph_id.value_counts().head(3).to_dict()} dominate; these are river "
-               "gauges whose level is near-constant (around 14.5-18.4 m) with single-reading excursions of 1-5 m "
-               "that return at once. Negative levels are never flagged by themselves; a flagged negative value is a single-reading "
-               "plunge from a positive level (e.g. 3014080_ at -6.6 m from 2.6 m). Known limit: when two spikes alternate "
-               "(3115080_, 2024-06-07 13:00-13:30) the good reading between them can be flagged too.\n")
+    if len(spikes):
+        nb = spikes.sort_values(["graph_id", "time_local"])
+        adjacent = int(((nb.graph_id == nb.graph_id.shift(1)) & ((nb.time_local - nb.time_local.shift(1)) <= pd.Timedelta(minutes=15))).sum())
+        out.append(f"**`wl_spike`**: {len(spikes)} readings at {spikes.graph_id.nunique()} stations; the most are "
+                   f"{spikes.graph_id.value_counts().head(3).to_dict()}. Flagged values range from {spikes.value.min():g} m to "
+                   f"{spikes.value.max():g} m. {int((spikes.value < 0).sum())} flagged values are negative: each is a single-reading plunge "
+                   f"below its neighbours, not a tidal swing. {adjacent} flagged reading(s) sit directly next to another flagged reading "
+                   "(a burst of two or more bad readings, or a good reading between two spikes).\n")
+    reb = flags[flags.rule == "rain_counter_rebound"]
+    out.append(f"**`rain_counter_rebound`**: {len(reb)} readings removed after a counter dip"
+               + (f", largest {reb.value.max():g} mm" if len(reb) else "") + ".\n")
     return out
 
 
@@ -173,7 +187,8 @@ def tide_section() -> list[str]:
                {"": "after (harmonic fill)", "max_abs_h": round(float(new.hours_to_high_tide.abs().max()), 1),
                 "NaN_tide_height": int(new.tide_height_m.isna().sum())}])) + "\n",
            f"After the fix `hours_to_high_tide` is NaN on {int(new.hours_to_high_tide.isna().sum())} hour(s) "
-           "(at a series edge, where the nearest high tide lies outside the data) and never beyond +-7 h.\n",
+           f"({', '.join(f'{t:%Y-%m-%d %H:%M}' for t in new.time_local[new.hours_to_high_tide.isna()])}): the fit has no high water within 7 h "
+           "of them (a weak neap-tide hump), and NaN is reported instead of a far-away high. Never beyond +-7 h.\n",
            "**Hold-out validation**: fit without a 10-day window that has data, then compare the fit with the series there. "
            "Timing error = predicted minus observed high-water time (hourly data, so a resolution of 1 h).\n"]
     rows = []
@@ -187,7 +202,7 @@ def tide_section() -> list[str]:
             f"Mean over windows: RMSE {df.RMSE_m.mean():.3f} m (the series itself varies by {df.series_std_m.mean():.2f} m std), "
             f"mean absolute high-water timing error {df.mean_abs_timing_h.mean():.2f} h.\n",
             "The fit reproduces the astronomical tide; it cannot reproduce weather surge, so filled hours carry an error of about "
-            "the RMSE above. This matters only for the 432 filled hours (1.8 %), which are flagged in `tide_filled`.\n"]
+            "the RMSE above. This matters only for the " + f"{int(mask.sum())} filled hours ({mask.mean():.1%}), which are flagged in `tide_filled`.\n"]
     return out
 
 
@@ -208,6 +223,9 @@ def main() -> None:
            "(`python scripts/qc_report.py`).\n",
            "Rules live in `floodready/qc.py` and run inside `engine/replay.py::load_archive_readings` and `live.py::load_live_readings`, "
            "so replay, training, the API and live data all see the cleaned values. A flagged value becomes NaN, never 0.\n",
+           "**Live mode:** `wl_spike` and `rain_after_gap` need the next reading. A gauge's latest reading is kept and judged when the next "
+           "one arrives, so a real rise or storm after an outage is never hidden. Archive cleaning (replay, training) sees the reading at "
+           "t+15 min, live cleaning does not: a small train/serve difference, limited to the latest reading of each gauge.\n",
            "## 1. Summary\n"]
     summary = flags.groupby("rule").agg(readings=("value", "size"), stations=("graph_id", "nunique")).reindex(list(RULE_TEXT)).fillna(0).astype(int)
     summary = summary.reset_index().assign(rule_text=lambda d: d.rule.map(RULE_TEXT))
@@ -215,9 +233,11 @@ def main() -> None:
     rain_valid = int(readings[readings.kind == "rf"].rain_15min_mm.notna().sum())
     out.append(f"{int(flags.rule.str.startswith('rain').sum())} of {rain_valid:,} rain readings "
                f"({flags.rule.str.startswith('rain').sum() / rain_valid:.4%}) and {int((flags.rule == 'wl_spike').sum())} river readings removed.\n")
-    out.append("Thresholds: the largest genuine rain value in the archive is about 95 mm per 15 min; every value above 100 mm is a counter "
-               "jump (121 to 2,570 mm) or a stuck repeat. `rain_after_gap` with the 30 mm limit also needs the continuation test "
-               "(section 3): without it it removed a real storm at gauge 27233.\n")
+    kept_max = float(clean.rain_15min_mm.max())
+    imp = flags[flags.rule == "rain_implausible"]
+    out.append(f"Thresholds: the largest rain value kept is {kept_max:g} mm per 15 min; the values removed by `rain_implausible` range "
+               f"from {imp.value.min():g} to {imp.value.max():g} mm. `rain_after_gap` needs the continuation test (section 3): without it "
+               "it removed readings of storms that began during a gap.\n")
     out.append("## 2. Flagged readings by rule and station\n")
     out += rule_sections(flags, names)
     out += false_positive_checks(readings, clean, flags)

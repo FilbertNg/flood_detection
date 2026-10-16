@@ -19,6 +19,7 @@ CONSTITUENTS_DEG_PER_H = {
     "M2": 28.9841042, "S2": 30.0, "N2": 28.4397295, "K2": 30.0821373,
     "K1": 15.0410686, "O1": 13.9430356, "P1": 14.9589314, "Q1": 13.3986609,
     "M4": 57.9682084, "MS4": 58.9841042,
+    "Sa": 0.0410686, "Ssa": 0.0821373,
 }
 # Open-Meteo's high waters are consistently EARLY against independent data (docs/tide-check.md, WP7):
 # UHSLC station 140 Port Kelang gauge, 86 highs Nov 2022-Jan 2023: median -35 min (sd 10); news-relayed official
