@@ -93,8 +93,9 @@ def test_rules_config_uses_jps_figures():
     assert rules["nowcast_window_min"] == {"start": 30, "end": 90}
 
 
-def test_ml_config_starts_behind_the_gate():
+def test_ml_config_is_set_by_gate_v2():
     ml = load_config("ml.yaml")
     assert 0 < ml["p_watch"] < ml["p_warning"] < 1
-    assert ml["ml_drives_alerts"] is False  # only the ML3 gate may switch this on
-    assert ml["gate"] == {"min_extra_lead_min": 20, "max_false_alarm_ratio": 1.2}
+    assert isinstance(ml["ml_drives_alerts"], bool)  # only the gate (train_trigger.py) may set this
+    assert ml["ml_max_level"] == "watch" and ml["gate_version"] == 2
+    assert ml["gate"] == {"min_extra_lead_min": 30, "max_false_alarm_ratio": 1.5, "min_fresh_crossings": 30}

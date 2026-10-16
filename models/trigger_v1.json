@@ -46,59 +46,61 @@
     "random_state": 0
   },
   "data_from": "2024-04-01 00:30:00",
-  "data_to": "2026-10-15 00:30:00",
+  "data_to": "2026-10-16 14:45:00",
   "river_stations": [
     "26039",
     "26558",
     "3014080_",
+    "3015001_",
+    "3015083_",
     "3015084_",
     "3015089_",
+    "3016080_",
     "3017107_",
     "3115080_",
+    "3115083_",
+    "3115084_",
     "DESAKEMUNING",
     "PANDAMARAN",
     "PEKANMERU"
   ],
-  "rain_stations": 32,
-  "rows": 684077,
-  "positives": 5350,
+  "rain_stations": 40,
+  "rows": 1054498,
+  "positives": 6318,
   "validation": "4 time-blocked folds (calendar quarters, round-robin); out-of-fold probabilities",
-  "p_watch": 0.25,
-  "p_warning": 0.95,
-  "gate_passed": false,
-  "gate_criterion": "",
-  "metrics": {
-    "rules_floor_watch": {
-      "crossings": 870,
-      "detected": 862,
-      "median_lead_min": 45.0,
-      "false_alarms": 2257,
-      "station_months": 334.8855537280702,
-      "false_per_station_month": 6.739615892277941
+  "calibration": "balanced + isotonic",
+  "calibration_scores": {
+    "balanced + isotonic": {
+      "brier": 0.002843661171074638,
+      "ece": 0.0011196604146343652,
+      "pr_auc": 0.7049998733075271,
+      "roc_auc": 0.9803084667065569
     },
-    "rules_rain_watch": {
-      "crossings": 870,
-      "detected": 235,
-      "median_lead_min": 150.0,
-      "false_alarms": 1459,
-      "station_months": 334.8855537280702,
-      "false_per_station_month": 4.356712267095045
+    "no class weight + isotonic": {
+      "brier": 0.0028676408860829044,
+      "ece": 0.0006422367602325726,
+      "pr_auc": 0.6973146789193876,
+      "roc_auc": 0.9820570431790993
     },
-    "ml": {
-      "crossings": 870,
-      "detected": 819,
-      "median_lead_min": 150.0,
-      "false_alarms": 2229,
-      "station_months": 334.8855537280702,
-      "false_per_station_month": 6.656005238762751
-    },
-    "shipped": {
-      "crossings": 870,
-      "detected": 866,
-      "median_lead_min": 165.0,
-      "false_alarms": 3431,
-      "station_months": 334.8855537280702,
-      "false_per_station_month": 10.245291150379094
+    "no class weight, raw": {
+      "brier": 0.0028732061828459802,
+      "ece": 0.0009717275484431829,
+      "pr_auc": 0.7009458221186127,
+      "roc_auc": 0.9821266515406729
     }
-  }
+  },
+  "p_watch": 0.075,
+  "theta_by_fold": {
+    "0": 0.075,
+    "1": 0.075,
+    "2": 0.075,
+    "3": 0.075
+  },
+  "gate_version": 2,
+  "gate_passed": true,
+  "tidal_stations": [
+    "3014080_",
+    "PANDAMARAN"
+  ],
+  "fresh_stations": []
 }
