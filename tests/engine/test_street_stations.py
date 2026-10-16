@@ -6,9 +6,21 @@ from floodready.engine import street_stations as ss
 GAUGES = [("A", 3.100, 101.400), ("B", 3.110, 101.400), ("C", 3.300, 101.400), ("D", 3.400, 101.400)]
 
 
-def test_rain_gauges_within_5_km_else_nearest_two():
+def test_rain_gauges_within_the_radius_else_the_nearest_minimum():
     assert ss.rain_gauges(3.103, 101.400, GAUGES) == ["A", "B"]          # both within 1 km
-    assert ss.rain_gauges(3.350, 101.400, GAUGES) == ["C", "D"]          # none within 5 km: nearest two
+    assert ss.rain_gauges(3.350, 101.400, GAUGES, {"rain_radius_km": 5}) == ["C", "D"]   # none within 5 km: nearest two
+
+
+def test_radius_and_minimum_gauges_are_parameters():
+    cfg = {"rain_radius_km": 12, "min_rain_gauges": 2, "river_radius_km": 10}
+    assert ss.rain_gauges(3.103, 101.400, GAUGES, cfg) == ["A", "B"]          # C is ~22 km away
+    assert ss.rain_gauges(3.103, 101.400, GAUGES, {**cfg, "rain_radius_km": 1, "min_rain_gauges": 3}) == ["A", "B", "C"]
+
+
+def test_nearest_river_station_within_the_configured_radius():
+    wl = [("W1", 3.10, 101.40)]
+    assert ss.pick_wl([], wl, 3.17, 101.40, {"river_radius_km": 10})[:2] == ("W1", "nearest")     # ~7.8 km
+    assert ss.pick_wl([], wl, 3.17, 101.40, {"river_radius_km": 5}) == (None, None, None)
 
 
 def test_wl_station_first_on_the_flow_path_within_15_km():

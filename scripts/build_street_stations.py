@@ -6,7 +6,8 @@ Writes assets/geo/<township>_street_stations.json:
 
 River station: trace the D8 flow path from the street's midpoint (floodready/gis/flow.py); the first township
 river station on it within 15 km. If the path reaches none (flat coastal ground breaks D8), the nearest township
-river station within 5 km. Otherwise null. Rain gauges: the township's gauges within 5 km of the midpoint, else the nearest 2.
+river station within `street_stations.river_radius_km` (config/rules.yaml). Otherwise null. Rain gauges: the township's gauges
+within `rain_radius_km` of the midpoint, else the nearest `min_rain_gauges`.
 Needs: data/raw/dem (Copernicus tile), data/interim/stations.parquet, assets/geo/<township>_streets.geojson.
 """
 from __future__ import annotations
@@ -38,6 +39,7 @@ def main() -> None:
 
     town = next(t for t in yaml.safe_load((ROOT / "config" / "townships.yaml").read_text(encoding="utf-8"))["townships"]
                 if t["id"] == args.township)
+    cfg = ss.DEFAULTS | yaml.safe_load((ROOT / "config" / "rules.yaml").read_text(encoding="utf-8")).get("street_stations", {})
     lookup = pd.read_parquet(ROOT / "data" / "interim" / "stations.parquet")
     ids = {s["graph_id"]: s.get("types", []) for s in town["stations"]}
 
@@ -53,13 +55,15 @@ def main() -> None:
     grid = flow.flow_grid(clip)
 
     streets = gpd.read_file(ROOT / "assets" / "geo" / f"{args.township.lower()}_streets.geojson")
-    out = {}
+    out, spread = {}, {km: Counter() for km in (5, 8, 10, 12)}
     for street in streets.itertuples():
         mid = street.geometry.interpolate(0.5, normalized=True)
         lat, lon = mid.y, mid.x
+        for km in spread:
+            spread[km][sum(ss.distance_m(lat, lon, glat, glon) <= km * 1000 for _, glat, glon in rf)] += 1
         hits = flow.stations_downstream(grid, lat, lon, wl) if wl else []
-        wl_id, method, dist = ss.pick_wl(hits, wl, lat, lon)
-        out[street.street_id] = {"wl": wl_id, "rf": ss.rain_gauges(lat, lon, rf), "method": method, "distance_m": dist}
+        wl_id, method, dist = ss.pick_wl(hits, wl, lat, lon, cfg)
+        out[street.street_id] = {"wl": wl_id, "rf": ss.rain_gauges(lat, lon, rf, cfg), "method": method, "distance_m": dist}
 
     path = ROOT / "assets" / "geo" / f"{args.township.lower()}_street_stations.json"
     path.write_text(json.dumps(out, indent=0, sort_keys=True), encoding="utf-8")
@@ -68,6 +72,7 @@ def main() -> None:
     print("streets per river station:", dict(Counter(v["wl"] for v in out.values())))
     print("streets per method:", dict(Counter(v["method"] for v in out.values())))
     print("streets with no river station:", sum(v["wl"] is None for v in out.values()))
+    print("rain gauges per street (count: streets) by radius:", {f"{km} km": dict(sorted(c.items())) for km, c in spread.items()})
     print("streets per rain-gauge set:", dict(Counter(tuple(v["rf"]) for v in out.values()).most_common(10)))
 
 
