@@ -4,7 +4,7 @@
 
 model_path: models/trigger_v1.joblib
 horizon_h: 2                  # probability the river crosses its warning level within 2 h
-p_watch: 0.03   # ML may raise a street to Watch at p >= p_watch (written by train_trigger.py)
+p_watch: 0.075   # ML may raise a street to Watch at p >= p_watch (written by train_trigger.py)
 # Kept for the existing contract only. ML no longer raises levels to Warning: Warning and Danger come
 # only from the JPS rules (ml_max_level below). Not written by train_trigger.py any more.
 p_warning: 0.95
@@ -17,7 +17,7 @@ ml_max_level: watch
 # but the station rules decide the alert level.
 ml_drives_alerts: true
 gate_version: 2
-calibration: "no class weight, raw"   # the calibration variant of the shipped model (written by train_trigger.py)
+calibration: "balanced + isotonic"   # the calibration variant of the shipped model (written by train_trigger.py)
 
 # Gate v2, pre-registered 16 Oct 2026 (docs/plans/2026-10-16-IMP-ml-data-street-improvements.md section 3):
 # inland stations; two_tier (floor OR ML) median lead >= floor + min_extra_lead_min and false alarms

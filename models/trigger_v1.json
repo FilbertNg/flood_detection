@@ -42,7 +42,7 @@
     "learning_rate": 0.05,
     "max_leaf_nodes": 31,
     "l2_regularization": 1.0,
-    "class_weight": null,
+    "class_weight": "balanced",
     "random_state": 0
   },
   "data_from": "2024-04-01 00:30:00",
@@ -64,37 +64,37 @@
     "PANDAMARAN",
     "PEKANMERU"
   ],
-  "rain_stations": 51,
+  "rain_stations": 40,
   "rows": 1054498,
   "positives": 6318,
   "validation": "4 time-blocked folds (calendar quarters, round-robin); out-of-fold probabilities",
-  "calibration": "no class weight, raw",
+  "calibration": "balanced + isotonic",
   "calibration_scores": {
     "balanced + isotonic": {
-      "brier": 0.0029676598250138624,
-      "ece": 0.0007785120983524384,
-      "pr_auc": 0.6886888303350194,
-      "roc_auc": 0.981836757296814
+      "brier": 0.002843661171074638,
+      "ece": 0.0011196604146343652,
+      "pr_auc": 0.7049998733075271,
+      "roc_auc": 0.9803084667065569
     },
     "no class weight + isotonic": {
-      "brier": 0.0028871207197415046,
-      "ece": 0.0008488096048511407,
-      "pr_auc": 0.7015621463404014,
-      "roc_auc": 0.9831705011579758
+      "brier": 0.0028676408860829044,
+      "ece": 0.0006422367602325726,
+      "pr_auc": 0.6973146789193876,
+      "roc_auc": 0.9820570431790993
     },
     "no class weight, raw": {
-      "brier": 0.002851045249053399,
-      "ece": 0.0010463798456449725,
-      "pr_auc": 0.70707161042863,
-      "roc_auc": 0.9831932800556192
+      "brier": 0.0028732061828459802,
+      "ece": 0.0009717275484431829,
+      "pr_auc": 0.7009458221186127,
+      "roc_auc": 0.9821266515406729
     }
   },
-  "p_watch": 0.03,
+  "p_watch": 0.075,
   "theta_by_fold": {
-    "0": 0.03,
-    "1": 0.03,
-    "2": 0.03,
-    "3": 0.02
+    "0": 0.075,
+    "1": 0.075,
+    "2": 0.075,
+    "3": 0.075
   },
   "gate_version": 2,
   "gate_passed": true,
