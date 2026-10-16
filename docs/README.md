@@ -24,6 +24,7 @@ Every plan and document lives in this folder. Status and next tasks are in [HAND
 | [api-contract.md](api-contract.md) | API contract between backend and frontend (frozen; changes need a `contract` PR) |
 | [evaluation-report.md](evaluation-report.md) | ML vs rule-floor results and the gate verdict (rewritten by `scripts/train_trigger.py`) |
 | [ml-feasibility.md](ml-feasibility.md) | First ML spike: why we use JPS station data and how the gate is defined |
+| [ml-data-eda.md](ml-data-eda.md) | ML features and why, data shape, EDA, data-quality defects, experiments and recommended improvements |
 
 ## Archive
 
