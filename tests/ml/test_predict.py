@@ -101,3 +101,12 @@ def test_a_model_trained_on_other_features_falls_back_to_rules_not_a_crash(caplo
                                             T("09:00"), CFG) is None
     warnings = [r for r in caplog.records if "n_rf_10km" in r.message]
     assert len(warnings) == 1   # once per model, not at every 15-min step of a replay
+
+
+@pytest.mark.xfail(strict=False, reason="models retrained by lead after archive rebuild")
+def test_committed_bundle_features_equal_dataset_features():
+    import joblib
+    from pathlib import Path
+    from floodready.ml import dataset
+    bundle = joblib.load(Path(__file__).resolve().parents[2] / "models" / "trigger_v1.joblib")
+    assert list(bundle["features"]) == list(dataset.FEATURES)
