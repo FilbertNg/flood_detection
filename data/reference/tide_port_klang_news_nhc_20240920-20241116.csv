@@ -1,0 +1,12 @@
+# High-water times and heights for Port Klang as reported in news articles. Heights are above chart datum (as reported). Times MYT.
+# These are PREDICTIONS (forecasts) except where kind=observed. Values transcribed from the articles read on 2026-10-16; no article text is copied.
+# NHC = National Hydrographic Centre (Pusat Hidrografi Nasional). DDOC = Klang District Disaster Operations Centre, via Klang Land and District Office Facebook post.
+date,time_myt,height_m,kind,issuer,url
+2024-09-20,07:23,5.8,prediction,DDOC Klang (Klang Land and District Office),https://www.sinarharian.com.my/article/686610/edisi/selangor-kl/air-pasang-besar-keadaan-klang-terkawal-tiada-pemindahan
+2024-09-21,07:56,5.6,prediction,DDOC Klang (Klang Land and District Office),https://www.sinarharian.com.my/article/686610/edisi/selangor-kl/air-pasang-besar-keadaan-klang-terkawal-tiada-pemindahan
+2024-09-21,20:11,5.0,prediction,DDOC Klang (Klang Land and District Office),https://www.sinarharian.com.my/article/686610/edisi/selangor-kl/air-pasang-besar-keadaan-klang-terkawal-tiada-pemindahan
+2024-10-18,05:53,5.9,observed,Port Klang Fire and Rescue (reported by The Star),https://www.thestar.com.my/metro/metro-news/2024/10/18/sighs-of-relief-as-high-tide-phenomenon-passes-without-incident-in-klang
+2024-10-19,06:54,5.7,prediction,NHC (reported by The Star),https://www.thestar.com.my/metro/metro-news/2024/10/18/sighs-of-relief-as-high-tide-phenomenon-passes-without-incident-in-klang
+2024-10-20,07:29,5.5,prediction,NHC (reported by The Star),https://www.thestar.com.my/metro/metro-news/2024/10/18/sighs-of-relief-as-high-tide-phenomenon-passes-without-incident-in-klang
+2024-11-15,05:07,5.5,prediction,NHC (reported by The Star),https://www.thestar.com.my/metro/metro-news/2024/11/14/high-tide-expected-over-next-two-days-in-klang
+2024-11-16,05:50,5.5,prediction,NHC (reported by The Star),https://www.thestar.com.my/metro/metro-news/2024/11/14/high-tide-expected-over-next-two-days-in-klang
