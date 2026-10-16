@@ -8,6 +8,8 @@ the Infobanjir graph ID (e.g. 26558), and its station_code sometimes does
 """
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pandas as pd
 
@@ -47,3 +49,21 @@ def build_lookup(wl_live: pd.DataFrame, rf_live: pd.DataFrame, old: pd.DataFrame
     ordered = (lookup.wl_normal_m < lookup.wl_alert_m) & (lookup.wl_alert_m < lookup.wl_warning_m) & (lookup.wl_warning_m < lookup.wl_danger_m)
     lookup["thresholds_ok"] = np.where(lookup.kind == "wl", ordered, True)
     return lookup[LOOKUP_COLUMNS]
+
+
+_warned = False
+
+
+def load_default(path=None) -> pd.DataFrame | None:
+    """The station table at data/interim/stations.parquet (scripts/build_station_lookup.py), or None if it is not built.
+    Used by the readings loaders so QC rules that need station coordinates work without callers passing the table.
+    A missing table switches the wl_unresponsive QC rule off; that is logged once per process."""
+    global _warned
+    from pathlib import Path
+    path = Path(path) if path else Path(__file__).resolve().parents[1] / "data" / "interim" / "stations.parquet"
+    if path.exists():
+        return pd.read_parquet(path)
+    if not _warned:
+        _warned = True
+        logging.getLogger(__name__).warning("%s not found: QC rule wl_unresponsive is skipped (run scripts/build_station_lookup.py)", path)
+    return None

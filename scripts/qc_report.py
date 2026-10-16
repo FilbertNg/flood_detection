@@ -35,6 +35,9 @@ RULE_TEXT = {
                    "(only readings not already removed by the rules above)"),
     "wl_spike": (f"river level more than {qc.WL_SPIKE_M:g} m from both neighbours in the same direction, with the neighbours within "
                  f"max({qc.WL_REVERT_M:g} m, half the jump) of each other. A station's latest reading is kept until the next arrives"),
+    "wl_unresponsive": (f"river level within {qc.WL_FLAT_M * 100:g} cm for >= {qc.WL_FLAT_HOURS} h while rain at the gauges within "
+                        f"{qc.WL_RAIN_RADIUS_KM:g} km totals >= {qc.WL_RAIN_MM:g} mm over the same window (largest rolling sum over those gauges). "
+                        "Flagged from the first reading where both hold until the level moves again; a flat level alone is base flow and is kept"),
 }
 
 
@@ -89,6 +92,9 @@ def rule_sections(flags: pd.DataFrame, names: dict[str, str]) -> list[str]:
         per.insert(1, "name", per.graph_id.map(names).fillna(""))
         per["first"], per["last"] = per["first"].dt.strftime("%Y-%m-%d %H:%M"), per["last"].dt.strftime("%Y-%m-%d %H:%M")
         out.append(md_table(per.sort_values("count", ascending=False)) + "\n")
+        if len(g) > 500:
+            out.append(f"{len(g)} readings: too many to list; section 3a shows the runs.\n")
+            continue
         out.append("<details><summary>Every flagged reading</summary>\n")
         lst = g.assign(time_local=g.time_local.dt.strftime("%Y-%m-%d %H:%M"))[["graph_id", "time_local", "value"]]
         out.append(md_table(lst) + "\n\n</details>\n")
@@ -131,9 +137,9 @@ def false_positive_checks(readings: pd.DataFrame, clean: pd.DataFrame, flags: pd
     s = STORM
     in_storm = flags[(flags.time_local >= s[0]) & (flags.time_local <= s[1])]
     out.append(f"**12 Nov 2024, 06:00-12:00:** {len(in_storm)} readings flagged at any station"
-               + (f" ({', '.join(sorted(in_storm.graph_id.unique()))})" if len(in_storm) else "")
+               + (f" ({', '.join(sorted(in_storm.graph_id.unique()))}, rule {', '.join(sorted(in_storm.rule.unique()))})" if len(in_storm) else "")
                + ". PEKANMERU river level and the rain gauges within 10 km are unchanged (regression test "
-               "`tests/test_qc.py::test_12_nov_2024_storm_is_untouched`).\n")
+               "`tests/test_qc.py::test_12_nov_2024_storm_is_untouched`, and section 3a).\n")
     spikes = flags[flags.rule == "wl_spike"]
     if len(spikes):
         nb = spikes.sort_values(["graph_id", "time_local"])
@@ -146,6 +152,88 @@ def false_positive_checks(readings: pd.DataFrame, clean: pd.DataFrame, flags: pd
     reb = flags[flags.rule == "rain_counter_rebound"]
     out.append(f"**`rain_counter_rebound`**: {len(reb)} readings removed after a counter dip"
                + (f", largest {reb.value.max():g} mm" if len(reb) else "") + ".\n")
+    return out
+
+
+def mask_runs(flagged_times: pd.Series, level: pd.Series) -> pd.Series:
+    """Run id per flagged reading, following the rule's own runs: a gap of missing readings does not split a run,
+    a valid reading that was not flagged does."""
+    t = flagged_times.sort_values()
+    lv = level[~level.index.duplicated()].dropna().sort_index()
+    ok = pd.Series(~lv.index.isin(t), index=lv.index).astype(int).cumsum()      # unflagged valid readings up to each time
+    pos = ok.reindex(t.to_numpy(), method="ffill").fillna(0).to_numpy()
+    return pd.Series((np.diff(pos, prepend=pos[0]) > 0).cumsum(), index=t.index)
+
+
+def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: pd.DataFrame, names: dict[str, str]) -> list[str]:
+    f = flags[flags.rule == "wl_unresponsive"].sort_values(["graph_id", "time_local"])
+    out = ["## 3a. `wl_unresponsive`: evidence and false-positive risk\n"]
+    wl = readings[readings.kind == "wl"]
+    lvl = {gid: g.set_index("time_local").wl_m.sort_index() for gid, g in wl.groupby("graph_id")}
+    rf_xy = stations[stations.kind == "rf"].dropna(subset=["lat", "lon"]).drop_duplicates("graph_id").set_index("graph_id")
+    wl_xy = stations[stations.kind == "wl"].drop_duplicates("graph_id").set_index("graph_id")
+    rain = readings[readings.kind == "rf"].pivot_table(index="time_local", columns="graph_id", values="rain_15min_mm").clip(lower=0).fillna(0)
+
+    def rain3h(gid):
+        d = qc._haversine_km(wl_xy.at[gid, "lat"], wl_xy.at[gid, "lon"], rf_xy.lat.to_numpy(), rf_xy.lon.to_numpy())
+        ids = [i for i in rf_xy.index[d <= qc.WL_RAIN_RADIUS_KM] if i in rain.columns]
+        return rain[ids].rolling(qc.WL_FLAT_HOURS * 4, min_periods=1).sum().max(axis=1), len(ids)
+
+    s0, s1 = STORM
+    pm = flags[(flags.graph_id == "PEKANMERU") & (flags.time_local >= s0) & (flags.time_local <= s1)]
+    case = f[(f.graph_id == "26558") & (f.time_local >= s0) & (f.time_local <= s1)]
+    out.append(f"**12 Nov 2024, 06:00-12:00:** Kg. Perepat (26558) read {case.value.mode().iloc[0] if len(case) else float('nan'):g} m throughout while "
+               f"Pekan Meru rose; {len(case)} readings of 26558 are flagged"
+               + (f" (from {case.time_local.min():%H:%M})" if len(case) else "") + f", {len(pm)} readings of PEKANMERU are flagged "
+               "(regression test `tests/test_qc_unresponsive.py::test_12_nov_2024_26558_is_flagged_and_pekan_meru_is_not`).\n")
+    out.append("**Flags per station** (runs = separate flat stretches; the three stations with most flags are examined below):\n")
+    runs = pd.Series({gid: int(mask_runs(g.time_local, lvl[gid]).nunique()) for gid, g in f.groupby("graph_id")})
+    per = f.groupby("graph_id").agg(readings=("value", "size"), first=("time_local", "min"), last=("time_local", "max")).assign(runs=runs)
+    per.insert(0, "name", per.index.map(names))
+    per["gauges_within_radius"] = [rain3h(g)[1] for g in per.index]
+    per["first"], per["last"] = per["first"].dt.strftime("%Y-%m-%d"), per["last"].dt.strftime("%Y-%m-%d")
+    out.append(md_table(per.sort_values("readings", ascending=False).reset_index()) + "\n")
+    for gid in per.sort_values("readings", ascending=False).index[:3]:
+        g, (nr, _), lv = f[f.graph_id == gid], rain3h(gid), lvl[gid]
+        run_id = mask_runs(g.time_local, lv)
+        nr = nr.shift(qc.WL_RESPONSE_LAG_MIN // 15)
+        rows = []
+        for _, r in g.groupby(run_id):
+            a, b = r.time_local.min(), r.time_local.max()
+            after = lv[(lv.index > b) & (lv.index <= b + pd.Timedelta(hours=3))].dropna()
+            rows.append({"run_start": f"{a:%Y-%m-%d %H:%M}", "readings": len(r), "flat_level_m": r.value.iloc[0],
+                         "rain_3h_90min_before_start_mm": round(float(nr.get(a, np.nan)), 1), "max_rain_3h_90min_before_in_run_mm": round(float(nr[a:b].max()), 1),
+                         "first_level_after_run_m": after.iloc[0] if len(after) else ""})
+        out.append(f"**{gid} {names.get(gid, '')}** (level range {lv.min():g} to {lv.max():g} m); the {min(8, len(rows))} longest runs:\n")
+        out.append(md_table(pd.DataFrame(rows).sort_values("readings", ascending=False).head(8)) + "\n")
+    ac = []
+    for gid, v in lvl.items():
+        v = v[~v.index.duplicated()].asfreq("15min")
+        ac.append({"graph_id": gid, "name": names.get(gid, ""), "lag25_autocorr": round(float(v.autocorr(25)), 2),
+                   "flagged_readings": int((f.graph_id == gid).sum())})
+    ac = pd.DataFrame(ac).sort_values("lag25_autocorr")
+    tidal = ac[ac.lag25_autocorr < -0.2]
+    out.append("**Tidal stations**: a tidal level swings with the 12.4 h tide, so its level at lag 25 (6.25 h) is anti-correlated with now. "
+               f"{len(tidal)} of {len(ac)} river stations have lag-25 autocorrelation < -0.2 ({', '.join(tidal.graph_id)}); "
+               f"{int(tidal.flagged_readings.sum())} of their readings are flagged. "
+               + ("No exclusion is needed." if tidal.flagged_readings.sum() == 0 else "These flags need review: consider excluding them.")
+               + "\n")
+    out.append(md_table(ac.head(5)) + "\n")
+    out.append("**What a flag does downstream**: the value becomes NaN. The rule engine forward-fills a level for 2 h, so a station goes stale "
+               "only after that; the township's river rule then has no reading from it, and confidence is `low` only when no township station "
+               "reports. The ML features have no forward-fill and lose the readings at once. A wrong flag can therefore hide a rising river. "
+               "Two guards limit it: a flat level at or above the station's alert level is never flagged (a gauge stuck high or a plateau in a flood "
+               "keeps its value), and the rain window ends 90 min before the reading so a slow river has time to answer.\n")
+    out.append("**False-positive risks** (read the run tables above):\n\n"
+               "- A river that is mostly base flow and drains a large or slow catchment can stay within 1.5 cm for 4.5 h after heavy rain "
+               "at one nearby gauge (the rule takes the largest of the gauges within the radius, so a rain cell over one gauge counts).\n"
+               "- A run lasts until the level moves, so it continues after the rain stops. A genuinely flat river is kept NaN until it moves.\n"
+               "- A station whose gauge really is stuck for days or weeks is flagged for all of it once heavy rain has occurred, which is intended.\n"
+               "- **Live vs replay**: a run is judged on the history that is loaded. Archive cleaning (replay, training) sees the whole history; live "
+               "cleaning sees the live files from `since - 1 day`, so a long stuck run whose triggering rain fell earlier is not flagged live, and live "
+               "rows override archive rows in the runner. Follow-up: run QC over archive and live together.\n"
+               "- **Merging changes the training data** (`train_trigger.py` and the backfill load through `load_archive_readings`): the stored "
+               "trigger model and its out-of-fold probabilities need retraining.\n")
     return out
 
 
@@ -210,7 +298,7 @@ def main() -> None:
     readings = load_archive()
     stations = pd.read_parquet(ROOT / "data" / "interim" / "stations.parquet")
     names = dict(zip(stations.graph_id.astype(str), stations.name))
-    clean, flags = qc.clean_readings(readings)
+    clean, flags = qc.clean_readings(readings, stations=stations)
     progress = json.loads((HIST / "_progress.json").read_text()) if (HIST / "_progress.json").exists() else {}
     n_rf, n_wl = readings[readings.kind == "rf"].graph_id.nunique(), readings[readings.kind == "wl"].graph_id.nunique()
 
@@ -232,7 +320,7 @@ def main() -> None:
     out.append(md_table(summary) + "\n")
     rain_valid = int(readings[readings.kind == "rf"].rain_15min_mm.notna().sum())
     out.append(f"{int(flags.rule.str.startswith('rain').sum())} of {rain_valid:,} rain readings "
-               f"({flags.rule.str.startswith('rain').sum() / rain_valid:.4%}) and {int((flags.rule == 'wl_spike').sum())} river readings removed.\n")
+               f"({flags.rule.str.startswith('rain').sum() / rain_valid:.4%}) and {int(flags.rule.str.startswith('wl').sum())} river readings removed.\n")
     kept_max = float(clean.rain_15min_mm.max())
     imp = flags[flags.rule == "rain_implausible"]
     out.append(f"Thresholds: the largest rain value kept is {kept_max:g} mm per 15 min; the values removed by `rain_implausible` range "
@@ -241,6 +329,7 @@ def main() -> None:
     out.append("## 2. Flagged readings by rule and station\n")
     out += rule_sections(flags, names)
     out += false_positive_checks(readings, clean, flags)
+    out += unresponsive_section(readings, flags, stations, names)
     comp = completeness(clean, names)
     out.append("## 4. Completeness and gaps per station (after QC)\n")
     out.append("`valid_%` = non-missing readings between the station's first and last valid reading, out of the 15-min slots in that span. "

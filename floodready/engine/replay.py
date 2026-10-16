@@ -15,6 +15,7 @@ from typing import Iterator
 import pandas as pd
 
 from .. import qc
+from .. import stations as stations_mod
 from . import alerts as alerts_mod
 from . import levels, rules
 from .features import compute_station_features
@@ -121,8 +122,11 @@ def run(start: datetime, end: datetime, step: timedelta, readings: pd.DataFrame,
         t += step
 
 
-def load_archive_readings(hist_dir: Path, station_ids: list[str], start: datetime, end: datetime) -> pd.DataFrame:
-    """Readings for the given stations from the JPS history archive (data/raw/jps_hist), after QC (floodready.qc)."""
+def load_archive_readings(hist_dir: Path, station_ids: list[str], start: datetime, end: datetime,
+                          stations: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Readings for the given stations from the JPS history archive (data/raw/jps_hist), after QC (floodready.qc).
+    `stations` (coordinates) enables the wl_unresponsive rule; default: data/interim/stations.parquet if built.
+    The rule needs the rain gauges near each river station among `station_ids`."""
     frames = []
     for kind, value in (("rf", "rain_15min_mm"), ("wl", "wl_m")):
         for graph_id in station_ids:
@@ -136,6 +140,7 @@ def load_archive_readings(hist_dir: Path, station_ids: list[str], start: datetim
     if not frames:
         return pd.DataFrame(columns=["graph_id", "kind", "time_local", "rain_15min_mm", "wl_m"])
     # QC runs on each gauge's full history (gap and stuck rules need context), then the window is cut
-    clean, _ = qc.clean_readings(pd.concat(frames, ignore_index=True))
+    clean, _ = qc.clean_readings(pd.concat(frames, ignore_index=True),
+                                 stations=stations if stations is not None else stations_mod.load_default())
     in_window = (clean.time_local >= pd.Timestamp(start)) & (clean.time_local <= pd.Timestamp(end))
     return clean[in_window].reset_index(drop=True)
