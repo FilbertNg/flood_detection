@@ -8,18 +8,25 @@ used as a feature. Features at t use only data at or before t.
 """
 from __future__ import annotations
 
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from . import network as river_network
+
 STEP = "15min"
 RAIN_WINDOWS = {"1h": 4, "2h": 8, "3h": 12, "6h": 24, "24h": 96}
 RADII_KM = (10, 25)
+UPSTREAM_FEATURES = ["up_rise_60m_max", "up_rise_120m_max", "up_level_rel_max"]
+TIDE_COUPLING_STEPS, TIDE_COUPLING_MIN_PAIRS = 288, 96     # last 3 days, at least 24 h of valid pairs
 FEATURES = (
-    ["d_alert", "d_warning", "d_danger", "level_rel", "rise_15m", "rise_60m", "rise_120m"]
-    + [f"rain_{w}_{agg}_{r}km" for w in RAIN_WINDOWS for agg in ("max", "mean") for r in RADII_KM]
+    ["d_warning", "level_rel", "rise_15m", "rise_60m", "rise_120m"]
+    + [f"rain_{w}_max_{r}km" for w in RAIN_WINDOWS for r in RADII_KM]
     + [f"rain_2to4h_max_{r}km" for r in RADII_KM]
-    + ["rain_72h_ante_max_25km", "n_rf_10km", "n_rf_25km", "tide_height_m", "hours_to_high_tide", "hour", "month"]
+    + ["rain_72h_ante_max_25km", "tide_height_m", "hours_to_high_tide", "tide_change_1h", "tide_coupling_3d"]
+    + UPSTREAM_FEATURES
+    + ["hour", "month"]
 )
 
 
@@ -41,9 +48,25 @@ def _rain_sums(readings: pd.DataFrame, grid: pd.DatetimeIndex) -> dict[str, pd.D
     return sums
 
 
+def default_network() -> dict[str, list[str]]:
+    """config/river_network.yaml if present, else no upstream links."""
+    return river_network.load_network(river_network.DEFAULT_PATH) if Path(river_network.DEFAULT_PATH).exists() else {}
+
+
+def _level_state(level: pd.Series, meta) -> pd.DataFrame:
+    """Level-derived columns of one river station on the common grid (past data only)."""
+    span = meta.wl_danger_m - meta.wl_normal_m
+    return pd.DataFrame({"level_rel": (level - meta.wl_normal_m) / span if span else np.nan,
+                         "rise_15m": level - level.shift(1), "rise_60m": level - level.shift(4), "rise_120m": level - level.shift(8)})
+
+
 def build_features(readings: pd.DataFrame, stations: pd.DataFrame, tide: pd.DataFrame | None = None,
-                   wl_ids: list[str] | None = None) -> pd.DataFrame:
-    """Features for every river station and quarter hour (no labels)."""
+                   wl_ids: list[str] | None = None, network: dict[str, list[str]] | None = None) -> pd.DataFrame:
+    """Features for every river station and quarter hour (no labels).
+
+    `network` maps a station to the stations upstream of it (default: config/river_network.yaml if present)."""
+    if network is None:
+        network = default_network()
     grid = pd.date_range(readings.time_local.min().floor(STEP), readings.time_local.max(), freq=STEP)
     info = stations.drop_duplicates(["graph_id", "kind"])
     wl_info = info[(info.kind == "wl") & info.thresholds_ok.astype(bool)].set_index("graph_id")
@@ -60,6 +83,15 @@ def build_features(readings: pd.DataFrame, stations: pd.DataFrame, tide: pd.Data
 
     frames = []
     wl = readings[readings.kind == "wl"].drop_duplicates(["graph_id", "time_local"], keep="last")
+    wl_wide = wl.pivot(index="time_local", columns="graph_id", values="wl_m").reindex(grid)
+    states: dict[str, pd.DataFrame] = {}
+
+    def state_of(gid: str) -> pd.DataFrame | None:
+        if gid not in states:
+            usable = gid in wl_wide.columns and gid in wl_info.index
+            states[gid] = _level_state(wl_wide[gid], wl_info.loc[gid]) if usable else None
+        return states[gid]
+
     for graph_id in wl_ids:
         if graph_id not in wl_info.index:
             continue
@@ -67,11 +99,8 @@ def build_features(readings: pd.DataFrame, stations: pd.DataFrame, tide: pd.Data
         level = wl[wl.graph_id == graph_id].set_index("time_local")["wl_m"].reindex(grid)
         f = pd.DataFrame(index=grid)
         f["wl_m"], f["wl_warning_m"] = level, meta.wl_warning_m
-        f["d_alert"], f["d_warning"], f["d_danger"] = level - meta.wl_alert_m, level - meta.wl_warning_m, level - meta.wl_danger_m
-        span = meta.wl_danger_m - meta.wl_normal_m
-        f["level_rel"] = (level - meta.wl_normal_m) / span if span else np.nan
-        for name, k in (("rise_15m", 1), ("rise_60m", 4), ("rise_120m", 8)):
-            f[name] = level - level.shift(k)
+        f["d_warning"] = level - meta.wl_warning_m
+        f = f.join(_level_state(level, meta))
 
         if pd.notna(meta.lat):
             dist = pd.Series(haversine_km(meta.lat, meta.lon, rf_info.lat.to_numpy(), rf_info.lon.to_numpy()), index=rf_info.index)
@@ -79,16 +108,22 @@ def build_features(readings: pd.DataFrame, stations: pd.DataFrame, tide: pd.Data
             dist = pd.Series(dtype=float)
         for r in RADII_KM:
             near = [g for g in dist[dist <= r].index if g in rain_cols]
-            f[f"n_rf_{r}km"] = len(near)
             for w in RAIN_WINDOWS:
-                block = rain[w][near] if near else None
-                f[f"rain_{w}_max_{r}km"] = block.max(axis=1) if near else np.nan
-                f[f"rain_{w}_mean_{r}km"] = block.mean(axis=1) if near else np.nan
+                f[f"rain_{w}_max_{r}km"] = rain[w][near].max(axis=1) if near else np.nan
             f[f"rain_2to4h_max_{r}km"] = rain["2to4h"][near].max(axis=1) if near else np.nan
         near25 = [g for g in dist[dist <= 25].index if g in rain_cols]
         f["rain_72h_ante_max_25km"] = rain["72h_ante"][near25].max(axis=1) if near25 else np.nan
         f["tide_height_m"] = tide_grid["tide_height_m"] if tide_grid is not None else np.nan
         f["hours_to_high_tide"] = tide_grid["hours_to_high_tide"] if tide_grid is not None else np.nan
+        if tide_grid is not None:
+            f["tide_change_1h"] = tide_grid["tide_height_m"] - tide_grid["tide_height_m"].shift(4)
+            # how much this station's level moves with the tide over the last 3 days: tells a tide-driven river from a rain-driven one
+            f["tide_coupling_3d"] = level.rolling(TIDE_COUPLING_STEPS, min_periods=TIDE_COUPLING_MIN_PAIRS).corr(tide_grid["tide_height_m"])
+        else:
+            f["tide_change_1h"] = f["tide_coupling_3d"] = np.nan
+        up_states = [st for st in (state_of(u) for u in network.get(graph_id, [])) if st is not None]
+        for col, src in zip(UPSTREAM_FEATURES, ("rise_60m", "rise_120m", "level_rel")):
+            f[col] = pd.concat([st[src] for st in up_states], axis=1).max(axis=1) if up_states else np.nan
         f["hour"], f["month"] = grid.hour + grid.minute / 60, grid.month
         f["graph_id"] = graph_id
         frames.append(f.rename_axis("time_local").reset_index())
@@ -124,6 +159,13 @@ def training_rows(table: pd.DataFrame) -> pd.DataFrame:
     rows = table[table.wl_m.notna() & (table.wl_m < table.wl_warning_m) & table.cross_2h.notna()].copy()
     rows["fold"] = fold_of(rows.time_local)
     return rows.reset_index(drop=True)
+
+
+def required_station_ids(stations: pd.DataFrame, wl_ids: list[str], network: dict[str, list[str]] | None = None) -> list[str]:
+    """Every station whose readings the features need: the river stations, those upstream of them, and rain gauges within 25 km."""
+    network = default_network() if network is None else network
+    ids = set(wl_ids) | {u for g in wl_ids for u in network.get(g, [])}
+    return sorted(ids | set(rain_stations_near(stations, wl_ids, km=25)))
 
 
 def rain_stations_near(stations: pd.DataFrame, wl_ids: list[str], km: float = 25,
