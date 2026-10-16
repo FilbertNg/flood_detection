@@ -25,6 +25,7 @@ Every plan and document lives in this folder. Status and next tasks are in [HAND
 | [evaluation-report.md](evaluation-report.md) | ML vs rule-floor results and the gate verdict (rewritten by `scripts/train_trigger.py`) |
 | [ml-feasibility.md](ml-feasibility.md) | First ML spike: why we use JPS station data and how the gate is defined |
 | [radar-nowcast.md](radar-nowcast.md) | Radar nowcast (improvement #16): source research and verdict, terms, method, limits, how to evaluate it |
+| [findings.md](findings.md) | **Facts for the pitch:** what the data says about flood prediction, each with its evidence (running log) |
 | [ml-data-eda.md](ml-data-eda.md) | ML features and why, data shape, EDA, data-quality defects, experiments and recommended improvements |
 
 ## Archive
