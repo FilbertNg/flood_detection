@@ -66,13 +66,15 @@ def build_rows(rules_cfg):
     stations = pd.read_parquet(ROOT / "data" / "interim" / "stations.parquet")
     wl_ok = stations[(stations.kind == "wl") & stations.thresholds_ok & stations.lat.notna()]
     wl_ids = sorted(set(p.stem for p in (HIST / "wl").glob("*.parquet")) & set(wl_ok.graph_id))
-    rf_archived = set(p.stem for p in (HIST / "rf").glob("*.parquet"))
-    near = set(dataset.rain_stations_near(stations, wl_ids, km=25, available=rf_archived))
-    print(f"river stations: {len(wl_ids)} | rain stations within 25 km: {len(near)}")
-    readings = load_archive_readings(HIST, sorted(set(wl_ids) | near), datetime(2024, 1, 1), datetime.now())
+    network = dataset.default_network()
+    archived = {p.stem for kind in ("wl", "rf") for p in (HIST / kind).glob("*.parquet")}
+    need = [i for i in dataset.required_station_ids(stations, wl_ids, network) if i in archived]
+    n_rf = len(set(need) - set(wl_ids))
+    print(f"river stations: {len(wl_ids)} | other stations needed (rain within 25 km, upstream): {n_rf}")
+    readings = load_archive_readings(HIST, sorted(set(need) | set(wl_ids)), datetime(2024, 1, 1), datetime.now())
     tide = pd.read_parquet(ROOT / "data" / "interim" / "tide_hourly.parquet")
-    table = dataset.add_labels(dataset.build_features(readings, stations, tide, wl_ids))
-    return stations, wl_ids, len(near), table
+    table = dataset.add_labels(dataset.build_features(readings, stations, tide, wl_ids, network=network))
+    return stations, wl_ids, n_rf, table
 
 
 def calibration_study(rows, feats):
