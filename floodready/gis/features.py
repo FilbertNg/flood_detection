@@ -89,6 +89,8 @@ def combine_ranks(table: pd.DataFrame, direction: dict[str, int] = DIRECTION) ->
         if col in table and table[col].notna().any():
             values = table[col] * sign
             ranks.append((values.rank(method="average") - 1) / max(values.count() - 1, 1))
+    if not ranks:
+        return pd.Series(np.nan, index=table.index)
     return pd.concat(ranks, axis=1).mean(axis=1)
 
 

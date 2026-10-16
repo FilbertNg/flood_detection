@@ -37,7 +37,7 @@ const STRINGS = {
     noStreets: 'Pick one or more streets to follow.',
     loading: 'Loading…',
     error: 'Could not reach the server.',
-    credits: '© OpenStreetMap contributors · Data: JPS Public Infobanjir, MET Malaysia, Open-Meteo · Terrain: Copernicus GLO-30, FABDEM (Univ. of Bristol), ESA WorldCover',
+    credits: '© OpenStreetMap contributors · Data: JPS Public Infobanjir, MET Malaysia, Open-Meteo · Terrain: Copernicus GLO-30, FABDEM (Univ. of Bristol, CC BY-NC-SA 4.0), © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium (CC BY 4.0)',
   },
   ms: {
     appName: 'Flood-Ready',
@@ -75,7 +75,7 @@ const STRINGS = {
     noStreets: 'Pilih satu atau lebih jalan untuk diikuti.',
     loading: 'Memuatkan…',
     error: 'Tidak dapat menghubungi pelayan.',
-    credits: '© Penyumbang OpenStreetMap · Data: JPS Public Infobanjir, MET Malaysia, Open-Meteo · Rupa bumi: Copernicus GLO-30, FABDEM (Univ. of Bristol), ESA WorldCover',
+    credits: '© Penyumbang OpenStreetMap · Data: JPS Public Infobanjir, MET Malaysia, Open-Meteo · Rupa bumi: Copernicus GLO-30, FABDEM (Univ. of Bristol, CC BY-NC-SA 4.0), © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium (CC BY 4.0)',
   },
 } as const;
 

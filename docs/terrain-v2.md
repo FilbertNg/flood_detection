@@ -10,11 +10,13 @@ Built by `scripts/fetch_fabdem.py`, `scripts/fetch_terrain_inputs.py`, `scripts/
 |---|---|---|
 | Copernicus GLO-30 | old DEM (kept for comparison) | (c) DLR/Airbus, provided under COPERNICUS by the EU and ESA |
 | FABDEM V1-2, tile N03E101 | DEM with building and forest bias removed | (c) University of Bristol, Hawker et al. 2022, **CC BY-NC-SA 4.0 (non-commercial)**. Fine for the hackathon prototype; SDP needs the authors' permission for commercial use, and derived data must stay share-alike |
-| ESA WorldCover 2021 v200, tile N03E099 | built-up share (class 50) | (c) ESA, CC BY 4.0 |
+| ESA WorldCover 2021 v200, tile N03E099 | built-up share (class 50) | (c) ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0 |
 | OSM waterways (river, stream, canal, drain, ditch), 5 km around BBR | distance to nearest waterway | (c) OpenStreetMap contributors (ODbL) |
 
 Credits were added to the resident app credit line (en and ms), `README.md`, `CLAUDE.md` and the build plan.
-FABDEM is distributed only as 10 x 10 degree zips (556 MB); the fetch script reads the zip directory with HTTP range requests and downloads just the 1 x 1 degree tile (about 26 MB of the 556). The tile opens in rasterio as EPSG:4326, bounds 100.9999-101.9999 E / 3.0001-4.0001 N, 3600 x 3600 cells, elevation -63 to 1927 m (tile-wide; the negative minimum is not inside the BBR clip, which is why it was not investigated further).
+FABDEM is distributed only as 10 x 10 degree zips (556 MB); the fetch script reads the zip directory with HTTP range requests and downloads just the 1 x 1 degree tile (about 26 MB of the 556). The tile opens in rasterio as EPSG:4326, bounds 100.9999-101.9999 E / 3.0001-4.0001 N, 3600 x 3600 cells, elevation -63 to 1927 m (tile-wide; the -63 m minimum is real terrain, also in GLO-30 (-65 m), most likely mining pits around 101.56-101.78 E, 3.05-3.33 N, well east of the BBR clip, whose minimum is 0 m in both DEMs).
+
+`assets/geo/bbr_streets.geojson` is a derived database of OSM (ODbL), FABDEM (CC BY-NC-SA 4.0, share-alike) and ESA WorldCover (CC BY 4.0); see `assets/geo/NOTICE.md`. The repository has no LICENSE file yet; that is the owner's decision.
 
 ## Features per street (all along the street, sampled every 10 m)
 
@@ -41,17 +43,32 @@ The expectation "building-dense areas drop by several metres" is only partly met
 
 ## Evaluation on the memorandum streets
 
-Held-out check, never used to fit or weight anything: 4 named streets, 61 street segments (Jalan Makyong 38, Jalan Sumazau 20, Persiaran Sungai Keramat 1, Persiaran Batu Belah 2). Share of those segments in classes 4-5 (about 40% expected by chance, because classes are fifths) and the median percentile of their score among all 943 streets (0.50 by chance):
+FABDEM + new features was pre-specified as v2 (WP4 brief) and ships by default (`--ship fabdem_new`). Its weights (equal) and directions were fixed before the memorandum streets were scored. The memorandum check is a confirmation, not a selection: the script prints all three variants as a report and never chooses from them. 4 named streets, 61 street segments (Jalan Makyong 38, Jalan Sumazau 20, Persiaran Sungai Keramat 1, Persiaran Batu Belah 2). Share of those segments in classes 4-5 (about 40% expected by chance, because classes are fifths) and the median percentile of their score among all 943 streets (0.50 by chance):
 
-| Variant | Hit rate (classes 4-5) | Median percentile | Segments per class 1/2/3/4/5 |
-|---|---|---|---|
-| GLO-30, old score (HAND + TWI) | 62.3% | 0.699 | 1/7/15/19/19 |
-| FABDEM, old score | 70.5% | 0.688 | 0/7/11/30/13 |
-| **FABDEM + new features (shipped)** | **78.7%** | **0.755** | 0/7/6/28/20 |
+| Variant | Segments in classes 4-5 | Hit rate | Median percentile | Segments per class 1/2/3/4/5 |
+|---|---|---|---|---|
+| GLO-30, old score (HAND + TWI) | 38/61 | 62.3% | 0.699 | 1/7/15/19/19 |
+| FABDEM, old score | 43/61 | 70.5% | 0.688 | 0/7/11/30/13 |
+| **FABDEM + new features (shipped)** | 48/61 | **78.7%** | **0.755** | 0/7/6/28/20 |
 
-The best variant by this check is FABDEM + new features and that is what ships in `assets/geo/bbr_streets.geojson`.
+The steps are 5 segments each. A 95% Wilson interval for 48/61 is about 67-87% even if the segments were independent, which contains 70.5%; they are not independent (Jalan Makyong is 38 of 61), so the effective sample is closer to 4 streets. The ordering is consistent with expectations but is not evidence of a real gain; do not quote 78.7% vs 62.3% as a measured improvement.
 
-Single-feature view (information only; not used to choose weights): HAND 68.9%, TWI 63.9%, slope 65.6%, distance to waterway 86.9% (median percentile 0.773), built-up share 26.2% (median percentile 0.41, i.e. the memorandum streets are somewhat less built-up than average, the opposite of the assumed direction). The equal-weight combination therefore gains from the waterway distance and loses a little from the built-up share. The direction of the built-up share is physically argued and was kept; dropping or reweighting it because of this result would be fitting to the check.
+Per street (hit rate, GLO-30 / FABDEM old / FABDEM new): Jalan Makyong (38) 52.6% / 63.2% / 81.6%; Jalan Sumazau (20) 80% / 85% / 75% (it goes down); Persiaran Sungai Keramat (1) 100% in all; Persiaran Batu Belah (2) 50% in all.
+
+Leave-one-feature-out on the shipped score (report only; weights unchanged):
+
+| Dropped | Hit rate | Median percentile |
+|---|---|---|
+| none (shipped) | 78.7% | 0.755 |
+| HAND | 77.0% | 0.733 |
+| TWI | 78.7% | 0.756 |
+| waterway distance | **59.0%** | 0.655 |
+| slope | 78.7% | 0.736 |
+| built-up share | 80.3% | 0.779 |
+
+The v2 gain comes from the waterway distance (dropping it gives 59.0%, below both old variants); HAND, TWI and slope are strongly correlated (|rho| 0.76-0.83), so they are largely redundant and carry about 3/5 of the weight. Waterway distance is also the feature most exposed to OSM drain completeness.
+
+Single-feature view (information only): HAND 68.9%, TWI 63.9%, slope 65.6%, distance to waterway 86.9% (median percentile 0.773), built-up share 26.2% (median percentile 0.41). In a mostly built-up township (median share 0.83) the built-up share mainly separates streets next to riparian or green land from interior streets (rho with waterway distance +0.14); it measures runoff generation, not where water collects. It is kept with the direction argued a priori; dropping or reweighting it because of this result would be fitting to the check.
 
 ## Limits
 
@@ -66,5 +83,5 @@ Single-feature view (information only; not used to choose weights): HAND 68.9%, 
 ```bash
 python scripts/fetch_fabdem.py
 python scripts/fetch_terrain_inputs.py --township BBR
-python scripts/build_susceptibility.py --township BBR   # prints all variants, ships the best by the memorandum check
+python scripts/build_susceptibility.py --township BBR   # prints all variants, ships fabdem_new (pre-specified); the memorandum numbers are a report only
 ```

@@ -5,9 +5,11 @@ Three variants are scored and compared on the held-out memorandum streets:
   fabdem_old   FABDEM DEM (buildings and forests removed), same score
   fabdem_new   FABDEM + distance to waterway, slope, built-up share within 100 m
                (equal-weight percentile ranks of HAND, TWI, waterway distance, slope, built-up)
-The variant with the higher memorandum hit rate (tie: higher median percentile) is written to assets/geo/<township>_streets.geojson
-and the index raster to data/interim/susceptibility_<township>_v2.tif. The check
-has only 4 named streets, so it is a sanity check, not a fit: nothing is tuned to it.
+fabdem_new is pre-specified (WP4 brief) and ships by default (--ship); it is written to
+assets/geo/<township>_streets.geojson and the index raster to
+data/interim/susceptibility_<township>_v2.tif. The memorandum numbers of all three
+variants are printed as a report only: they confirm, they never select. The check
+has only 4 named streets, so nothing is tuned to it.
 
 Run first: scripts/fetch_fabdem.py, scripts/fetch_terrain_inputs.py
 Usage: python scripts/build_susceptibility.py --township BBR [--ship glo30_old|fabdem_old|fabdem_new]
@@ -62,7 +64,7 @@ def read_worldcover(bounds: tuple[float, float, float, float]):
         return src.read(1, window=window), src.window_transform(window), src.crs
 
 
-def dem_comparison(glo: Path, fab: Path, worldcover_bounds) -> dict:
+def dem_comparison(glo: Path, fab: Path) -> dict:
     """GLO-30 minus FABDEM on the shared clip, split by how built-up each 30 m cell is (WorldCover share)."""
     with rasterio.open(glo) as g, rasterio.open(fab) as f:
         a, b = g.read(1).astype("float64"), f.read(1).astype("float64")
@@ -87,7 +89,7 @@ def main() -> None:
     parser.add_argument("--buffer", type=int, default=8000, help="DEM clip half-width in metres")
     parser.add_argument("--stream-cells", type=int, default=500, help="flow accumulation that starts a stream")
     parser.add_argument("--water-radius", type=int, default=5000)
-    parser.add_argument("--ship", choices=("glo30_old", "fabdem_old", "fabdem_new"), help="override the automatic choice")
+    parser.add_argument("--ship", choices=("glo30_old", "fabdem_old", "fabdem_new"), default="fabdem_new", help="variant to write (default: pre-specified fabdem_new)")
     args = parser.parse_args()
 
     town = next(t for t in yaml.safe_load((ROOT / "config" / "townships.yaml").read_text(encoding="utf-8"))["townships"]
@@ -128,14 +130,26 @@ def main() -> None:
         single = features.combine_ranks(table[[col]], {col: features.DIRECTION[col]})
         ablation[col] = evaluate(features.fifths(single), single, memo)
     results["_ablation_single_feature_fabdem"] = ablation
-    results["_dem_comparison_glo_minus_fabdem"] = dem_comparison(clip_glo, clip_fab, None)
+    loo = {}
+    for col in features.DIRECTION:
+        rest = {k: v for k, v in features.DIRECTION.items() if k != col}
+        score = features.combine_ranks(table, rest)
+        loo[f"drop_{col}"] = evaluate(features.fifths(score), score, memo)
+    results["_leave_one_feature_out_fabdem"] = loo
+    per_street = {}
+    for label, cls in (("glo30_old", old_glo.susceptibility), ("fabdem_old", old_fab.susceptibility), ("fabdem_new", new_class)):
+        per_street[label] = {}
+        for prefix in MEMORANDUM:
+            sel = base.name.str.startswith(prefix)
+            if sel.any():
+                per_street[label][prefix] = {"segments": int(sel.sum()), "hit_rate": round(float((cls[sel] >= 4).mean()), 3)}
+    results["_per_street_hit_rate"] = per_street
+    results["_dem_comparison_glo_minus_fabdem"] = dem_comparison(clip_glo, clip_fab)
     results["_inputs"] = {"streets": len(base), "waterway_segments": len(water), "memorandum_segments": int(memo.sum()),
                           "streets_with_water_distance": int(table.water_m.notna().sum())}
     print(json.dumps(results, indent=2))
 
-    # ship the variant with the best memorandum hit rate (tie: higher median percentile)
-    variants = {k: v for k, v in results.items() if not k.startswith("_")}
-    best = args.ship or max(variants, key=lambda k: (variants[k]["hit_rate_classes_4_5"], variants[k]["median_percentile"]))
+    best = args.ship  # pre-specified, never chosen from the memorandum numbers
     print(f"shipping: {best}")
 
     out = old_glo.rename(columns={"susceptibility": "susceptibility_v1"})[["street_id", "susceptibility_v1"]]

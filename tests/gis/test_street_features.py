@@ -77,3 +77,24 @@ def test_combine_ranks_ignores_missing_feature_per_street():
 def test_fifths_are_even():
     classes = features.fifths(pd.Series(np.arange(50, dtype=float)))
     assert set(classes) == {1, 2, 3, 4, 5} and classes.value_counts().max() == 10
+
+
+def test_combine_ranks_all_nan_gives_nan_and_middle_class():
+    df = pd.DataFrame({"hand": [np.nan, np.nan], "twi": [np.nan, np.nan]})
+    score = features.combine_ranks(df)
+    assert score.isna().all()
+    assert list(features.fifths(score)) == [3, 3]
+
+
+def test_production_slope_matches_known_plane(tmp_path):
+    import rasterio
+    from floodready.gis import terrain
+    n = 30
+    transform = from_origin(101.40, 3.10, CELL_DEG, CELL_DEG)
+    cell_x = CELL_DEG * 111_320 * np.cos(np.radians(3.10 - n * CELL_DEG / 2))
+    dem = (np.arange(n)[None, :] * 0.5 * np.ones((n, 1))).astype("float32")  # 0.5 m rise per column
+    path = tmp_path / "plane.tif"
+    with rasterio.open(path, "w", driver="GTiff", height=n, width=n, count=1, dtype="float32", crs="EPSG:4326", transform=transform) as dst:
+        dst.write(dem, 1)
+    slope = terrain.terrain_indices(path, stream_threshold=20)["slope"]
+    assert slope[15, 15] == pytest.approx(np.degrees(np.arctan(0.5 / cell_x)), rel=0.02)
