@@ -125,6 +125,9 @@ def test_tide_coupling_is_nan_not_inf_for_a_flat_level_and_stays_in_range():
 
 def test_no_feature_looks_ahead_even_when_tide_changes_after_the_cut():
     r, s, tide = _synthetic()
+    # The cut falls on a whole table hour, so tide interpolation reads no later table value here. At a cut between
+    # hours the tide legitimately reads the next table hour (a forecast known at t, see tide_at); that case is
+    # covered by test_no_observation_column_uses_data_after_t_at_a_non_whole_hour_cut. Do not "fix" this test.
     cut = pd.Timestamp("2024-03-04 00:00")
     net = {"A": ["B"]}
     before = dataset.build_features(r, s, tide, ["A"], network=net)
@@ -215,4 +218,37 @@ def test_observation_columns_at_t_ignore_later_readings():
     obs = ["wl_m", "d_warning", "level_rel", "rise_15m", "rise_60m", "rise_120m", "tide_coupling_3d",
            "tide_height_m", "hours_to_high_tide", "tide_change_1h"]
     m = base.time_local <= cut
+    pd.testing.assert_frame_equal(base[m][obs].reset_index(drop=True), after[m][obs].reset_index(drop=True))
+
+
+@pytest.mark.parametrize("unit", ["ns", "us", "ms", "s"])
+def test_tide_at_is_independent_of_the_datetime_units_of_table_and_grid(unit):
+    tide = _tide_table()
+    tide["time_local"] = tide.time_local.astype("datetime64[us]")
+    grid = pd.date_range("2024-03-01 03:00", periods=9, freq="15min").as_unit(unit)
+    got = tide_at(tide, grid)
+    ref = tide_at(_tide_table(), pd.date_range("2024-03-01 03:00", periods=9, freq="15min"))
+    assert got.tide_height_m.notna().all()
+    np.testing.assert_allclose(got.tide_height_m.to_numpy(), ref.tide_height_m.to_numpy())
+    np.testing.assert_allclose(got.hours_to_high_tide.to_numpy(), ref.hours_to_high_tide.to_numpy())
+
+
+def test_tide_does_not_bridge_a_missing_row():
+    tide = _tide_table(hours=10).drop(index=4)          # the 04:00 row is absent (not NaN): 03:00 and 05:00 are 2 h apart
+    got = tide_at(tide, pd.DatetimeIndex(["2024-03-01 03:30", "2024-03-01 04:30", "2024-03-01 03:00", "2024-03-01 05:00", "2024-03-01 06:30"]))
+    assert got.tide_height_m.isna().tolist() == [True, True, False, False, False]
+
+
+def test_no_observation_column_uses_data_after_t_at_a_non_whole_hour_cut():
+    """The cut sits at 09:45, between two table hours. Tide may read the 10:00 table value (a forecast, known at t);
+    every observation-derived column must not read anything after 09:45."""
+    r, s, tide = _synthetic()
+    cut = pd.Timestamp("2024-03-01 09:45")
+    base = dataset.build_features(r, s, tide, ["A"], network={"A": ["B"]})
+    changed = r.copy()
+    changed.loc[changed.time_local > cut, ["wl_m", "rain_15min_mm"]] = 50.0
+    after = dataset.build_features(changed, s, tide, ["A"], network={"A": ["B"]})
+    obs = [c for c in dataset.FEATURES if not c.startswith("tide_") and c != "hours_to_high_tide"] + ["wl_m", "tide_coupling_3d"]
+    m = base.time_local <= cut
+    assert (base.time_local == cut).any()
     pd.testing.assert_frame_equal(base[m][obs].reset_index(drop=True), after[m][obs].reset_index(drop=True))

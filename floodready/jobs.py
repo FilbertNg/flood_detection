@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import infobanjir as ib
-from . import met, openmeteo, storage
+from . import met, openmeteo, storage, tide
 from .http import fetch_text
 
 log = logging.getLogger(__name__)
@@ -265,3 +265,27 @@ def run_radar(session, root: Path, now_local: datetime) -> dict:
         summary["errors"].append(str(exc))
     (root / "_status.json").write_text(json.dumps(summary, indent=2))
     return summary
+
+# ---------- G3: daily tide refresh ----------
+
+def tide_refresh_due(out_path: Path, now_local: datetime, last_attempt: datetime | None = None,
+                     retry_after: timedelta = timedelta(hours=6)) -> bool:
+    """True when the tide table is missing or was last written on an earlier day, and the last attempt
+    (if any) is at least `retry_after` ago, so a failing download is not hammered."""
+    out_path = Path(out_path)
+    if last_attempt is not None and now_local - last_attempt < retry_after:
+        return False
+    if not out_path.exists():
+        return True
+    return datetime.fromtimestamp(out_path.stat().st_mtime).date() != now_local.date()
+
+
+def run_tide_refresh(session, raw_dir: Path, out_path: Path, today: date) -> dict:
+    """Download this year's Open-Meteo marine sea level up to today + 3 days (one request), cache the raw
+    response, and rebuild the hourly table the API and the ML features read."""
+    end = today + timedelta(days=3)
+    start = date(today.year, 1, 1)
+    text = fetch_text(session, tide.MARINE_URL, tide.marine_params(start.isoformat(), end.isoformat()))
+    storage.save_raw(Path(raw_dir) / f"{start:%Y%m%d}_{end:%Y%m%d}.json.gz", text)
+    table = tide.build_hourly_table(raw_dir, out_path)
+    return {"rows": len(table), "last_hour": str(table.time_local.max())}

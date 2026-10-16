@@ -6,7 +6,10 @@ against JUPEM tide tables before quoting tide in public material.
 """
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -153,36 +156,40 @@ def tide_at(hourly: pd.DataFrame, index: pd.DatetimeIndex) -> pd.DataFrame:
     """tide_height_m and hours_to_high_tide valid at each time in `index` (any sub-hourly grid), from the
     hourly table of `tide_features` (columns time_local, tide_height_m, hours_to_high_tide).
 
-    Why evaluating between the hours is allowed: the table is a model product (Open-Meteo marine sea level, i.e.
-    astronomical tide, plus harmonic gap fill), a forecast known days ahead, not a gauge observation. The
-    height at 09:45 is therefore available at 09:45 and is not a look-ahead; reading the 09:00 value instead
-    would be up to 45 min stale while the tide moves ~0.5 m/h. If a column here ever becomes a real
-    observation, do not interpolate it towards the next hour.
+    Why evaluating between the hours is allowed: the table is a model product (Open-Meteo marine
+    `sea_level_height_msl`: tides plus inverted-barometer and sea-surface-height effects, with harmonic gap fill),
+    not a gauge observation. It is available as a forecast ahead of t (build_tide --refresh fetches up to today + 3 d),
+    so the value at t, and the hour after it, is known at t: no look-ahead. Reading the 09:00 value at 09:45
+    would be up to 45 min stale while the tide moves ~0.5 m/h. Archived past values differ slightly from what the
+    forecast showed live (non-harmonic part: ~4.7 cm/h std, against ~0.5 m/h of tidal movement). If a column here
+    ever becomes a real observation, do not interpolate it towards the next hour.
 
-    Height: linear in time between the hourly values (error vs the true curve ~5 cm for the 12.4 h tide).
+    Height: linear in time between the hourly values (error vs the true curve ~2 cm RMS for the 12.4 h tide). Times
+    next to a NaN hour or a missing row (table rows more than 1 h apart) are NaN, never bridged.
     Hours to high: the high-water times are recovered from the hourly column (hour + hours_to_high_tide, which
     already come from the sub-hourly harmonic fit with the phase shift) and the nearest one is re-evaluated at
-    each time. NaN outside the table's span or beyond MAX_HOURS_TO_HIGH."""
+    each time. NaN outside the table's span or beyond MAX_HOURS_TO_HIGH.
+    Timestamps are compared in nanoseconds, so table and grid may carry different datetime units."""
     h = hourly.drop_duplicates("time_local").set_index("time_local").sort_index()
-    t_ns = lambda ix: pd.DatetimeIndex(ix).asi8.astype(float)  # noqa: E731
-    hours = pd.DatetimeIndex(h.index)
+    hours = pd.DatetimeIndex(h.index).as_unit("ns")
+    index = pd.DatetimeIndex(index).as_unit("ns")
     height = h["tide_height_m"].to_numpy(float)
     ok = ~np.isnan(height)
     out_h = np.full(len(index), np.nan)
     if ok.sum() >= 2:
-        out_h = np.interp(t_ns(index), t_ns(hours[ok]), height[ok], left=np.nan, right=np.nan)
-        # a gap wider than one hour must not be bridged by the line: keep only times whose both bracketing hours are valid
+        out_h = np.interp(index.asi8.astype(float), hours.asi8[ok].astype(float), height[ok], left=np.nan, right=np.nan)
+        # a gap must not be bridged by the line: both bracketing rows must be valid and at most one hour apart
         pos = np.clip(np.searchsorted(hours.asi8, index.asi8, side="right") - 1, 0, len(hours) - 1)
         nxt = np.minimum(pos + 1, len(hours) - 1)
         exact = hours.asi8[pos] == index.asi8
-        out_h = np.where(exact | (ok[pos] & ok[nxt]), out_h, np.nan)
+        adjacent = (ok[pos] & ok[nxt]) & (hours.asi8[nxt] - hours.asi8[pos] <= 3_600_000_000_000)
+        out_h = np.where(exact | adjacent, out_h, np.nan)
     rel = h["hours_to_high_tide"].to_numpy(float)
     keep = ~np.isnan(rel)
     highs = np.unique((hours[keep] + pd.to_timedelta(np.round(rel[keep] * 3600), unit="s")).to_numpy())
     in_span = (index >= hours.min()) & (index <= hours.max())
     to_high = np.where(in_span, hours_to_nearest_high(index, highs), np.nan)
     return pd.DataFrame({"tide_height_m": out_h, "hours_to_high_tide": to_high}, index=index)
-
 
 def tide_features(series: pd.Series, filled: pd.Series | None = None, fit: HarmonicFit | None = None,
                   phase_shift_min: float = TIDE_PHASE_SHIFT_MIN) -> pd.DataFrame:
@@ -203,3 +210,47 @@ def tide_features(series: pd.Series, filled: pd.Series | None = None, fit: Harmo
                          "hours_to_high_tide": nearest,
                          "tide_filled": (filled.reindex(series.index, fill_value=False).to_numpy(bool)
                                          if filled is not None else np.zeros(len(series), bool))})
+
+def load_cached(raw_dir: Path) -> pd.Series:
+    """All cached marine chunks in `raw_dir`; where chunks overlap (a later, longer download) the latest file wins."""
+    from . import storage
+    parts = [series_from_marine(json.loads(storage.read_raw(p))) for p in sorted(Path(raw_dir).glob("*.json.gz"))]
+    series = pd.concat(parts[::-1])
+    return series[~series.index.duplicated()].sort_index()
+
+
+def build_hourly_table(raw_dir: Path, out_path: Path) -> pd.DataFrame:
+    """Rebuild the hourly tide table (tide_features with the sub-hourly +shifted high waters) from the cached raw
+    chunks and write it to `out_path` atomically (a reader never sees a half-written file)."""
+    series = load_cached(raw_dir)
+    filled, mask = fill_gaps(series)
+    features = tide_features(filled, mask, fit=fit_harmonics(series))
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out_path.with_name(out_path.name + ".tmp")
+    features.to_parquet(tmp, index=False)
+    tmp.replace(out_path)
+    return features
+
+
+class TideTable:
+    """The hourly tide parquet, re-read whenever its modification time changes (one stat per `get`).
+    A missing file gives None; an unreadable new file keeps the previous table."""
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+        self._mtime: int | None = None
+        self._table: pd.DataFrame | None = None
+
+    def get(self) -> pd.DataFrame | None:
+        try:
+            mtime = self.path.stat().st_mtime_ns
+        except OSError:
+            return self._table
+        if mtime != self._mtime:
+            self._mtime = mtime          # a bad file is logged once, not on every tick
+            try:
+                self._table = pd.read_parquet(self.path)
+            except Exception:
+                logging.getLogger(__name__).exception("tide table %s unreadable, keeping the previous one", self.path)
+        return self._table
