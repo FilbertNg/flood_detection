@@ -49,43 +49,59 @@ def _isotonic(raw, y) -> IsotonicRegression:
     return IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip").fit(raw, y)
 
 
+class AverageModel:
+    """Mean of several fitted classifiers' probabilities (the models the isotonic map was fitted on)."""
+
+    def __init__(self, models):
+        self.models = list(models)
+
+    def predict_proba(self, X) -> np.ndarray:
+        p = np.mean([m.predict_proba(X)[:, 1] for m in self.models], axis=0)
+        return np.column_stack([1.0 - p, p])
+
+
+def _fit_ensemble(X, y, fold, folds, overrides):
+    """One model per fold j in `folds`, trained on the other folds; returns (models, oof) where the raw
+    score of every row of fold j comes from the model that did not train on j."""
+    models, oof = [], np.full(len(y), np.nan)
+    for j in folds:
+        fit = np.isin(fold, [f for f in folds if f != j])
+        m = make_model(**overrides).fit(X[fit], y[fit])
+        models.append(m)
+        oof[fold == j] = m.predict_proba(X[fold == j])[:, 1]
+    return models, oof
+
+
 def cross_val_calibrated(rows: pd.DataFrame, features: list[str], label: str, class_weight: str | None = None,
                          fold_col: str = "fold", **model_overrides) -> dict:
-    """Out-of-fold probabilities with calibration fitted out-of-sample.
+    """Out-of-fold probabilities with calibration fitted out-of-sample and on the scale it is applied to.
 
-    For each outer fold k (the test fold): the other folds T are the outer-training set.
-      1. Inner time-blocked folds = the folds in T: each is predicted by a model fitted on the rest of T,
-         giving out-of-fold raw scores for every row of T.
+    For each outer fold k (the test fold), T = the other folds:
+      1. One inner model per fold j in T, trained on T minus j; each scores its held-out fold j.
       2. An isotonic map raw score -> label is fitted on those inner scores (T only, never fold k).
-      3. The base model is refitted on all of T and scores fold k; the isotonic map calibrates it.
-    The refit (rather than averaging the inner models) keeps the scores on the scale of the model that is
-    actually shipped, at the price that the map was learned from models that saw 1/3 less data.
-    The final model: base fitted on all rows; its isotonic map is fitted on the outer raw out-of-fold scores
-    (each row scored by a model that never saw it).
+      3. The fold model = the AVERAGE of the inner models + that map. It scores fold k.
+    The shipped model uses the same recipe over all folds: the average of the per-fold base models (each trained
+    on all folds but one) with the map fitted on their out-of-fold scores. Model and map always come from the
+    same models. (The map is fitted on single-model scores and applied to their average, which is slightly
+    smoother; that is the price of keeping every fitted score out-of-sample.)
     Returns oof_raw / oof_cal (numpy, aligned to `rows`), fold_models {fold: CalibratedModel},
     final_model, and the params used."""
     overrides = {"class_weight": class_weight, **model_overrides}
     y = rows[label].to_numpy()
     fold = rows[fold_col].to_numpy()
     X = rows[features]
-    folds = sorted(np.unique(fold))
+    folds = sorted(int(f) for f in np.unique(fold))
     oof_raw, oof_cal = np.full(len(rows), np.nan), np.full(len(rows), np.nan)
     fold_models: dict[int, CalibratedModel] = {}
     for k in folds:
-        train_idx = fold != k
-        inner_raw = np.full(len(rows), np.nan)
-        for j in folds:
-            if j == k:
-                continue
-            fit = fold[train_idx] != j
-            m = make_model(**overrides).fit(X[train_idx][fit], y[train_idx][fit])
-            inner_raw[fold == j] = m.predict_proba(X[fold == j])[:, 1]
-        iso = _isotonic(inner_raw[train_idx], y[train_idx])
-        base = make_model(**overrides).fit(X[train_idx], y[train_idx])
-        fold_models[int(k)] = CalibratedModel(base, iso)
-        oof_raw[fold == k] = base.predict_proba(X[fold == k])[:, 1]
-        oof_cal[fold == k] = np.clip(iso.predict(oof_raw[fold == k]), 0.0, 1.0)
-    final = CalibratedModel(make_model(**overrides).fit(X, y), _isotonic(oof_raw, y))
+        t = fold != k
+        models, inner = _fit_ensemble(X[t], y[t], fold[t], [f for f in folds if f != k], overrides)
+        model = CalibratedModel(AverageModel(models), _isotonic(inner, y[t]))
+        fold_models[k] = model
+        oof_raw[fold == k] = model.without_calibration().predict_proba(X[fold == k])[:, 1]
+        oof_cal[fold == k] = model.predict_proba(X[fold == k])[:, 1]
+    models, full = _fit_ensemble(X, y, fold, folds, overrides)
+    final = CalibratedModel(AverageModel(models), _isotonic(full, y))
     return {"oof_raw": oof_raw, "oof_cal": oof_cal, "fold_models": fold_models, "final_model": final,
             "params": {**MODEL_PARAMS, **overrides}}
 

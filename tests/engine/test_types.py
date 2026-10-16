@@ -99,3 +99,24 @@ def test_ml_config_is_set_by_gate_v2():
     assert isinstance(ml["ml_drives_alerts"], bool)  # only the gate (train_trigger.py) may set this
     assert ml["ml_max_level"] == "watch" and ml["gate_version"] == 2
     assert ml["gate"] == {"min_extra_lead_min": 30, "max_false_alarm_ratio": 1.5, "min_fresh_crossings": 30}
+
+
+def test_ml_config_agrees_with_the_trained_model_card():
+    import json
+    from pathlib import Path
+    ml = load_config("ml.yaml")
+    card = json.loads((Path(__file__).resolve().parents[2] / "models" / "trigger_v1.json").read_text(encoding="utf-8"))
+    assert ml["ml_drives_alerts"] == card["gate_passed"]   # a hand edit of the yaml cannot switch ML on
+    assert ml["p_watch"] == card["p_watch"] and ml["gate_version"] == card["gate_version"] == 2
+
+
+def test_with_the_real_config_ml_alone_never_goes_above_watch():
+    """Needs the ml_max_level cap in levels.combine (WP5, #17). Fails on a main without it, so #22 cannot land first."""
+    from datetime import datetime
+    from floodready.engine.levels import combine
+    from floodready.engine.types import Level, TriggerResult
+    from floodready.ml.predict import ml_result
+    cfg = load_config("ml.yaml")
+    rule = TriggerResult(level=Level.NORMAL, confidence="high", fired_by=(), reasons=(),
+                         data_time=datetime(2024, 11, 12, 9, 0), stale_stations=())
+    assert combine(rule, ml_result(0.99, "X", cfg), cfg).level <= Level.WATCH

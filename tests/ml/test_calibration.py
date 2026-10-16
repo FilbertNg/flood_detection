@@ -54,6 +54,16 @@ def test_calibrated_oof_predictions_for_a_fold_do_not_depend_on_that_folds_label
     assert np.allclose(out1["oof_cal"][t], out2["oof_cal"][t])
     assert np.allclose(out1["oof_raw"][t], out2["oof_raw"][t])
     assert not np.allclose(out1["oof_cal"][~t], out2["oof_cal"][~t])  # the other folds do learn from it
+    Xt = rows.loc[t, feats]   # the fold model used for replays is also independent of that fold's labels
+    assert np.allclose(out1["fold_models"][2].predict_proba(Xt), out2["fold_models"][2].predict_proba(Xt))
+
+
+def test_fold_model_is_the_average_of_the_models_its_map_was_fitted_on():
+    rows = fake_rows(n=2400)
+    out = train.cross_val_calibrated(rows, ["f1", "f2"], "cross_2h", class_weight=None, max_iter=10)
+    base = out["fold_models"][0].base
+    assert isinstance(base, train.AverageModel) and len(base.models) == 3
+    assert len(out["final_model"].base.models) == 4
 
 
 def test_isotonic_on_inner_oof_fixes_an_overconfident_balanced_model():

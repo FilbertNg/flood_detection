@@ -242,7 +242,35 @@ def main() -> None:
     names = dict(zip(stations[stations.kind == "wl"].graph_id, stations[stations.kind == "wl"].name))
     _write_report(dict(wl_ids=wl_ids, n_rf=n_rf, rows=rows, results=results, chosen=chosen, groups=groups, verdict=verdict,
                        theta_by_fold=theta_by_fold, p_watch=p_watch, tidal=tidal, fresh=fresh, blocks=blocks, names=names,
-                       sample=sample, gate_cfg=gate_cfg))
+                       sample=sample, gate_cfg=gate_cfg, per_fold=_per_fold(inland, theta_by_fold),
+                       brier_ci=_brier_ci(rows, results, chosen)))
+
+
+def _per_fold(inland, theta_by_fold):
+    out = []
+    for k in sorted(theta_by_fold):
+        bs = [b for b in inland if b["fold"] == k]
+        if not bs:
+            continue
+        f, t = pool(bs, "floor"), pool(bs, f"two_tier_{theta_by_fold[k]}")
+        gain = (t["median_lead_min"] or 0) - (f["median_lead_min"] or 0)
+        ratio = t["false_per_station_month"] / f["false_per_station_month"] if f["false_per_station_month"] else float("nan")
+        out.append({"fold": k, "theta": theta_by_fold[k], "floor_lead": f["median_lead_min"], "two_lead": t["median_lead_min"],
+                    "gain": gain, "fa_ratio": ratio, "crossings": f["crossings"]})
+    return out
+
+
+def _brier_ci(rows, results, chosen, n_boot=1000, seed=0):
+    """95% block-bootstrap CI (blocks = station x quarter) of Brier(chosen) - Brier(other option)."""
+    key = rows.graph_id.astype(str) + "|" + rows.time_local.dt.to_period("Q").astype(str)
+    codes, _ = pd.factorize(key)
+    y = rows[LABEL].to_numpy()
+    n = np.bincount(codes).astype(float)
+    sse = {k: np.bincount(codes, weights=(r["p"] - y) ** 2) for k, r in results.items()}
+    rng = np.random.default_rng(seed)
+    draws = rng.integers(0, len(n), size=(n_boot, len(n)))
+    brier = {k: s[draws].sum(axis=1) / n[draws].sum(axis=1) for k, s in sse.items()}
+    return {k: tuple(np.percentile(brier[chosen] - brier[k], [2.5, 97.5])) for k in results if k != chosen}
 
 
 def _set(text: str, key: str, value) -> str:
@@ -330,9 +358,11 @@ Signals: **floor** = rule Watch (rain) or river at alert; **two-tier** = floor O
 
 ## Calibration
 
-The ML trigger is trained with `class_weight="balanced"` in the old pipeline, which made its probabilities far too high (EDA §6: predicted 0.5–0.7 → 4.6% observed). Three options are compared on out-of-fold predictions; each calibration map is fitted on inner out-of-fold predictions of the outer training set only, then the base model is refitted on the whole outer training set. Pick: lowest Brier among options with PR-AUC within 0.01 of the best.
+The ML trigger is trained with `class_weight="balanced"` in the old pipeline, which made its probabilities far too high (EDA §6: predicted 0.5–0.7 → 4.6% observed). Three options are compared on out-of-fold predictions; each calibration map is fitted on inner out-of-fold predictions of the outer training set only, then the fold model is the average of the inner models that produced those scores, so model and map are consistent. Pick: lowest Brier among options with PR-AUC within 0.01 of the best.
 
 {chr(10).join(cal_rows)}
+
+The Brier differences are within noise. 95% block-bootstrap CI (blocks = station × quarter) of Brier(chosen) − Brier(other): {'; '.join(f"{k}: [{lo:+.5f}, {hi:+.5f}]" for k, (lo, hi) in c['brier_ci'].items())}. The three options tie on Brier; the chosen one is kept for its PR-AUC.
 
 Observed crossing rate by predicted-probability bin (a calibrated model matches the bin range):
 
@@ -347,9 +377,18 @@ Rows without "nested" use the shipped θ, which was the median of fold choices t
 
 **12 Nov 2024 (Sg. Binjai di Pekan Meru, crossed 4.0 m at 09:30), out-of-fold calibrated probability of crossing within 2 h:** {c['sample']}
 
+### Per outer fold (inland, nested θ)
+
+The pooled pass does not have to hold in every fold; criterion 1 is not tested per fold.
+
+| Fold | θ | Crossings | Floor lead | Two-tier lead | Lead gain | False-alarm ratio |
+| --- | --- | --- | --- | --- | --- | --- |
+{chr(10).join(f"| {r['fold']} | {r['theta']} | {r['crossings']} | {r['floor_lead'] or 0:.0f} min | {r['two_lead'] or 0:.0f} min | {r['gain']:+.0f} min | {r['fa_ratio']:.2f}× |" for r in c['per_fold'])}
+
 {_station_section(c)}
 **Limits:**
-- Thresholds, calibration and the gate were fitted on the same archive that is scored, but never on the fold being scored.
+- Thresholds, calibration and the gate were fitted on the same archive that is scored, but never on the fold being scored. One indirect link remains: θ for fold k is chosen on the other folds' probabilities, and those come from models that trained on fold k. It is the usual practice and weak here (θ is the same in every fold).
+- The extra false alarms of the two-tier signal sit at a few stations (see the per-station table, ratio column). With per-street alerts, streets linked to those stations get the extra Watch alerts.
 - Events are scored per quarter block, so an alarm and a crossing on opposite sides of a quarter boundary are not matched.
 - The tide comes from a global model (Open-Meteo Marine), not JUPEM tables.
 """
@@ -368,12 +407,13 @@ def _station_section(c) -> str:
         return f"{m['detected']} / {m['crossings']}, {lead}, {fa}"
 
     lines = ["## Per river station", "", "Detected / crossings, median lead, false alarms per month.", "",
-             "| Station | Type | Rule floor | ML alone | Two-tier |", "| --- | --- | --- | --- | --- |"]
+             "| Station | Type | Rule floor | ML alone | Two-tier | Two-tier / floor false alarms |", "| --- | --- | --- | --- | --- | --- |"]
     rowsx = []
     for gid, bs in by.items():
         f, m, t = pool(bs, "floor"), pool(bs, f"ml_{p}"), pool(bs, f"two_tier_{p}")
         kind = "tidal" if gid in c["tidal"] else "inland" + (" (fresh)" if gid in c["fresh"] else "")
-        rowsx.append((f["crossings"], f"| {c['names'].get(gid, gid)} (`{gid}`) | {kind} | {cell(f)} | {cell(m)} | {cell(t)} |"))
+        ratio = f"{t['false_per_station_month'] / f['false_per_station_month']:.1f}×" if f["false_per_station_month"] else "–"
+        rowsx.append((f["crossings"], f"| {c['names'].get(gid, gid)} (`{gid}`) | {kind} | {cell(f)} | {cell(m)} | {cell(t)} | {ratio} |"))
     lines += [r for _, r in sorted(rowsx, key=lambda x: -x[0])]
     return "\n".join(lines) + "\n"
 
