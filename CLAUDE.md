@@ -32,7 +32,7 @@ uv venv .venv && uv pip install --python .venv/Scripts/python.exe -e ".[dev,gis,
 - **Times** are MYT (UTC+8). API timestamps are ISO 8601 with `+08:00`.
 - **Git:** never commit to `main`. Branch `feat|fix|docs|ops/<area>-<short>`, conventional commits, small PRs, one approval + green CI, squash merge. Never force-push shared branches. End commit messages with the Co-Authored-By line your Claude Code session gives you.
 - **Public repo:** no secrets (`.env` is ignored; use GitHub Actions secrets), no personal data, no raw news article text (facts, evidence quote and URL only).
-- **Data credits** on every map: © OpenStreetMap contributors · JPS Public Infobanjir · MET Malaysia · Open-Meteo.
+- **Data credits** on every map: © OpenStreetMap contributors · JPS Public Infobanjir · MET Malaysia · Open-Meteo · FABDEM (Univ. of Bristol, CC BY-NC-SA) · ESA WorldCover.
 - **JPS Infobanjir is scraped politely:** live tables every 15 min, history ≥ 3 s between requests, everything cached.
 
 ## Layout
