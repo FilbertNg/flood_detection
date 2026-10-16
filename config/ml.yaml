@@ -1,16 +1,28 @@
 # ML trigger settings (build plan §2, workstream ML; contract).
-# Thresholds are chosen on validation folds only (task ML3). Spike values below.
+# p_watch is chosen by nested selection in scripts/train_trigger.py (gate v2): per outer fold on the other
+# folds only, shipped as the median. It is a CALIBRATED probability (isotonic, fitted out-of-sample).
 
 model_path: models/trigger_v1.joblib
 horizon_h: 2                  # probability the river crosses its warning level within 2 h
-p_watch: 0.25
+p_watch: 0.075   # ML may raise a street to Watch at p >= p_watch (written by train_trigger.py)
+# Kept for the existing contract only. ML no longer raises levels to Warning: Warning and Danger come
+# only from the JPS rules (ml_max_level below). Not written by train_trigger.py any more.
 p_warning: 0.95
 smoothing_min: 30             # use the max probability over the last 30 min
 
-# Only the ML3 gate may set this to true. While false, the probability is shown
-# but the station rules decide the alert level.
-ml_drives_alerts: false
+# Highest level ML alone may raise a street to (gate v2). Warning/Danger are JPS-rule only.
+ml_max_level: watch
 
+# Only the gate may set this to true. While false, the probability is shown
+# but the station rules decide the alert level.
+ml_drives_alerts: true
+gate_version: 2
+calibration: "balanced + isotonic"   # the calibration variant of the shipped model (written by train_trigger.py)
+
+# Gate v2, pre-registered 16 Oct 2026 (docs/plans/2026-10-16-IMP-ml-data-street-improvements.md section 3):
+# inland stations; two_tier (floor OR ML) median lead >= floor + min_extra_lead_min and false alarms
+# <= max_false_alarm_ratio x floor; the same on fresh stations if they have >= min_fresh_crossings inland crossings.
 gate:
-  min_extra_lead_min: 20      # or: detection >= rules with false alarms <= rules
-  max_false_alarm_ratio: 1.2
+  min_extra_lead_min: 30
+  max_false_alarm_ratio: 1.5
+  min_fresh_crossings: 30
