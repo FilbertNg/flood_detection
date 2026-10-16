@@ -60,7 +60,7 @@ def test_back_to_normal_sends_one_all_clear(rules_cfg):
     assert engine.step(Level.NORMAL, "12:15") == []
 
 
-def test_watch_never_alerts(rules_cfg):
-    engine = Engine(rules_cfg)
+def test_watch_does_not_alert_when_only_warning_and_danger_are_alert_levels(rules_cfg):
+    engine = Engine({**rules_cfg, "alerts": {**rules_cfg["alerts"], "alert_levels": ["warning", "danger"]}})
     assert engine.step(Level.WATCH, "08:45") == []
     assert engine.step(Level.NORMAL, "09:00") == []

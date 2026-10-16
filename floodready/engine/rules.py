@@ -85,9 +85,10 @@ def township_trigger(features: pd.DataFrame, station_ids: list[str], cfg: dict) 
     reasons = [s[3] for s in sorted(scored, key=lambda s: (s[0], s[2]), reverse=True)]
     if not reporting:
         n = len(station_ids)
+        text_en = f"No recent data from {n} of {n} stations" if n else "No stations assigned to this street"
+        text_ms = f"Tiada data terkini daripada {n} daripada {n} stesen" if n else "Tiada stesen ditetapkan untuk jalan ini"
         reasons.insert(0, Reason(code="stale_data", value=float(n), unit="stations", station=None,
-                                 text_en=f"No recent data from {n} of {n} stations",
-                                 text_ms=f"Tiada data terkini daripada {n} daripada {n} stesen"))
+                                 text_en=text_en, text_ms=text_ms))
     confidence = "low" if not reporting else "high"
     return TriggerResult(level=level, confidence=confidence, fired_by=fired_by, reasons=tuple(reasons),
                          data_time=data_time.to_pydatetime() if pd.notna(data_time) else datetime.min,

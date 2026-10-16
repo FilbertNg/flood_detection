@@ -101,6 +101,8 @@ export interface AlertSummary {
   window: TimeWindow | null;
   outcome: Outcome;
   is_replay: boolean;
+  /** Whether a notifier should push this alert (alerts.push_levels); Watch alerts are in-app only by default. */
+  push: boolean;
 }
 
 export interface RiverForecast {
@@ -127,7 +129,7 @@ export interface StreetDetail {
   tide: { time: ISODateTime; height_m: number }[];
   /** Should (task ML5); null until available. */
   river_forecast: RiverForecast | null;
-  /** graph_ids of the stations watching this street. */
+  /** graph_ids of the stations that decide this street (its river station first, then its rain gauges); the township's stations when no mapping is loaded. */
   stations: string[];
   active_alert: { alert_id: string; level: Level; issued_at: ISODateTime } | null;
   history: AlertSummary[];

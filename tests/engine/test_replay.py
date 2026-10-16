@@ -28,12 +28,14 @@ def test_replay_reproduces_the_12_nov_2024_trigger_timeline(readings, stations, 
                            (T("09:00"), Level.WARNING), (T("10:00"), Level.DANGER)]
 
 
-def test_replay_alerts_the_flood_prone_street_only(readings, stations, rules_cfg, matrix_cfg):
+def test_replay_alerts_the_flood_prone_street_first_and_never_the_safe_street(readings, stations, rules_cfg, matrix_cfg):
     steps = run(readings, stations, rules_cfg, matrix_cfg)
     issued = [(a.street_id, a.kind, a.level, a.issued_at) for step in steps for a in step.alerts]
-    assert issued[:2] == [("BBR-prone", "alert", Level.WARNING, T("09:00")),
-                          ("BBR-prone", "alert", Level.DANGER, T("10:00"))]
-    assert all(street == "BBR-prone" for street, *_ in issued)
+    prone = [x for x in issued if x[0] == "BBR-prone"]
+    assert prone[:3] == [("BBR-prone", "alert", Level.WATCH, T("08:45")),
+                         ("BBR-prone", "alert", Level.WARNING, T("09:00")),
+                         ("BBR-prone", "alert", Level.DANGER, T("10:00"))]
+    assert all(street != "BBR-safe" or level is not Level.WARNING for street, _, level, _ in issued)
 
 
 def test_replay_states_cover_every_street_at_every_step(readings, stations, rules_cfg, matrix_cfg):

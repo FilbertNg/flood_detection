@@ -9,9 +9,9 @@ def test_replay_runs_to_the_end_and_logs_alerts(runner):
     runner.start_replay(date(2024, 11, 12), speed=None, start="06:00", end="14:00")
     snap = runner.snapshot()
     assert snap.mode == "replay" and snap.step.time == T("14:00")
-    first = [a for a in reversed(snap.alerts) if a["street_id"] == "BBR-prone-street"][:2]   # log is newest-first
+    first = [a for a in reversed(snap.alerts) if a["street_id"] == "BBR-prone-street"][:3]   # log is newest-first
     assert [(a["kind"], a["level"], a["issued_at"]) for a in first] == [
-        ("alert", "warning", "2024-11-12T09:00:00+08:00"), ("alert", "danger", "2024-11-12T10:00:00+08:00")]
+        ("alert", "watch", "2024-11-12T08:45:00+08:00"), ("alert", "warning", "2024-11-12T09:00:00+08:00"), ("alert", "danger", "2024-11-12T10:00:00+08:00")]
     assert all(a["is_replay"] for a in snap.alerts)
 
 
@@ -41,3 +41,10 @@ def test_a_live_refresh_that_finishes_after_a_replay_started_does_not_overwrite_
     runner.refresh_live(datetime(2024, 11, 13, 12, 0))
     snap = runner.snapshot()
     assert snap.mode == "replay" and snap.step.time == T("09:00")
+
+
+def test_alerts_carry_a_push_flag_from_config(runner):
+    runner.start_replay(date(2024, 11, 12), speed=None, start="06:00", end="14:00")
+    alerts = runner.snapshot().alerts
+    assert {a["level"] for a in alerts} >= {"watch", "warning"}
+    assert all(a["push"] == (a["level"] in ("warning", "danger")) for a in alerts if a["kind"] == "alert")

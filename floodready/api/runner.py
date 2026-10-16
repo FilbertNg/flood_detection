@@ -39,6 +39,7 @@ class EngineContext:
     bundle_for: Callable[[datetime, bool], dict | None]                   # (when, live) -> ML bundle
     forecast: Callable[[datetime], list[dict]] | None = None              # rain_next_12h for live mode
     radar: Callable[[datetime], Reason | None] | None = None              # informational radar_approaching (live only)
+    street_stations: dict | None = None                                   # street_id -> {wl, rf, method, distance_m}; None = township-wide trigger
 
 
 @dataclass
@@ -87,7 +88,7 @@ class Runner:
         bundle = self.ctx.bundle_for(start, live)
         return replay.run(start, end, STEP, readings, self.ctx.stations, self.ctx.streets, self.station_ids,
                           self.ctx.rules_cfg, self.ctx.matrix, ml_bundle=bundle, ml_cfg=self.ctx.ml_cfg,
-                          wl_ids=self.wl_ids, tide=self.ctx.tide)
+                          wl_ids=self.wl_ids, tide=self.ctx.tide, street_stations=self.ctx.street_stations)
 
     def _record(self, step: ReplayStep, is_replay: bool) -> None:
         with self._lock:
@@ -100,6 +101,7 @@ class Runner:
                     "issued_at": iso(a.issued_at),
                     "window": {"start": iso(a.window_start), "end": iso(a.window_end)} if a.window_start else None,
                     "outcome": "unverified", "is_replay": is_replay,
+                    "push": a.kind == "alert" and a.level.json in self.ctx.rules_cfg["alerts"].get("push_levels", ["warning", "danger"]),
                 })
 
     # ---------- live ----------

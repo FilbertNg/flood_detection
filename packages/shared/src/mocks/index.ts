@@ -66,6 +66,7 @@ export const alertSummary: AlertSummary = {
   window: { start: T('09:30'), end: T('10:30') },
   outcome: 'unverified',
   is_replay: true,
+  push: true,
 };
 
 export const alerts: AlertSummary[] = [alertSummary];

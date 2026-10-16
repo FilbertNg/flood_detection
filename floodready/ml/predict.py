@@ -1,6 +1,6 @@
 """ML trigger inference (build plan task ML4).
 
-Township probability = max over its named river stations of the model's
+Per-station probability (and the township summary = max over its river stations) of the model's
 probability that the river crosses its warning level within the horizon,
 smoothed as the max over the last `smoothing_min` minutes.
 """
@@ -50,13 +50,24 @@ def ml_result(p: float, station: str, cfg: dict) -> MLResult:
     return MLResult(p=p, level=level, station=station, horizon_h=h, reasons=(reason,))
 
 
-def township_probability(model, features: list[str], feats: pd.DataFrame, wl_station_ids: list[str],
-                         at: datetime, cfg: dict) -> MLResult | None:
-    """`feats`: ML feature rows (graph_id, name, time_local, features...) for at least the last smoothing window."""
+def station_probabilities(model, features: list[str], feats: pd.DataFrame, wl_station_ids: list[str],
+                          at: datetime, cfg: dict) -> dict[str, MLResult]:
+    """One result per river station that has feature rows: its probability, smoothed as the max over the last
+    `smoothing_min` minutes. `feats`: ML feature rows (graph_id, name, time_local, features...)."""
     window_start = pd.Timestamp(at) - timedelta(minutes=cfg.get("smoothing_min", 30))
     rows = feats[feats.graph_id.isin(wl_station_ids) & (feats.time_local >= window_start) & (feats.time_local <= pd.Timestamp(at))]
     if rows.empty:
-        return None
-    p = model.predict_proba(rows[features])[:, 1]
-    best = int(p.argmax())
-    return ml_result(float(p[best]), str(rows.iloc[best]["name"]), cfg)
+        return {}
+    rows = rows.assign(_p=model.predict_proba(rows[features])[:, 1])
+    results = {}
+    for graph_id, group in rows.groupby("graph_id", sort=False):
+        best = group.iloc[int(group["_p"].to_numpy().argmax())]
+        results[str(graph_id)] = ml_result(float(best["_p"]), str(best["name"]), cfg)
+    return results
+
+
+def township_probability(model, features: list[str], feats: pd.DataFrame, wl_station_ids: list[str],
+                         at: datetime, cfg: dict) -> MLResult | None:
+    """Township summary: the highest station probability (see station_probabilities)."""
+    results = station_probabilities(model, features, feats, wl_station_ids, at, cfg)
+    return max(results.values(), key=lambda r: r.p) if results else None
