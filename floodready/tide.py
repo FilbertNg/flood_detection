@@ -20,6 +20,12 @@ CONSTITUENTS_DEG_PER_H = {
     "K1": 15.0410686, "O1": 13.9430356, "P1": 14.9589314, "Q1": 13.3986609,
     "M4": 57.9682084, "MS4": 58.9841042,
 }
+# Open-Meteo's high waters are consistently EARLY against independent data (docs/tide-check.md, WP7):
+# UHSLC station 140 Port Kelang gauge, 86 highs Nov 2022-Jan 2023: median -35 min (sd 10); news-relayed official
+# forecasts 2024: -48 min mean; tide-forecast.com 2026: -38 min. Amplitude is ~10 % too small, but tide_height_m is
+# kept as is (an anomaly feature, not a chart-datum height). High-water timing is shifted later by this many minutes.
+TIDE_PHASE_SHIFT_MIN = 40.0
+SUBHOURLY_STEP_MIN = 5
 MAX_HOURS_TO_HIGH = 7.0   # beyond this the "nearest high" is not real (a gap): report NaN
 _EPOCH =pd.Timestamp("2000-01-01")
 
@@ -111,13 +117,32 @@ def high_tide_times(series: pd.Series) -> pd.DatetimeIndex:
     return s.index[is_high.fillna(False).to_numpy()]
 
 
-def tide_features(series: pd.Series, filled: pd.Series | None = None) -> pd.DataFrame:
+def high_water_times_subhourly(fit: HarmonicFit, start: pd.Timestamp, end: pd.Timestamp,
+                               phase_shift_min: float = TIDE_PHASE_SHIFT_MIN,
+                               step_min: int = SUBHOURLY_STEP_MIN) -> pd.DatetimeIndex:
+    """High waters of the harmonic fit evaluated every `step_min` minutes over [start - 1 d, end + 1 d],
+    shifted later by `phase_shift_min` (the fit is evaluated at t - shift). No whole-hour rounding."""
+    grid = pd.date_range(pd.Timestamp(start).floor("h") - pd.Timedelta(days=1),
+                         pd.Timestamp(end) + pd.Timedelta(days=1), freq=f"{step_min}min")
+    pred = fit.predict(grid - pd.Timedelta(minutes=phase_shift_min))
+    is_high = (pred > pred.shift(1)) & (pred >= pred.shift(-1))
+    return grid[is_high.fillna(False).to_numpy()]
+
+
+def tide_features(series: pd.Series, filled: pd.Series | None = None, fit: HarmonicFit | None = None,
+                  phase_shift_min: float = TIDE_PHASE_SHIFT_MIN) -> pd.DataFrame:
     """tide_height_m, signed hours to the nearest high tide (+ = coming, - = past) and `tide_filled`
     (True where the hour came from the harmonic fit, `filled` aligned to `series`; all False if omitted).
 
-    Compute this on a gap-filled series (`fill_gaps`): the nearest high tide is then always within
-    about half a tidal cycle. Where no high tide is found, hours_to_high_tide is NaN."""
-    highs = high_tide_times(series).to_numpy()
+    Without `fit`: high tides are the whole-hour local maxima of `series` (no shift).
+    With `fit` (see `fit_harmonics`): high tides come from the fit at 5-minute resolution, shifted later by
+    `phase_shift_min` (default TIDE_PHASE_SHIFT_MIN), so hours_to_high_tide is fractional.
+    tide_height_m is always the series itself (not shifted, not rescaled).
+    Where no high tide lies within MAX_HOURS_TO_HIGH, hours_to_high_tide is NaN."""
+    if fit is not None:
+        highs = high_water_times_subhourly(fit, series.index.min(), series.index.max(), phase_shift_min).to_numpy()
+    else:
+        highs = high_tide_times(series).to_numpy()
     times = series.index.to_numpy()
     nearest = np.full(len(times), np.nan)
     if len(highs):

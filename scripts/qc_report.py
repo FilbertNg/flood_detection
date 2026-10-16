@@ -139,7 +139,7 @@ def tide_section() -> list[str]:
     import build_tide
     series = build_tide.load_cached()
     filled, mask = tide.fill_gaps(series)
-    new = tide.tide_features(filled, mask)
+    new = tide.tide_features(filled, mask, fit=tide.fit_harmonics(series))
     old_max = tide.MAX_HOURS_TO_HIGH
     tide.MAX_HOURS_TO_HIGH = np.inf       # the pre-fix behaviour: no bound, gaps interpolated over 2 h only
     try:
@@ -162,6 +162,10 @@ def tide_section() -> list[str]:
            md_table(pd.DataFrame([{"from": f"{a:%Y-%m-%d %H:%M}", "to": f"{b:%Y-%m-%d %H:%M}", "hours": n} for a, b, n in runs])) + "\n",
            f"Missing hours are filled with a least-squares harmonic fit (mean + {', '.join(tide.CONSTITUENTS_DEG_PER_H)}) to the "
            f"{int(series.notna().sum())} observed hours and marked `tide_filled`. Observed hours are never changed.\n",
+           f"High-water times (`hours_to_high_tide`) now come from the fit evaluated every {tide.SUBHOURLY_STEP_MIN} min and shifted "
+           f"{tide.TIDE_PHASE_SHIFT_MIN:+.0f} min later, because Open-Meteo's highs are early against independent data "
+           "(UHSLC Port Kelang gauge median -35 min, official forecasts -48 min, tide-forecast.com -38 min; see `docs/tide-check.md`). "
+           "`tide_height_m` is unchanged (not shifted, not rescaled).\n",
            "**Before / after** (`hours_to_high_tide`):\n",
            md_table(pd.DataFrame([
                {"": "before (no fill)", "max_abs_h": round(float(old.hours_to_high_tide.abs().max()), 1),

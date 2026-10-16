@@ -49,7 +49,7 @@ def main() -> None:
     filled, mask = tide.fill_gaps(series)
     out = ROOT / "data" / "interim" / "tide_hourly.parquet"
     out.parent.mkdir(parents=True, exist_ok=True)
-    features = tide.tide_features(filled, mask)
+    features = tide.tide_features(filled, mask, fit=tide.fit_harmonics(series))  # high waters: 5-min fit, +40 min (docs/tide-check.md)
     features.to_parquet(out, index=False)
     print(f"{len(features)} hours, {mask.sum()} filled ({mask.mean():.1%}), "
           f"{series.index.min()} → {series.index.max()} → {out.relative_to(ROOT)}")

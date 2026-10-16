@@ -1,6 +1,6 @@
 # Data QC report
 
-Generated 16 Oct 2026 by `scripts/qc_report.py` on the JPS history archive as it stands today: 77 rain gauges and 15 river stations, 7,352,299 15-min rows, 2024-01-01 to 2026-10-16 (archive progress 90/311 station series). **The archive is still being filled; this report will be regenerated when it finishes** (`python scripts/qc_report.py`).
+Generated 16 Oct 2026 by `scripts/qc_report.py` on the JPS history archive as it stands today: 79 rain gauges and 15 river stations, 7,570,723 15-min rows, 2024-01-01 to 2026-10-16 (archive progress 92/311 station series). **The archive is still being filled; this report will be regenerated when it finishes** (`python scripts/qc_report.py`).
 
 Rules live in `floodready/qc.py` and run inside `engine/replay.py::load_archive_readings` and `live.py::load_live_readings`, so replay, training, the API and live data all see the cleaned values. A flagged value becomes NaN, never 0.
 
@@ -8,19 +8,19 @@ Rules live in `floodready/qc.py` and run inside `engine/replay.py::load_archive_
 
 | rule | readings | stations | rule_text |
 | --- | --- | --- | --- |
-| rain_negative | 46 | 31 | rain < 0 (a counter cannot go down: 1 Jan reset, gauge restart) |
-| rain_implausible | 79 | 26 | rain > 100 mm per 15 min (> 400 mm/h) |
+| rain_negative | 47 | 32 | rain < 0 (a counter cannot go down: 1 Jan reset, gauge restart) |
+| rain_implausible | 81 | 28 | rain > 100 mm per 15 min (> 400 mm/h) |
 | rain_after_gap | 4 | 4 | rain >= 30 mm in the first reading after >= 2 h without readings, and the next reading < 10 mm (counter catch-up) |
 | rain_stuck | 0 | 0 | the same value >= 20 mm at least 3 times within 24 h at one gauge (after the two rules above) |
 | wl_spike | 93 | 9 | river level jumps > 1 m in 15 min and is back within 0.2 m on the next reading |
 
-129 of 5,282,648 rain readings (0.0024%) and 93 river readings removed.
+132 of 5,464,260 rain readings (0.0024%) and 93 river readings removed.
 
 Thresholds: the largest genuine rain value in the archive is about 95 mm per 15 min; every value above 100 mm is a counter jump (121 to 2,570 mm) or a stuck repeat. `rain_after_gap` with the 30 mm limit also needs the continuation test (section 3): without it it removed a real storm at gauge 27233.
 
 ## 2. Flagged readings by rule and station
 
-### `rain_negative`: 46 readings, 31 stations
+### `rain_negative`: 47 readings, 32 stations
 
 rain < 0 (a counter cannot go down: 1 Jan reset, gauge restart).
 
@@ -29,24 +29,25 @@ rain < 0 (a counter cannot go down: 1 Jan reset, gauge restart).
 | 26377 | Sentul Park (F2) | 9 | -13.5 | -0.5 | 2024-01-01 14:30 | 2025-02-19 12:30 |
 | 3117006_ | Kolam Takungan Batu | 6 | -29997.0 | -19998.0 | 2026-08-12 14:15 | 2026-08-12 15:30 |
 | 26352 | Sri Rampai (F2) | 3 | -59.0 | -38.5 | 2024-07-09 09:45 | 2025-11-28 15:30 |
-| 26039 | Kg. Budiman | 1 | -1979.5 | -1979.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 26038 | Taman Sentosa | 1 | -2500.5 | -2500.5 | 2024-01-01 00:45 | 2024-01-01 00:45 |
+| 26039 | Kg. Budiman | 1 | -1979.5 | -1979.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 26403 | Kg. Padang Balang (F2) | 1 | -2747.5 | -2747.5 | 2024-12-30 16:45 | 2024-12-30 16:45 |
+| 2915118_ | Ayer Hitam Puchong | 1 | -2629.5 | -2629.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 2414401_ | SMK Jalan Kebun | 1 | -2484.0 | -2484.0 | 2024-01-01 00:15 | 2024-01-01 00:15 |
-| 3014080_ | Bandar Klang | 1 | -2281.0 | -2281.0 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3015001_ | Puchong Drop | 1 | -2603.5 | -2603.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3015083_ | TTDI Jaya | 1 | -2336.5 | -2336.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3015084_ | Taman Sri Muda | 1 | -2320.5 | -2320.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3015087_ | Batu 3 | 1 | -2804.5 | -2804.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3015089_ | Tugu Keris | 1 | -2497.5 | -2497.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3016080_ | Kg. Gandhi | 1 | -3274.5 | -3274.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
-| 2915118_ | Ayer Hitam Puchong | 1 | -2629.5 | -2629.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3017107_ | Seri Kembangan | 1 | -2684.0 | -2684.0 | 2024-01-01 00:15 | 2024-01-01 00:15 |
+| 3014080_ | Bandar Klang | 1 | -2281.0 | -2281.0 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3114087_ | Empangan Tasik Subang Meru | 1 | -2444.0 | -2444.0 | 2024-01-01 00:15 | 2024-01-01 00:15 |
-| 3115083_ | Taman Mayang | 1 | -3131.5 | -3131.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3115080_ | Paya Jaras | 1 | -3115.5 | -3115.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3115084_ | Kg. Melayu Subang | 1 | -2639.5 | -2639.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
+| 3115083_ | Taman Mayang | 1 | -3131.5 | -3131.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | 3116074_ | Leboh Pasar | 1 | -494.0 | -494.0 | 2024-08-09 16:15 | 2024-08-09 16:15 |
+| 3216007_ | Taman Ehsan | 1 | -1.0 | -1.0 | 2024-11-20 20:00 | 2024-11-20 20:00 |
 | DESAKEMUNING | Taman Desa Kemuning | 1 | -2623.5 | -2623.5 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | KGDELEK | Kg. Delek | 1 | -1624.0 | -1624.0 | 2024-01-01 00:15 | 2024-01-01 00:15 |
 | KGRANTAUPANJANG | Kg. Rantau Panjang | 1 | -2718.0 | -2718.0 | 2024-01-01 00:15 | 2024-01-01 00:15 |
@@ -98,6 +99,7 @@ rain < 0 (a counter cannot go down: 1 Jan reset, gauge restart).
 | 3117006_ | 2026-08-12 15:00 | -29997.0 |
 | 3117006_ | 2026-08-12 15:15 | -29997.0 |
 | 3117006_ | 2026-08-12 15:30 | -19998.0 |
+| 3216007_ | 2024-11-20 20:00 | -1.0 |
 | DESAKEMUNING | 2024-01-01 00:15 | -2623.5 |
 | KGDELEK | 2024-01-01 00:15 | -1624.0 |
 | KGRANTAUPANJANG | 2024-01-01 00:15 | -2718.0 |
@@ -111,7 +113,7 @@ rain < 0 (a counter cannot go down: 1 Jan reset, gauge restart).
 
 </details>
 
-### `rain_implausible`: 79 readings, 26 stations
+### `rain_implausible`: 81 readings, 28 stations
 
 rain > 100 mm per 15 min (> 400 mm/h).
 
@@ -120,24 +122,26 @@ rain > 100 mm per 15 min (> 400 mm/h).
 | 27879 | Jalan SS 2/24 (F2) | 30 | 287.5 | 296.5 | 2025-11-06 15:15 | 2025-11-09 20:45 |
 | 26385 | Sek. Men. Keb. Wangsa Maju Seksyen 2 (F2) | 4 | 803.5 | 1034.0 | 2024-06-25 09:30 | 2024-08-20 11:30 |
 | 3017107_ | Seri Kembangan | 4 | 578.5 | 597.5 | 2026-05-01 12:45 | 2026-06-25 18:45 |
-| 2915118_ | Ayer Hitam Puchong | 3 | 230.0 | 436.0 | 2026-04-23 09:30 | 2026-06-25 17:15 |
-| 3015084_ | Taman Sri Muda | 3 | 1756.5 | 2187.5 | 2025-10-17 00:00 | 2025-12-20 00:00 |
 | 26420 | Kg. Muda (F2) | 3 | 558.0 | 1351.0 | 2024-07-11 12:15 | 2024-11-22 11:00 |
-| 3115080_ | Paya Jaras | 3 | 1301.5 | 2185.0 | 2025-07-29 00:00 | 2025-12-25 00:00 |
-| 3015440_ | IOI Puchong Jaya | 3 | 1895.5 | 2191.0 | 2025-11-21 01:00 | 2025-12-16 00:00 |
 | 3015087_ | Batu 3 | 3 | 641.5 | 2050.5 | 2024-11-04 00:00 | 2025-10-28 00:00 |
+| 2915118_ | Ayer Hitam Puchong | 3 | 230.0 | 436.0 | 2026-04-23 09:30 | 2026-06-25 17:15 |
+| 3015440_ | IOI Puchong Jaya | 3 | 1895.5 | 2191.0 | 2025-11-21 01:00 | 2025-12-16 00:00 |
 | KOTADAMANSARA | Kota Damansara | 3 | 256.5 | 1388.0 | 2024-08-28 11:15 | 2024-09-11 16:15 |
 | BTU10_ | Kg. Batu Muda (F2) | 3 | 1065.5 | 1250.0 | 2024-06-24 11:15 | 2025-05-07 13:15 |
+| 3115080_ | Paya Jaras | 3 | 1301.5 | 2185.0 | 2025-07-29 00:00 | 2025-12-25 00:00 |
+| 3015084_ | Taman Sri Muda | 3 | 1756.5 | 2187.5 | 2025-10-17 00:00 | 2025-12-20 00:00 |
 | 26403 | Kg. Padang Balang (F2) | 2 | 1675.5 | 2747.5 | 2024-12-30 17:45 | 2026-06-30 16:45 |
 | TAMANBOTANI | Taman Botani | 2 | 2179.5 | 2364.5 | 2025-12-06 00:00 | 2025-12-20 00:00 |
-| 26039 | Kg. Budiman | 1 | 244.5 | 244.5 | 2024-02-14 20:30 | 2024-02-14 20:30 |
 | 3015083_ | TTDI Jaya | 1 | 1864.5 | 1864.5 | 2025-11-21 00:00 | 2025-11-21 00:00 |
-| 27859 | Emp. Tasik Subang Meru (F2) | 1 | 421.0 | 421.0 | 2025-12-22 14:30 | 2025-12-22 14:30 |
 | 27233 | Kg. Lombong | 1 | 2569.5 | 2569.5 | 2025-12-20 03:00 | 2025-12-20 03:00 |
+| 26039 | Kg. Budiman | 1 | 244.5 | 244.5 | 2024-02-14 20:30 | 2024-02-14 20:30 |
+| 26377 | Sentul Park (F2) | 1 | 745.5 | 745.5 | 2026-07-03 15:30 | 2026-07-03 15:30 |
+| 27859 | Emp. Tasik Subang Meru (F2) | 1 | 421.0 | 421.0 | 2025-12-22 14:30 | 2025-12-22 14:30 |
+| 3114005_ | Lembah Keramat | 1 | 321.5 | 321.5 | 2024-08-15 12:45 | 2024-08-15 12:45 |
 | 3016080_ | Kg. Gandhi | 1 | 1871.0 | 1871.0 | 2025-12-20 03:00 | 2025-12-20 03:00 |
 | 3116074_ | Leboh Pasar | 1 | 494.0 | 494.0 | 2024-08-09 16:30 | 2024-08-09 16:30 |
+| 3116004_ | JPS Wilayah | 1 | 897.5 | 897.5 | 2024-08-15 12:45 | 2024-08-15 12:45 |
 | 3115083_ | Taman Mayang | 1 | 574.5 | 574.5 | 2026-04-23 12:00 | 2026-04-23 12:00 |
-| 3114005_ | Lembah Keramat | 1 | 321.5 | 321.5 | 2024-08-15 12:45 | 2024-08-15 12:45 |
 | 3117070_ | JPS Ampang | 1 | 121.5 | 121.5 | 2024-08-15 12:45 | 2024-08-15 12:45 |
 | KGRANTAUPANJANG | Kg. Rantau Panjang | 1 | 1693.0 | 1693.0 | 2025-11-21 00:00 | 2025-11-21 00:00 |
 | KGDELEK | Kg. Delek | 1 | 1487.5 | 1487.5 | 2025-11-21 00:00 | 2025-11-21 00:00 |
@@ -149,6 +153,7 @@ rain > 100 mm per 15 min (> 400 mm/h).
 | graph_id | time_local | value |
 | --- | --- | --- |
 | 26039 | 2024-02-14 20:30 | 244.5 |
+| 26377 | 2026-07-03 15:30 | 745.5 |
 | 26385 | 2024-06-25 09:30 | 803.5 |
 | 26385 | 2024-07-02 16:15 | 934.5 |
 | 26385 | 2024-08-13 10:30 | 953.5 |
@@ -213,6 +218,7 @@ rain > 100 mm per 15 min (> 400 mm/h).
 | 3115080_ | 2025-11-21 01:00 | 1796.5 |
 | 3115080_ | 2025-12-25 00:00 | 2185.0 |
 | 3115083_ | 2026-04-23 12:00 | 574.5 |
+| 3116004_ | 2024-08-15 12:45 | 897.5 |
 | 3116074_ | 2024-08-09 16:30 | 494.0 |
 | 3117070_ | 2024-08-15 12:45 | 121.5 |
 | BTU10_ | 2024-06-24 11:15 | 1168.0 |
@@ -438,7 +444,7 @@ river level jumps > 1 m in 15 min and is back within 0.2 m on the next reading.
 | 26038 | Taman Sentosa | 2024-01-01 | 2026-10-16 | 83.0 | 3292.8 | 2026-04-23 10:30 |
 | 26039 | Kg. Budiman | 2024-01-01 | 2026-10-16 | 92.0 | 448.0 | 2025-03-29 15:00 |
 | 26352 | Sri Rampai (F2) | 2024-01-01 | 2026-10-15 | 76.7 | 965.5 | 2025-12-08 07:15 |
-| 26377 | Sentul Park (F2) | 2024-01-01 | 2025-09-30 | 78.9 | 908.5 | 2024-03-23 17:15 |
+| 26377 | Sentul Park (F2) | 2024-01-01 | 2026-10-16 | 80.9 | 908.5 | 2024-03-23 17:15 |
 | 26385 | Sek. Men. Keb. Wangsa Maju Seksyen 2 (F2) | 2024-03-29 | 2026-10-16 | 86.1 | 867.2 | 2024-04-01 23:00 |
 | 26403 | Kg. Padang Balang (F2) | 2024-01-01 | 2026-10-16 | 88.5 | 446.2 | 2025-03-29 15:00 |
 | 26420 | Kg. Muda (F2) | 2024-01-01 | 2026-10-16 | 79.8 | 2910.2 | 2024-01-03 06:00 |
@@ -491,11 +497,13 @@ river level jumps > 1 m in 15 min and is back within 0.2 m on the next reading.
 | 3115080_ | Paya Jaras | 2024-01-01 | 2026-10-16 | 93.4 | 448.0 | 2025-03-29 15:00 |
 | 3115083_ | Taman Mayang | 2024-01-01 | 2026-10-16 | 96.0 | 448.0 | 2025-03-29 15:00 |
 | 3115084_ | Kg. Melayu Subang | 2024-01-01 | 2026-10-16 | 88.8 | 448.5 | 2025-03-29 15:00 |
+| 3116004_ | JPS Wilayah | 2024-01-01 | 2026-10-16 | 97.1 | 446.2 | 2025-03-29 15:00 |
 | 3116074_ | Leboh Pasar | 2024-01-01 | 2026-10-16 | 94.3 | 446.2 | 2025-03-29 15:00 |
 | 3117005_ | Kg. Air Panas | 2024-01-01 | 2026-10-16 | 7.7 | 10844.5 | 2025-05-23 11:30 |
 | 3117006_ | Kolam Takungan Batu | 2024-01-01 | 2026-09-17 | 94.6 | 446.2 | 2025-03-29 15:00 |
 | 3117070_ | JPS Ampang | 2024-01-01 | 2026-10-16 | 75.7 | 1418.0 | 2024-06-16 10:30 |
 | 3117403_ | Jln. Tun Razak (Sg. Bunus) | 2024-01-01 | 2026-10-16 | 97.3 | 446.2 | 2025-03-29 15:00 |
+| 3216007_ | Taman Ehsan | 2024-08-22 | 2026-06-30 | 85.7 | 446.2 | 2025-03-29 15:00 |
 | BTU10_ | Kg. Batu Muda (F2) | 2024-01-01 | 2026-10-16 | 80.5 | 1558.8 | 2026-05-06 13:15 |
 | DESAKEMUNING | Taman Desa Kemuning | 2024-01-01 | 2026-10-16 | 96.4 | 448.0 | 2025-03-29 15:00 |
 | JLNBENTENGKAPAR | Jln. Benteng Kapar | 2024-01-01 | 2026-10-16 | 93.3 | 448.0 | 2025-03-29 15:00 |
@@ -523,6 +531,8 @@ Open-Meteo Marine (cached in `data/raw/tide/`) covers 2024-01-01 to 2026-10-18; 
 
 Missing hours are filled with a least-squares harmonic fit (mean + M2, S2, N2, K2, K1, O1, P1, Q1, M4, MS4) to the 24096 observed hours and marked `tide_filled`. Observed hours are never changed.
 
+High-water times (`hours_to_high_tide`) now come from the fit evaluated every 5 min and shifted +40 min later, because Open-Meteo's highs are early against independent data (UHSLC Port Kelang gauge median -35 min, official forecasts -48 min, tide-forecast.com -38 min; see `docs/tide-check.md`). `tide_height_m` is unchanged (not shifted, not rescaled).
+
 **Before / after** (`hours_to_high_tide`):
 
 |  | max_abs_h | NaN_tide_height |
@@ -530,7 +540,7 @@ Missing hours are filled with a least-squares harmonic fit (mean + M2, S2, N2, K
 | before (no fill) | 137.0 | 432 |
 | after (harmonic fill) | 7.0 | 0 |
 
-After the fix `hours_to_high_tide` is NaN on 1 hour(s) (at a series edge, where the nearest high tide lies outside the data) and never beyond +-7 h.
+After the fix `hours_to_high_tide` is NaN on 5 hour(s) (at a series edge, where the nearest high tide lies outside the data) and never beyond +-7 h.
 
 **Hold-out validation**: fit without a 10-day window that has data, then compare the fit with the series there. Timing error = predicted minus observed high-water time (hourly data, so a resolution of 1 h).
 
