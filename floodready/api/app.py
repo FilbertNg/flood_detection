@@ -34,10 +34,9 @@ def build_context(township_id: str = "BBR") -> EngineContext:
     town = next(t for t in _yaml("townships.yaml")["townships"] if t["id"] == township_id)
     stations = pd.read_parquet(DATA / "interim" / "stations.parquet")
     streets = gpd.read_file(ROOT / "assets" / "geo" / f"{township_id.lower()}_streets.geojson")
-    wl_ids = [s["graph_id"] for s in town["stations"] if "WL" in s.get("types", [])]
     hist = DATA / "raw" / "jps_hist"
     archived = {p.stem for p in (hist / "rf").glob("*.parquet")} | {p.stem for p in (hist / "wl").glob("*.parquet")}
-    ids = sorted((set(s["graph_id"] for s in town["stations"]) | set(dataset.rain_stations_near(stations, wl_ids, 25))) & archived)
+    ids = dataset.township_station_ids(town, stations, archived)
 
     @lru_cache(maxsize=1)
     def archive() -> pd.DataFrame:

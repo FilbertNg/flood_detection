@@ -45,9 +45,9 @@ def main() -> None:
     end = datetime.fromisoformat(f"{args.event} {args.end}")
     stations = pd.read_parquet(ROOT / "data" / "interim" / "stations.parquet")
     hist = ROOT / "data" / "raw" / "jps_hist"
-    archived = {p.stem for p in (hist / "rf").glob("*.parquet")}
-    ml_rain = dataset.rain_stations_near(stations, wl_ids, km=25, available=archived)
-    readings = replay.load_archive_readings(hist, sorted(set(station_ids) | set(ml_rain)), start - timedelta(days=5), end)
+    archived = {p.stem for p in (hist / "rf").glob("*.parquet")} | {p.stem for p in (hist / "wl").glob("*.parquet")}
+    ids = dataset.township_station_ids(town, stations, archived)
+    readings = replay.load_archive_readings(hist, ids, start - timedelta(days=5), end)
     bundle = predict.bundle_for(ROOT / "models", start, live=False)  # model that never trained on this period
     ml_cfg = load_yaml("ml.yaml")
     tide_path = ROOT / "data" / "interim" / "tide_hourly.parquet"
