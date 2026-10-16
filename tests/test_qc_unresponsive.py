@@ -145,6 +145,30 @@ def test_12_nov_2024_26558_is_flagged_and_pekan_meru_is_not():
     pd.testing.assert_frame_equal(others.reset_index(drop=True), storm_df[storm_df.graph_id != "26558"].reset_index(drop=True))
 
 
+def _run_with_gap(gap_steps):
+    lvl = np.full(70, 1.20)
+    lvl[30:30 + gap_steps] = np.nan
+    clean, flags = qc.clean_readings(pd.concat([wet(np.full(70, 4.0)), level("R", lvl)], ignore_index=True), stations=STATIONS)
+    return set(steps(wl_flags(flags))), 30 + gap_steps
+
+
+def test_run_persists_over_a_short_gap_but_a_gap_over_2_h_ends_it():
+    assert qc.WL_RUN_MAX_GAP_MIN == 120
+    short, after = _run_with_gap(4)                          # 1 h of missing readings: same run
+    assert {after, after + 1, after + 2} <= short and 29 in short
+    long_, after = _run_with_gap(12)                         # 3 h: the run ends; the flat level must be proven again
+    assert 29 in long_ and not ({after, after + 1, after + 2, after + 3} & long_)
+    edge, after = _run_with_gap(7)                           # 7 missing readings = 2 h between valid ones: still the same run
+    assert after in edge
+
+
+def test_readings_before_the_first_detection_stay_unflagged_and_exposed_constants():
+    df = pd.concat([wet(storm()), level("R", np.full(40, 1.20))], ignore_index=True)
+    idx = steps(wl_flags(qc.clean_readings(df, stations=STATIONS)[1]))
+    assert idx[0] >= 10                                      # no look-back over the flat readings before detection
+    assert qc.QC_HISTORY_DAYS >= qc.RAIN_MONTH_STEPS / 96 and qc.QC_HISTORY_DAYS * 96 >= qc.WL_FLAT_HOURS * 4 + qc.WL_RESPONSE_LAG_MIN // 15
+
+
 def test_one_wet_gauge_is_not_enough_it_needs_a_second_gauge_to_agree():
     df = pd.concat([rain("G", storm()), rain("G2", np.zeros(40)), level("R", np.full(40, 1.20))], ignore_index=True)
     _, flags = qc.clean_readings(df, stations=STATIONS)

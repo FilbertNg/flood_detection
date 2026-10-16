@@ -30,7 +30,9 @@ wl_unresponsive     a river level that stayed within WL_FLAT_M for 4.5 h (the 3 
                     level alone is base flow (Sg. Binjai at Pekan Meru stays flat for 6 h in 91 % of its readings);
                     flat during widespread heavy rain is a gauge that has stopped responding (Kg. Perepat, 26558,
                     12 Nov 2024). Flagged from the reading where the condition is first met until the level moves
-                    (> WL_FLAT_M from the flat level). Causal. Needs `stations` (coordinates); skipped without it.
+                    (> WL_FLAT_M from the flat level). The run persists over missing readings, but a gap of more than
+                    WL_RUN_MAX_GAP_MIN (2 h) ends it; readings of the run before the first detection are not flagged
+                    (no look-back). Causal. Needs `stations` (coordinates); skipped without it.
                     Fail safe, never applied (the value is kept) when: the station has fewer than two rain gauges
                     within the radius; the stations table says its thresholds are not trustworthy (`thresholds_ok`
                     False) or gives no alert level; or the flat level is >= the station's wl_alert_m (a gauge stuck
@@ -87,13 +89,16 @@ WL_RESPONSE_LAG_MIN = 90           # the river may answer rain this late: the ra
 WL_FLAT_MIN_FRAC = 11 / 13         # share of the flat window's readings that must be valid (tolerates short gaps)
 WL_RAIN_MM = 30.0
 WL_RAIN_RADIUS_KM = 10.0
-WL_MIN_RAIN_GAUGES = 2             # gauges that must each reach WL_RAIN_MM (the second-wettest gauge decides)
+WL_RUN_MAX_GAP_MIN = 120           # a flagged flat run continues over missing readings, but a gap longer than this ends it
+WL_MIN_RAIN_GAUGES = 2            # gauges that must each reach WL_RAIN_MM (the second-wettest gauge decides)
 RAIN_MONTH_STEPS = 30 * 96         # 30 days of 15-min readings
 RAIN_MONTH_MIN_MM = 600.0          # chosen before looking at 12 Nov 2024; see docs/data-qc-report.md
 RAIN_MONTH_RATIO = 3.0
 RAIN_MONTH_RADIUS_KM = 10.0
 RAIN_MONTH_MIN_NEIGHBOURS = 2
 RAIN_MONTH_MIN_COVERAGE = 0.5      # a neighbour counts only if it has data in this share of the window
+QC_HISTORY_DAYS = 31               # longest look-back any rule needs (30-day rain window + 1 day margin; wl rules need 4.5 h):
+                                   # live mode loads at least this much archive before `since` so a causal flag sees the same data
 STEP = pd.Timedelta(minutes=15)
 
 
@@ -219,6 +224,7 @@ def _wl_unresponsive_mask(wl: pd.DataFrame, rain: pd.DataFrame, stations: pd.Dat
     lag = WL_RESPONSE_LAG_MIN // 15                         # 6 readings
     n_flat = n_win + lag                                    # flat window: 18 steps = 4.5 h, 19 readings
     min_valid = int(np.ceil(WL_FLAT_MIN_FRAC * (n_flat + 1)))
+    max_gap_steps = WL_RUN_MAX_GAP_MIN // 15
     alert = (st[st.kind == "wl"].drop_duplicates("graph_id").set_index("graph_id")["wl_alert_m"]
              if "wl_alert_m" in st.columns else pd.Series(dtype=float))
     thresholds_ok = (st[st.kind == "wl"].drop_duplicates("graph_id").set_index("graph_id")["thresholds_ok"]
@@ -260,6 +266,10 @@ def _wl_unresponsive_mask(wl: pd.DataFrame, rain: pd.DataFrame, stations: pd.Dat
             stop |= v[i:] >= alert_m                          # NaN compares False: gaps do not end a run
             moved = np.flatnonzero(stop)
             end = i + moved[0] if len(moved) else len(v)
+            valid = np.flatnonzero(~np.isnan(v[i:end])) + i
+            long_gap = np.flatnonzero(np.diff(valid) > max_gap_steps)
+            if len(long_gap):                                 # missing readings > 2 h end the run: the flat level must be proven again
+                end = int(valid[long_gap[0] + 1])
             hit[i:end] = True
             i_next = end
         out.loc[g.index] = pd.Series(hit, index=grid).reindex(g["time_local"]).to_numpy() & g["wl_m"].notna().to_numpy()
