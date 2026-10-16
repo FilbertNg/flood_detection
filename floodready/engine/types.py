@@ -31,9 +31,9 @@ class Level(IntEnum):
 
 @dataclass(frozen=True)
 class Reason:
-    code: str            # e.g. rain_1h, rain_2to4h, river_level, ml_probability, tide_high, stale_data
+    code: str            # e.g. rain_1h, rain_2to4h, river_level, ml_probability, tide_high, stale_data, radar_approaching
     value: float
-    unit: str            # mm, m, p, h
+    unit: str            # mm, m, p, h, min
     station: str | None
     text_en: str
     text_ms: str

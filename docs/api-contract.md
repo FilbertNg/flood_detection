@@ -23,6 +23,7 @@ The contract between the engine/API (Python) and the two apps (TypeScript). It i
 - **Admin auth:** `Authorization: Bearer <token>` from `POST /admin/login`.
 - **Sensor auth:** `Authorization: Bearer <SENSOR_TOKEN>`.
 - **CORS:** the two app origins listed in the API's `CORS_ORIGINS` env var.
+- **Reason codes** (`StreetDetail.reasons[].code`): `rain_1h`, `rain_2to4h`, `river_level`, `ml_probability`, `tide_high`, `forecast_rain`, `met_warning`, `stale_data`, and `radar_approaching` (unit `min`, `value` = estimated minutes until a rain cell arrives; **informational only, it never changes `level`**, see [radar-nowcast.md](radar-nowcast.md)). It appears only in live mode and only while the radar logger is running.
 - **Replay and demo data** carry `is_replay: true` / `source: "demo"`; statistics never include them.
 
 ## Endpoints

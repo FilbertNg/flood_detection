@@ -219,3 +219,49 @@ def select_archive_stations(wl_rows: list[dict], rf_rows: list[dict],
                 if row.get("district") == district:
                     add(row["graph_id"], kind)
     return order
+
+
+# ---------- WP8: MET Malaysia radar composite (opt-in, informational) ----------
+
+def run_radar(session, root: Path, now_local: datetime) -> dict:
+    """Archive the newest radar frame to <root>/radar/YYYY-MM-DD/HHMM.gif (MYT of Last-Modified).
+
+    Conditional GET (ETag), so polling every few minutes costs a 304 until MET publishes a new
+    frame (about every 10 minutes). The image is checked for the composite layout before saving."""
+    from email.utils import parsedate_to_datetime
+
+    from . import radar
+
+    root = Path(root) / "radar"
+    root.mkdir(parents=True, exist_ok=True)
+    state_file = root / "_state.json"
+    state = json.loads(state_file.read_text()) if state_file.exists() else {}
+    summary = {"run_at_local": now_local.isoformat(), "new_frame": False, "errors": [], "ok": False}
+    headers = {"If-None-Match": state["etag"]} if state.get("etag") else {}
+    try:
+        response = session.get(radar.RADAR_URL, timeout=60, headers=headers)
+        if response.status_code == 304:
+            summary["ok"] = True
+        else:
+            response.raise_for_status()
+            img = radar.read_image(response.content)
+            if not radar.is_radar_frame(img):
+                raise ValueError("image does not look like the MET radar composite (layout changed?)")
+            stamp = response.headers.get("Last-Modified")
+            when = (parsedate_to_datetime(stamp).replace(tzinfo=None) + timedelta(hours=8)) if stamp else now_local
+            when = when.replace(second=0, microsecond=0)
+            path = radar.frame_path(root, when)
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(response.content)
+                summary["new_frame"] = True
+            summary["frame_time"] = when.isoformat()
+            if response.headers.get("ETag"):
+                state["etag"] = response.headers["ETag"]
+                state_file.write_text(json.dumps(state))
+            summary["ok"] = True
+    except Exception as exc:  # a failed poll must not stop the other loggers
+        log.exception("radar failed")
+        summary["errors"].append(str(exc))
+    (root / "_status.json").write_text(json.dumps(summary, indent=2))
+    return summary

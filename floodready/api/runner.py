@@ -18,6 +18,7 @@ import pandas as pd
 
 from ..engine import replay
 from ..engine.replay import ReplayStep
+from ..engine.types import Reason
 from ..ml import dataset
 
 log = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class EngineContext:
     load_live_readings: Callable[[datetime], pd.DataFrame] | None         # live logs since a time
     bundle_for: Callable[[datetime, bool], dict | None]                   # (when, live) -> ML bundle
     forecast: Callable[[datetime], list[dict]] | None = None              # rain_next_12h for live mode
+    radar: Callable[[datetime], Reason | None] | None = None              # informational radar_approaching (live only)
 
 
 @dataclass

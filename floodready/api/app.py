@@ -15,7 +15,7 @@ import geopandas as gpd
 import pandas as pd
 import yaml
 
-from .. import live
+from .. import live, radar
 from ..engine.replay import load_archive_readings
 from ..ml import dataset, predict
 from .main import create_app
@@ -69,6 +69,7 @@ def build_context(township_id: str = "BBR") -> EngineContext:
         load_readings=load_readings, load_live_readings=load_live,
         bundle_for=lambda when, is_live: predict.bundle_for(ROOT / "models", when, live=is_live),
         forecast=forecast,
+        radar=lambda now: radar.latest_reason(DATA / "raw" / "radar", town["centre"]["lat"], town["centre"]["lon"], now),
     )
 
 

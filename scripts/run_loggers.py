@@ -3,6 +3,9 @@
 Usage:
   python scripts/run_loggers.py          # run forever: JPS + MET every 15 min, forecast every hour
   python scripts/run_loggers.py --once   # one pass of everything (Task Scheduler / cron / CI)
+  python scripts/run_loggers.py --radar  # radar archive only, every radar.interval_min (needs radar.enabled)
+
+The radar logger (WP8) is off unless config/sources.yaml has radar.enabled: true; see docs/radar-nowcast.md.
 
 Run it on an always-on machine; a sleeping laptop loses data that can't be recovered.
 """
@@ -35,6 +38,8 @@ def run_pass(session, cfg: dict, with_forecast: bool) -> None:
     if with_forecast:
         fc = cfg["openmeteo_forecast"]
         tasks.append(("forecast", lambda: jobs.run_forecast(session, DATA, fc["points"], fc["models"], now)))
+    if cfg.get("radar", {}).get("enabled"):
+        tasks.append(("radar", lambda: jobs.run_radar(session, DATA, now)))
     for name, task in tasks:
         try:
             log.info("%s %s", name, task())
@@ -45,6 +50,7 @@ def run_pass(session, cfg: dict, with_forecast: bool) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--radar", action="store_true", help="only the radar archive, polled every radar.interval_min")
     args = parser.parse_args()
 
     (ROOT / "logs").mkdir(exist_ok=True)
@@ -55,6 +61,17 @@ def main() -> None:
     )
     cfg = yaml.safe_load((ROOT / "config" / "sources.yaml").read_text(encoding="utf-8"))
     session = make_session()
+
+    radar_cfg = cfg.get("radar", {})
+    if args.radar:
+        if not radar_cfg.get("enabled"):
+            sys.exit("radar.enabled is false in config/sources.yaml (MET Malaysia consent needed, see docs/radar-nowcast.md)")
+        while True:
+            try:
+                log.info("radar %s", jobs.run_radar(session, DATA, jobs.now_myt()))
+            except Exception:
+                log.exception("radar failed")
+            time.sleep(radar_cfg.get("interval_min", 5) * 60)
 
     if args.once:
         run_pass(session, cfg, with_forecast=True)

@@ -29,3 +29,9 @@ openmeteo_forecast:
     - {id: SHAHALAM, lat: 3.0739, lon: 101.5185}
     - {id: PJ, lat: 3.0989, lon: 101.6454}
     - {id: KL, lat: 3.1517, lon: 101.6942}
+
+# MET Malaysia radar composite (WP8, informational only). OFF by default: MET's copyright
+# notice forbids copying site content without written consent (docs/radar-nowcast.md).
+radar:
+  enabled: false
+  interval_min: 5        # conditional GET; MET publishes a new frame about every 10 min
