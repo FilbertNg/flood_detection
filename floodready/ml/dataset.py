@@ -172,6 +172,15 @@ def required_station_ids(stations: pd.DataFrame, wl_ids: list[str], network: dic
     return sorted(ids | set(rain_stations_near(stations, wl_ids, km=25)))
 
 
+def township_station_ids(town: dict, stations: pd.DataFrame, archived: set[str],
+                         network: dict[str, list[str]] | None = None) -> list[str]:
+    """Archived stations to load for a township: its own stations plus everything the ML features need
+    (upstream river stations, rain within 25 km), so serving sees the same inputs as training."""
+    wl_ids = [s["graph_id"] for s in town["stations"] if "WL" in s.get("types", [])]
+    own = {s["graph_id"] for s in town["stations"]}
+    return sorted((own | set(required_station_ids(stations, wl_ids, network))) & set(archived))
+
+
 def rain_stations_near(stations: pd.DataFrame, wl_ids: list[str], km: float = 25,
                        available: set[str] | None = None) -> list[str]:
     """Rain stations (with coordinates) within `km` of any of the river stations; optionally only `available` ones."""
