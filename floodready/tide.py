@@ -130,6 +130,60 @@ def high_water_times_subhourly(fit: HarmonicFit, start: pd.Timestamp, end: pd.Ti
     return grid[is_high.fillna(False).to_numpy()]
 
 
+def hours_to_nearest_high(index: pd.DatetimeIndex, highs) -> np.ndarray:
+    """Signed hours from each time in `index` to the nearest high water in `highs` (+ = coming, - = past).
+    NaN where none lies within MAX_HOURS_TO_HIGH. Ties go to the coming high."""
+    highs = np.sort(np.asarray(highs, dtype="datetime64[ns]"))
+    times = index.to_numpy()
+    nearest = np.full(len(times), np.nan)
+    if len(highs):
+        pos = np.searchsorted(highs, times)
+        nxt = highs[np.minimum(pos, len(highs) - 1)]
+        prv = highs[np.maximum(pos - 1, 0)]
+        to_next = (nxt - times) / np.timedelta64(1, "h")
+        to_prev = (prv - times) / np.timedelta64(1, "h")
+        to_next = np.where(to_next < 0, np.inf, to_next)
+        to_prev = np.where(to_prev > 0, -np.inf, to_prev)
+        nearest = np.where(to_next <= -to_prev, to_next, to_prev)
+        nearest = np.where(np.isfinite(nearest) & (np.abs(nearest) <= MAX_HOURS_TO_HIGH), nearest, np.nan)
+    return nearest
+
+
+def tide_at(hourly: pd.DataFrame, index: pd.DatetimeIndex) -> pd.DataFrame:
+    """tide_height_m and hours_to_high_tide valid at each time in `index` (any sub-hourly grid), from the
+    hourly table of `tide_features` (columns time_local, tide_height_m, hours_to_high_tide).
+
+    Why evaluating between the hours is allowed: the table is a model product (Open-Meteo marine sea level, i.e.
+    astronomical tide, plus harmonic gap fill), a forecast known days ahead, not a gauge observation. The
+    height at 09:45 is therefore available at 09:45 and is not a look-ahead; reading the 09:00 value instead
+    would be up to 45 min stale while the tide moves ~0.5 m/h. If a column here ever becomes a real
+    observation, do not interpolate it towards the next hour.
+
+    Height: linear in time between the hourly values (error vs the true curve ~5 cm for the 12.4 h tide).
+    Hours to high: the high-water times are recovered from the hourly column (hour + hours_to_high_tide, which
+    already come from the sub-hourly harmonic fit with the phase shift) and the nearest one is re-evaluated at
+    each time. NaN outside the table's span or beyond MAX_HOURS_TO_HIGH."""
+    h = hourly.drop_duplicates("time_local").set_index("time_local").sort_index()
+    t_ns = lambda ix: pd.DatetimeIndex(ix).asi8.astype(float)  # noqa: E731
+    hours = pd.DatetimeIndex(h.index)
+    height = h["tide_height_m"].to_numpy(float)
+    ok = ~np.isnan(height)
+    out_h = np.full(len(index), np.nan)
+    if ok.sum() >= 2:
+        out_h = np.interp(t_ns(index), t_ns(hours[ok]), height[ok], left=np.nan, right=np.nan)
+        # a gap wider than one hour must not be bridged by the line: keep only times whose both bracketing hours are valid
+        pos = np.clip(np.searchsorted(hours.asi8, index.asi8, side="right") - 1, 0, len(hours) - 1)
+        nxt = np.minimum(pos + 1, len(hours) - 1)
+        exact = hours.asi8[pos] == index.asi8
+        out_h = np.where(exact | (ok[pos] & ok[nxt]), out_h, np.nan)
+    rel = h["hours_to_high_tide"].to_numpy(float)
+    keep = ~np.isnan(rel)
+    highs = np.unique((hours[keep] + pd.to_timedelta(np.round(rel[keep] * 3600), unit="s")).to_numpy())
+    in_span = (index >= hours.min()) & (index <= hours.max())
+    to_high = np.where(in_span, hours_to_nearest_high(index, highs), np.nan)
+    return pd.DataFrame({"tide_height_m": out_h, "hours_to_high_tide": to_high}, index=index)
+
+
 def tide_features(series: pd.Series, filled: pd.Series | None = None, fit: HarmonicFit | None = None,
                   phase_shift_min: float = TIDE_PHASE_SHIFT_MIN) -> pd.DataFrame:
     """tide_height_m, signed hours to the nearest high tide (+ = coming, - = past) and `tide_filled`
@@ -144,18 +198,7 @@ def tide_features(series: pd.Series, filled: pd.Series | None = None, fit: Harmo
         highs = high_water_times_subhourly(fit, series.index.min(), series.index.max(), phase_shift_min).to_numpy()
     else:
         highs = high_tide_times(series).to_numpy()
-    times = series.index.to_numpy()
-    nearest = np.full(len(times), np.nan)
-    if len(highs):
-        pos = np.searchsorted(highs, times)
-        nxt = highs[np.minimum(pos, len(highs) - 1)]
-        prv = highs[np.maximum(pos - 1, 0)]
-        to_next = (nxt - times) / np.timedelta64(1, "h")
-        to_prev = (prv - times) / np.timedelta64(1, "h")
-        to_next = np.where(to_next < 0, np.inf, to_next)
-        to_prev = np.where(to_prev > 0, -np.inf, to_prev)
-        nearest = np.where(to_next <= -to_prev, to_next, to_prev)
-        nearest = np.where(np.isfinite(nearest) & (np.abs(nearest) <= MAX_HOURS_TO_HIGH), nearest, np.nan)
+    nearest = hours_to_nearest_high(series.index, highs)
     return pd.DataFrame({"time_local": series.index, "tide_height_m": series.to_numpy(),
                          "hours_to_high_tide": nearest,
                          "tide_filled": (filled.reindex(series.index, fill_value=False).to_numpy(bool)

@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from .. import tide as tide_mod
 from . import network as river_network
 
 STEP = "15min"
@@ -81,8 +82,9 @@ def build_features(readings: pd.DataFrame, stations: pd.DataFrame, tide: pd.Data
 
     tide_grid = None
     if tide is not None and len(tide):
-        hourly = tide.set_index("time_local")[["tide_height_m", "hours_to_high_tide"]]
-        tide_grid = hourly.reindex(grid.floor("h")).set_axis(grid)
+        # tide valid at t itself (not the stale hour floor); see floodready.tide.tide_at for why that is not look-ahead.
+        # Every path (training, replay, live forecast) comes through this function, so parity holds by construction.
+        tide_grid = tide_mod.tide_at(tide, grid)
 
     frames = []
     wl = readings[readings.kind == "wl"].drop_duplicates(["graph_id", "time_local"], keep="last")
