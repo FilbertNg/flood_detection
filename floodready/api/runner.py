@@ -79,7 +79,8 @@ class Runner:
         return [s["graph_id"] for s in self.ctx.township["stations"] if "WL" in s.get("types", [])]
 
     def _ml_rain_ids(self) -> list[str]:
-        return dataset.rain_stations_near(self.ctx.stations, self.wl_ids, km=25)
+        """Stations the ML features read: upstream river stations and rain gauges within 25 km (name kept for callers)."""
+        return dataset.required_station_ids(self.ctx.stations, self.wl_ids)
 
     # ---------- engine ----------
     def _steps(self, start: datetime, end: datetime, readings: pd.DataFrame, live: bool):

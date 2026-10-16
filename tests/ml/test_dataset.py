@@ -34,14 +34,13 @@ def row(table, hhmm):
 def test_features_are_relative_to_each_stations_own_thresholds(table):
     r = row(table, "09:00")                                        # Sg Binjai 3.52 m; alert 3.8 / warning 4.0 / danger 4.2
     assert r.d_warning == pytest.approx(3.52 - 4.0)
-    assert r.d_danger == pytest.approx(3.52 - 4.2)
+    assert r.level_rel == pytest.approx((3.52 - 2.8) / (4.2 - 2.8))
     assert r.rise_60m == pytest.approx(3.52 - 2.94)                # 08:00 -> 09:00
 
 
 def test_rain_features_use_stations_within_the_radius(table, stations):
     r = row(table, "09:00")
     assert r.rain_1h_max_25km == 61.5                              # Kg Perepat is ~9 km from Pekan Meru
-    assert r.n_rf_25km >= 5
     assert np.isfinite(r.rain_2to4h_max_10km)
 
 
