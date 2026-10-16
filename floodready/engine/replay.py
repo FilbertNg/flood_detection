@@ -13,6 +13,7 @@ from typing import Iterator
 
 import pandas as pd
 
+from .. import qc
 from . import alerts as alerts_mod
 from . import levels, rules
 from .features import compute_station_features
@@ -77,7 +78,7 @@ def run(start: datetime, end: datetime, step: timedelta, readings: pd.DataFrame,
 
 
 def load_archive_readings(hist_dir: Path, station_ids: list[str], start: datetime, end: datetime) -> pd.DataFrame:
-    """Readings for the given stations from the JPS history archive (data/raw/jps_hist)."""
+    """Readings for the given stations from the JPS history archive (data/raw/jps_hist), after QC (floodready.qc)."""
     frames = []
     for kind, value in (("rf", "rain_15min_mm"), ("wl", "wl_m")):
         for graph_id in station_ids:
@@ -85,10 +86,12 @@ def load_archive_readings(hist_dir: Path, station_ids: list[str], start: datetim
             if not path.exists():
                 continue
             df = pd.read_parquet(path)
-            df = df[(df.time_local >= pd.Timestamp(start)) & (df.time_local <= pd.Timestamp(end))]
             frames.append(pd.DataFrame({"graph_id": graph_id, "kind": kind, "time_local": df.time_local,
                                         "rain_15min_mm": df[value] if kind == "rf" else float("nan"),
                                         "wl_m": df[value] if kind == "wl" else float("nan")}))
     if not frames:
         return pd.DataFrame(columns=["graph_id", "kind", "time_local", "rain_15min_mm", "wl_m"])
-    return pd.concat(frames, ignore_index=True)
+    # QC runs on each gauge's full history (gap and stuck rules need context), then the window is cut
+    clean, _ = qc.clean_readings(pd.concat(frames, ignore_index=True))
+    in_window = (clean.time_local >= pd.Timestamp(start)) & (clean.time_local <= pd.Timestamp(end))
+    return clean[in_window].reset_index(drop=True)

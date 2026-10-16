@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import qc
+
 COLUMNS = ["graph_id", "kind", "time_local", "rain_15min_mm", "wl_m"]
 
 
@@ -54,5 +56,5 @@ def load_live_readings(live_dir: Path, since: datetime, graph_ids: set[str] | No
         frames.append(convert(df))
     if not frames:
         return pd.DataFrame(columns=COLUMNS)
-    out = pd.concat(frames, ignore_index=True)
+    out, _ = qc.clean_readings(pd.concat(frames, ignore_index=True))  # on the full loaded span, then cut
     return out[out.time_local >= pd.Timestamp(since)]
