@@ -99,12 +99,10 @@ must not be hidden). The archive cleaning therefore sees t+15 min, while live cl
 train/serve difference (about 100 readings in 8 M).
 
 Live vs replay: a flat run lasts until the level moves, so whether a long run is flagged depends on how
-much history is loaded. Archive cleaning sees the whole history; live cleaning sees only the live files
-(since - 1 day), so a stuck gauge whose heavy rain fell before that window is not flagged live. Live rows
-override archive rows in the runner. Not fixed (follow-up: run QC over archive + live together).
-The dead-gauge state and the monthly rain rule have the same property: live flags a long-dead gauge only if
-two unanswered storms (or one, on probation) fall inside the history it loads (QC_HISTORY_DAYS), so live flags
-less than the archive. Train/serve gap until PR #32 sizes the live tail from QC_HISTORY_DAYS.
+much history is loaded. Archive cleaning sees the whole history; live cleaning (live.load_live_readings)
+runs over the last QC_HISTORY_DAYS of the archive plus the live readings (the archive value wins on the same
+gauge and time), then returns the rows from `since` on, so a stuck gauge is judged as in
+replay. A dead gauge or monthly rain total older than QC_HISTORY_DAYS is not seen live; that is the bound.
 
 Precondition: one row per (graph_id, kind, time_local); the loaders de-duplicate.
 """
@@ -159,9 +157,10 @@ RAIN_MONTH_RADIUS_KM = 10.0
 RAIN_MONTH_MIN_NEIGHBOURS = 2
 RAIN_MONTH_DISTRICT_MAX_SPAN_KM = 25.0   # district fallback only where the district's gauges with coordinates span this much or less
 RAIN_MONTH_MIN_COVERAGE = 0.8     # a neighbour counts only if it has data in this share of the window
-# Longest look-back any rule needs: a stuck run can reach 32 days, the monthly rain window is 30 days (+ margin).
-# Live mode (PR #32, fix/qc-live-archive-tail) sizes the archive tail it loads before `since` from this constant.
-QC_HISTORY_DAYS = 40
+# History live QC must load (PR #32 sizes its archive tail from this). Most rules look back 24 h to 32 days, but
+# the dead-gauge state has no fixed look-back: measured against full-history QC on the real archive, a 40-day tail
+# lost DEAD for 26558 at 4 sample times (99 missed flags) and a 120-day tail gives 0 mismatches (4.6 s per call).
+QC_HISTORY_DAYS = 120
 STEP = pd.Timedelta(minutes=15)
 
 
