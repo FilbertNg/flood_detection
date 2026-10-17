@@ -8,7 +8,7 @@ import pandas as pd
 
 from floodready import live, qc, stations
 from floodready.engine.replay import load_archive_readings
-from test_qc_unresponsive import FIXTURES, STATIONS, level, rain, storm, wl_flags
+from test_qc_unresponsive import FIXTURES, STATIONS, level, rain, storm, wet, wl_flags
 
 
 def test_lagged_onset_fixture_pekan_meru_is_not_blanked_when_the_river_answers_90_min_late():
@@ -30,15 +30,15 @@ def test_gauge_flat_at_or_above_alert_is_never_blanked():
     st = pd.concat([STATIONS[STATIONS.graph_id != "R"],
                     pd.DataFrame([{"graph_id": "R", "kind": "wl", "lat": 3.100, "lon": 101.400, "wl_alert_m": 3.5}])], ignore_index=True)
     lvl = np.concatenate([np.linspace(1.0, 4.5, 14), np.full(46, 4.5)])
-    wet = rain("G", np.full(60, 4.0))
-    clean, flags = qc.clean_readings(pd.concat([wet, level("R", lvl)], ignore_index=True), stations=st)
+    wetr = wet(np.full(60, 4.0))
+    clean, flags = qc.clean_readings(pd.concat([wetr, level("R", lvl)], ignore_index=True), stations=st)
     assert wl_flags(flags).empty and clean[clean.kind == "wl"].wl_m.notna().all()
-    _, flags = qc.clean_readings(pd.concat([wet, level("R", lvl - 3.0)], ignore_index=True), stations=st)   # same shape, below alert
+    _, flags = qc.clean_readings(pd.concat([wetr, level("R", lvl - 3.0)], ignore_index=True), stations=st)   # same shape, below alert
     assert not wl_flags(flags).empty
 
 
 def test_duplicate_timestamps_do_not_crash():
-    df = pd.concat([rain("G", storm()), level("R", np.full(40, 1.20))], ignore_index=True)
+    df = pd.concat([wet(storm()), level("R", np.full(40, 1.20))], ignore_index=True)
     df = pd.concat([df, df.iloc[[3, 45]]], ignore_index=True)
     qc.clean_readings(df, stations=STATIONS)
 
