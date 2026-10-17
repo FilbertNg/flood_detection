@@ -67,3 +67,14 @@ h2 { font-size: 1rem; margin: 0.6rem 0 0.4rem; }
 .credits summary { display: block; min-height: 44px; padding: 12px 0; box-sizing: border-box; cursor: pointer; text-decoration: underline; }
 .credits summary:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
 .credits p { margin: 0; overflow-wrap: anywhere; }
+
+.offer { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; margin: 12px 0; }
+.offer .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.offer button, .primary, .secondary { min-height: 44px; }
+.secondary { padding: 12px 16px; border: 1px solid var(--brand); border-radius: 10px; background: transparent; color: var(--brand); font-size: 1rem; font-weight: 700; }
+.offer .primary { width: auto; flex: 1 1 10rem; }
+.offer .secondary { flex: 1 1 8rem; }
+.offer [role="alert"] { color: #8a1c1c; font-weight: 600; }
+.offer button:focus-visible, .secondary:focus-visible, .primary:focus-visible { outline: 3px solid #f2a900; outline-offset: 2px; }
+.install-steps { padding-left: 1.2rem; }
+.install-steps li { margin: 6px 0; }

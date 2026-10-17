@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import { precacheAndRoute } from 'workbox-precaching';
+import { focusOrOpen, showPushNotification } from './push/swHandlers';
 import type { PushPayload } from '@floodready/shared';
 
 declare let self: ServiceWorkerGlobalScope;
@@ -10,19 +11,11 @@ precacheAndRoute(self.__WB_MANIFEST);
 self.addEventListener('push', (event) => {
   if (!event.data) return;
   const payload = event.data.json() as PushPayload;
-  event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      tag: payload.alert_id,
-      data: { url: payload.url },
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-    }),
-  );
+  event.waitUntil(showPushNotification(self.registration, payload));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = (event.notification.data as { url?: string } | undefined)?.url ?? '/';
-  event.waitUntil(self.clients.openWindow(url));
+  event.waitUntil(focusOrOpen(self.clients as unknown as Parameters<typeof focusOrOpen>[0], url));
 });
