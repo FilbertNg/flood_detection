@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from ..engine import street_stations
+from ..engine import features, street_stations
 from ..engine.types import Reason, StreetState
 from ..jobs import now_myt
 from ..ml import forecast as river
@@ -70,6 +70,22 @@ def river_forecast_for(ctx: EngineContext, snap: Snapshot, at: datetime, graph_i
         return None
 
 
+def _street_river_forecast(ctx: EngineContext, snap: Snapshot, at: datetime, street_id: str) -> dict | None:
+    """The forecast for the street's river station at `at`: its first candidate with a valid reading at or before
+    `at` (the same choice the engine made for its rules and ML probability). A street whose candidates are all dead
+    gets no forecast; it does not borrow a township-wide pick."""
+    candidates = street_stations.candidates_for(ctx.street_stations, street_id)
+    if not candidates:
+        return river_forecast_for(ctx, snap, at, None)
+    dead: set[str] = set()
+    if snap.step is not None and len(snap.readings):
+        wl = snap.readings[snap.readings.graph_id.isin(candidates) & (snap.readings.kind == "wl")]
+        feats = features.station_features(wl, at, ctx.stations, ctx.rules_cfg.get("stale_after_min", 120))
+        dead = street_stations.dead_wl(feats, candidates)
+    chosen = street_stations.wl_for(ctx.street_stations, street_id, dead)
+    return river_forecast_for(ctx, snap, at, chosen) if chosen else None
+
+
 def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | None:
     match = ctx.streets[ctx.streets.street_id == street_id]
     if match.empty:
@@ -104,7 +120,7 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
         "data_time": iso(data_time),
         "rain_next_12h": rain_next,
         "tide": _tide(ctx, data_time),
-        "river_forecast": river_forecast_for(ctx, snap, data_time, street_stations.wl_for(ctx.street_stations, street_id)),
+        "river_forecast": _street_river_forecast(ctx, snap, data_time, street_id),
         "stations": list(street_stations.stations_for(ctx.street_stations, street_id)
                          or [s["graph_id"] for s in ctx.township["stations"]]),
         "active_alert": active,

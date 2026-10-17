@@ -33,6 +33,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event", required=True, help="date, e.g. 2024-11-12")
     parser.add_argument("--township", default="BBR")
+    parser.add_argument("--data-dir", type=Path, default=ROOT / "data", help="folder with raw/jps_hist and interim/ (default <repo>/data)")
     parser.add_argument("--from", dest="start", default="06:00")
     parser.add_argument("--to", dest="end", default="14:00")
     parser.add_argument("--no-street-stations", action="store_true", help="one township-wide trigger for every street (old behaviour)")
@@ -43,14 +44,14 @@ def main() -> None:
     wl_ids = [s["graph_id"] for s in town["stations"] if "WL" in s.get("types", [])]
     start = datetime.fromisoformat(f"{args.event} {args.start}")
     end = datetime.fromisoformat(f"{args.event} {args.end}")
-    stations = pd.read_parquet(ROOT / "data" / "interim" / "stations.parquet")
-    hist = ROOT / "data" / "raw" / "jps_hist"
+    stations = pd.read_parquet(args.data_dir / "interim" / "stations.parquet")
+    hist = args.data_dir / "raw" / "jps_hist"
     archived = {p.stem for p in (hist / "rf").glob("*.parquet")} | {p.stem for p in (hist / "wl").glob("*.parquet")}
     ids = dataset.township_station_ids(town, stations, archived)
-    readings = replay.load_archive_readings(hist, ids, start - timedelta(days=5), end)
+    readings = replay.load_archive_readings(hist, ids, start - timedelta(days=5), end, stations=stations)
     bundle = predict.bundle_for(ROOT / "models", start, live=False)  # model that never trained on this period
     ml_cfg = load_yaml("ml.yaml")
-    tide_path = ROOT / "data" / "interim" / "tide_hourly.parquet"
+    tide_path = args.data_dir / "interim" / "tide_hourly.parquet"
     tide = pd.read_parquet(tide_path) if tide_path.exists() else None
     streets = gpd.read_file(ROOT / "assets" / "geo" / f"{args.township.lower()}_streets.geojson")[["street_id", "name", "susceptibility"]]
     names = dict(zip(streets.street_id, streets.name))

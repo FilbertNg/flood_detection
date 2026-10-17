@@ -6,6 +6,7 @@ period (vectorised) and read per step, using only data up to each step.
 """
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -18,8 +19,9 @@ from .. import qc
 from .. import stations as stations_mod
 from . import alerts as alerts_mod
 from . import levels, rules
+from . import street_stations as street_stations_mod
 from .features import compute_station_features
-from .types import Alert, StreetState, TriggerResult
+from .types import Alert, Reason, StreetState, TriggerResult
 
 
 log = logging.getLogger(__name__)
@@ -39,6 +41,19 @@ def _dated(trigger: TriggerResult, t: pd.Timestamp) -> TriggerResult:
         return TriggerResult(level=trigger.level, confidence=trigger.confidence, fired_by=trigger.fired_by,
                              reasons=trigger.reasons, data_time=t.to_pydatetime(), stale_stations=trigger.stale_stations)
     return trigger
+
+
+def _no_river_data(trigger: TriggerResult, dead: tuple[str, ...], names: dict) -> TriggerResult:
+    """Every river station of the street is dead or stale: the rain rules stand and the reasons say why there is no
+    river reading. The level is never lowered by this."""
+    label = ", ".join(str(names.get(g, g)) for g in dead)
+    reason = Reason(code="stale_data", value=float(len(dead)), unit="stations", station=None,
+                    text_en=f"No recent data from river station {label}",
+                    text_ms=f"Tiada data terkini daripada stesen sungai {label}")
+    kept = tuple(r for r in trigger.reasons if r.code != "stale_data")
+    confidence = trigger.confidence if trigger.confidence == "low" else "medium"   # rain still reports; the river is blind
+    return dataclasses.replace(trigger, reasons=(reason, *kept), confidence=confidence,
+                               stale_stations=tuple(sorted(set(trigger.stale_stations) | set(dead))))
 
 
 def _own_features(feats: pd.DataFrame, wl: str | None, rf: tuple[str, ...]) -> pd.DataFrame:
@@ -73,13 +88,15 @@ def run(start: datetime, end: datetime, step: timedelta, readings: pd.DataFrame,
         names = stations[stations.kind == "wl"].set_index("graph_id")["name"]
         ml_feats["name"] = ml_feats.graph_id.map(names).fillna(ml_feats.graph_id)
 
-    # (street_id, susceptibility, station group or None for the township-wide trigger)
+    # (street_id, susceptibility, river candidates in order, rain gauges) or None rain gauges for the township-wide trigger
     rows = []
     for street_id, susceptibility in zip(streets["street_id"], streets["susceptibility"]):
         entry = (street_stations or {}).get(street_id)
-        group = (entry.get("wl") or None, tuple(sorted(entry.get("rf", ())))) if entry is not None else None
-        rows.append((street_id, int(susceptibility), group))
-    unmapped = sum(1 for _, _, g in rows if g is None)
+        rows.append((street_id, int(susceptibility), street_stations_mod.candidates_for(street_stations, street_id),
+                     tuple(sorted(entry.get("rf", ()))) if entry is not None else None))
+    unmapped = sum(1 for *_, rf in rows if rf is None)
+    all_candidates = sorted({gid for _, _, cands, _ in rows for gid in cands})
+    wl_names = stations[stations.kind == "wl"].drop_duplicates("graph_id").set_index("graph_id")["name"].to_dict()
     if street_stations is not None and unmapped:
         log.warning("%d of %d streets are not in the street-stations mapping: they get the township-wide trigger",
                     unmapped, len(rows))
@@ -98,16 +115,21 @@ def run(start: datetime, end: datetime, step: timedelta, readings: pd.DataFrame,
             ml = max(ml_by_station.values(), key=lambda r: r.p) if ml_by_station else None
             trigger = levels.combine(trigger, ml, ml_cfg)
 
+        # river stations with no valid QC-cleaned reading at or before t (decided from this step's features only)
+        dead = street_stations_mod.dead_wl(feats, all_candidates)
         group_triggers: dict[tuple, tuple[TriggerResult, float | None]] = {}
         states = []
-        for street_id, susceptibility, group in rows:
-            if group is None:
+        for street_id, susceptibility, candidates, rf in rows:
+            if rf is None:
                 street_trigger, p = trigger, ml.p if ml is not None else None
             else:
+                wl = next((gid for gid in candidates if gid not in dead), None)
+                group = (wl, rf, tuple(c for c in candidates if c in dead) if candidates and wl is None else ())
                 if group not in group_triggers:
-                    wl, rf = group
                     own = _dated(rules.township_trigger(_own_features(feats, wl, rf),
                                                         ([wl] if wl else []) + list(rf), rules_cfg), t)
+                    if group[2]:
+                        own = _no_river_data(own, group[2], wl_names)
                     own_ml = ml_by_station.get(wl) if wl else None
                     group_triggers[group] = (levels.combine(own, own_ml, ml_cfg) if own_ml is not None else own,
                                              own_ml.p if own_ml is not None else None)
