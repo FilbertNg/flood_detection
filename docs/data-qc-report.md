@@ -1,6 +1,6 @@
 # Data QC report
 
-Generated 17 Oct 2026 by `scripts/qc_report.py` on the JPS history archive as it stands today: 233 rain gauges and 79 river stations, 25,330,277 15-min rows, 2024-01-01 to 2026-10-17 (archive progress 310/310 station series). **The archive is still being filled; this report will be regenerated when it finishes** (`python scripts/qc_report.py`).
+Generated 17 Oct 2026 by `scripts/qc_report.py` on the JPS history archive as it stands today: 233 rain gauges and 79 river stations, 25,330,277 15-min rows, 2024-01-01 to 2026-10-17 (archive progress 310/310 station series). The archive is complete; regenerate after new data with `python scripts/qc_report.py`.
 
 Rules live in `floodready/qc.py` and run inside `engine/replay.py::load_archive_readings` and `live.py::load_live_readings`, so replay, training, the API and live data all see the cleaned values. A flagged value becomes NaN, never 0.
 

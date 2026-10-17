@@ -27,12 +27,12 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - **Pitch line:** "We don't just read sensors, we check them against each other: a river that doesn't react to a 68 mm storm is a broken gauge, not a safe street."
 
 ### A3c. Some public JPS gauges have been dead for months, and nobody flags them
-- **Kg. Perepat (`26558`) has been dead since about 28 Jul 2024.** It read −0.78 m, then 0.36 m from 22 Nov 2024 to today. In ~60 storms since, including two-gauge storms of 70/61 mm, it moved **at most 0.08 m**, while after the same storms Pekan Meru rose a median 0.58 m, Pandamaran 0.72 m and `3014080_` 1.63 m. Before Aug 2024 every one of its 13 storms with data raised it 0.3–1.2 m.
+- **Kg. Perepat (`26558`) has been dead since about 28 Jul 2024.** It read −0.78 m, then 0.36 m from 22 Nov 2024 to today. In ~60 storms since, including two-gauge storms of 70/61 mm, it moved **at most 0.08 m**, while after the same storms the inland Pekan Meru gauge rose a median 0.58 m. Before Aug 2024 every one of its 13 storms with data raised it 0.3–1.2 m.
 - Its daily range fell from **0.89 m (Q2 2024, tidal)** to **0.02–0.09 m every quarter since**. JPS Infobanjir still publishes it as a live reading.
 - The full archive shows the same at five more river stations: `26376` read 5–6 m below its normal 28 m for months while neighbours rose 0.5–3.8 m; `26413` sat at 18.86–18.88 m for 7 weeks; `26353`, `3017107_` (Seri Kembangan) and `2717134_` (Salak Tinggi) had dead periods of weeks to months.
 - **So:** QC now keeps a per-gauge **dead state**: after two unanswered two-gauge storms within 30 days (no movement ≥ 0.10 m within 8 h, while an inland river within 15 km did respond), every reading below alert is blanked until the gauge moves ≥ 0.2 m. On Kg. Perepat, the old rule blanked **13.8%** of the dead period; the dead state blanks **87.3%**. Nothing at or above an alert level is ever blanked, and 12 Nov 2024 at Pekan Meru and Pandamaran is untouched (PR #35).
 - **Why it matters:** a dead gauge reading "normal" teaches the model that heavy rain leaves rivers calm, and tells a street "river normal". Across the archive the QC now blanks **193,723** river readings as unresponsive or dead.
-- **Pitch line:** "Kg. Perepat's river gauge has been frozen since July 2024 and is still published. Our system noticed on its own, because 60 storms later it never moved while every river around it rose."
+- **Pitch line:** "Kg. Perepat's river gauge has been frozen since July 2024 and is still published. Our system noticed on its own, because in 60 storms it never moved while the river at Pekan Meru rose."
 
 ### A3b. Rivers answer rain late, and a stuck gauge at flood level must fail safe
 - **The most dangerous moment looks like a broken gauge:** heavy rain has started and the river hasn't moved yet. A first version of the stuck-gauge rule would have blanked Pekan Meru for up to 1.5 h at the start of a flood if the river responded 90 min after the rain. The rule now requires the rain to have ended ≥ 90 min earlier and the level to have stayed flat for 4.5 h. In tests, Pekan Meru then has 0 flags at any response delay from 0 to 120 min, and Kg. Perepat keeps 98% of its flags (8,307 vs 8,521 on its own gauge).
@@ -64,8 +64,8 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - Sg. Penchala (`3016080_`) read **10.22 → 13.08 → 10.88 m**: a one-reading spike that would have been a false crossing of its 13.0 m alert level. QC compares each reading with both neighbours (132 spikes flagged, none on 12 Nov).
 
 ### B2b. Some rain gauges invent rain
-- **Gauge 26405 (Kuala Lumpur) recorded 2,113 mm in May 2024**, with weekly totals of 365–820 mm while the Kuala Lumpur median was 56–92 mm. Ten single readings were 100–340 mm in 15 minutes.
-- **Gauge 26519 (Jambatan Petaling) reported rain on 76 of 79 days** (Jun–Aug 2026), about 150 mm a week, on 45 days when its neighbours' median was under 1 mm.
+- **Gauge 26405 (Kuala Lumpur) recorded 2,113 mm in May 2024** (raw readings in `data/raw/jps_hist/rf/26405.parquet`), with weekly totals of 365–820 mm while the Kuala Lumpur median was 56–92 mm. Four single readings were above 100 mm in 15 minutes (max 340 mm).
+- **Gauge 26519 (Jambatan Petaling) reported ≥ 5 mm of rain on 48 of 50 days** (7 Jun–26 Jul 2026), 140–250 mm a week, while its daily totals correlated only 0.25 with its neighbours' median.
 - **So:** a monthly rule flags a gauge whose rolling 30-day total is > 600 mm and > 3× its neighbours' median (196 readings at 3 gauges, all confirmed faults). It is a backstop; most of 26405's fault is already removed by the 100 mm/15 min rule.
 
 ### B3. The tide model is 40 minutes early
@@ -109,7 +109,7 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - On 12 Nov 2024 at 09:00 (3.52 m) it forecast 3.67 m (3.23–4.34) for 10:00; the river reached **4.21 m**. Flash rises are faster than the model learned; the forecast is information, not an alert trigger.
 
 ### C7. Tide values were up to 45 minutes stale
-- The 15-minute features took the tide of the whole hour, so at 09:45 the model saw 09:00's tide. Against the harmonic curve that is **22.8 cm RMS error (max 89 cm)**; evaluating at the exact time gives **2.3 cm** (PR #34).
+- The 15-minute features took the tide of the whole hour, so at 09:45 the model saw 09:00's tide. Measured on the harmonic tide curve at 15-minute steps (PR #34 review), the old hour value is off by **22.8 cm RMS (max 89 cm)**; evaluating at the exact time gives **2.3 cm RMS (max 7.6 cm)**.
 
 ## D. Streets and terrain
 
@@ -123,7 +123,7 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - **So:** Watch is shown in the app; push is for Warning and Danger (config `alerts.push_levels`, pending the team's decision).
 
 ### D1c. 85 BBR streets take their river signal from the dead gauge
-- The street→station mapping follows the flow path, so **85 of 943 BBR streets** (668 use Pekan Meru, 190 Pandamaran) use Kg. Perepat (`26558`) as their own river. With the gauge blanked, those streets keep their rain rules but have no river level or ML probability.
+- The street→station mapping (`assets/geo/bbr_street_stations.json`) follows the flow path: **85 of 943 BBR streets** use Kg. Perepat (`26558`) as their own river (668 use Pekan Meru, 190 Pandamaran). With the gauge blanked, those streets keep their rain rules but have no river level or ML probability.
 - **Open fix:** when a street's own river station is dead or stale, fall back to its next-nearest river station.
 
 ### D2. Flow paths on a 30 m DEM fail on the flat coast

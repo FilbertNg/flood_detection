@@ -336,8 +336,10 @@ def main() -> None:
            f"{n_rf} rain gauges and {n_wl} river stations, {len(readings):,} 15-min rows, "
            f"{readings.time_local.min():%Y-%m-%d} to {readings.time_local.max():%Y-%m-%d}"
            + (f" (archive progress {progress.get('done')}/{progress.get('total')} station series)" if progress else "")
-           + ". **The archive is still being filled; this report will be regenerated when it finishes** "
-           "(`python scripts/qc_report.py`).\n",
+           + (". The archive is complete; regenerate after new data with `python scripts/qc_report.py`.\n"
+              if progress and progress.get("done") == progress.get("total") else
+              ". **The archive is still being filled; this report will be regenerated when it finishes** "
+              "(`python scripts/qc_report.py`).\n"),
            "Rules live in `floodready/qc.py` and run inside `engine/replay.py::load_archive_readings` and `live.py::load_live_readings`, "
            "so replay, training, the API and live data all see the cleaned values. A flagged value becomes NaN, never 0.\n",
            "**Live mode:** `wl_spike` and `rain_after_gap` need the next reading. A gauge's latest reading is kept and judged when the next "
