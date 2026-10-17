@@ -80,3 +80,7 @@ npx pnpm@9.15.0 test
 The API needs local data that is not in git. On a fresh clone see [HANDOFF.md §5](HANDOFF.md#5-data-and-running-processes). Logger, archive and deployment details are in [HANDOFF.md](HANDOFF.md) and [deploy/README.md](deploy/README.md).
 
 Data credits: © OpenStreetMap contributors · JPS Public Infobanjir · MET Malaysia (via data.gov.my) · Open-Meteo (CC BY 4.0) · Terrain: Copernicus GLO-30, FABDEM (© University of Bristol, CC BY-NC-SA 4.0, non-commercial), ESA WorldCover 2021 (CC BY 4.0).
+
+## License
+
+The code is licensed under the [Apache License 2.0](LICENSE). Data and data-derived files keep their own licences and are not covered by it: street geometry in `assets/geo/` is from OpenStreetMap (ODbL), and its susceptibility columns derive from FABDEM (CC BY-NC-SA 4.0, non-commercial, share-alike); see [assets/geo/NOTICE.md](assets/geo/NOTICE.md). JPS, MET Malaysia and Open-Meteo data are used under their providers' terms and are not redistributed in this repository.
