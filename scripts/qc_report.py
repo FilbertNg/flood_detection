@@ -258,9 +258,9 @@ def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: 
                "- The dead-gauge state hides readings below the alert level until the gauge shows a rise of 0.2 m; a healthy but sluggish river that missed two "
                "storms over its station would lose its first rising readings (never those at or above alert). The nearest-gauge and 48 h conditions exist "
                "to keep that from happening: without them Pekan Meru (27 Feb 2025), 3115084_ and 26039 were wrongly called dead.\n"
-               "- **Live vs replay**: live QC runs over the last 40 days of the archive plus the live readings (the archive value wins on the "
-               "same gauge and time), so a long stuck run is judged as in replay and training; live rows from the first live reading on "
-               "override archive rows in the runner.\n"
+               "- **Live vs replay**: live QC runs over the last 120 days of the archive plus the live readings (the archive value wins on the "
+               "same gauge and time), so a long stuck run is judged as in replay and training; the rows from `since` on "
+               "are what the runner receives from live.\n"
                "- **Merging changes the training data** (`train_trigger.py` and the backfill load through `load_archive_readings`): the stored "
                "trigger model and its out-of-fold probabilities need retraining.\n")
     return out

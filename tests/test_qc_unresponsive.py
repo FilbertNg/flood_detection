@@ -196,7 +196,7 @@ def test_readings_before_the_first_detection_stay_unflagged_and_exposed_constant
     df = pd.concat([wet(storm()), level("R", np.full(40, 1.20))], ignore_index=True)
     idx = steps(wl_flags(qc.clean_readings(df, stations=STATIONS)[1]))
     assert idx[0] >= 10                                      # no look-back over the flat readings before detection
-    assert qc.QC_HISTORY_DAYS == 40 and qc.QC_HISTORY_DAYS >= qc.RAIN_MONTH_STEPS / 96 + 7
+    assert qc.QC_HISTORY_DAYS == 120 and qc.QC_HISTORY_DAYS >= qc.RAIN_MONTH_STEPS / 96 + 7
 
 
 def test_one_wet_gauge_is_not_enough_it_needs_a_second_gauge_to_agree():

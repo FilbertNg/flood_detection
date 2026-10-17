@@ -106,10 +106,10 @@ def load_live_readings(live_dir: Path, since: datetime, graph_ids: set[str] | No
     `archive_dir` (data/raw/jps_hist): QC runs over the last ARCHIVE_TAIL_DAYS of the archive plus the live
     readings, as replay and training do over the full archive, so a gauge stuck for longer than the live window
     is judged the same way. For the same gauge, kind and time the archive value wins (it is JPS's later,
-    corrected record; live 0.00 placeholders lose) and live fills what the archive lacks. Only rows from the
-    first live reading come back: earlier rows already have the runner's full-history QC and must not be
-    replaced by a shorter-history copy. `until` drops everything after it before QC (nothing after t is used).
-    A missing archive is logged once per process and QC then covers the live readings only."""
+    corrected record), live fills what the archive lacks, and a river level of 0.00 counts as missing when the
+    other source has a value (the archive keeps first-fetch placeholders). Live rows before `since` (the
+    loader reads from since - 1 day) still feed QC. Rows from `since` come back. `until` drops everything after
+    it before QC (nothing after t is used). A missing archive is logged once per process and QC then covers the live readings only."""
     global _warned_no_archive
     tail = pd.DataFrame(columns=COLUMNS)
     since_ts = pd.Timestamp(since)
@@ -134,14 +134,13 @@ def load_live_readings(live_dir: Path, since: datetime, graph_ids: set[str] | No
         frames = [f[f.time_local <= pd.Timestamp(until)] for f in frames]
         tail = tail[tail.time_local <= pd.Timestamp(until)]
     lv = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=COLUMNS)
-    lv = lv[lv.time_local >= since_ts]
-    if lv.empty:
+    if not (lv.time_local >= since_ts).any():            # nothing live in the window (earlier live rows are QC history only)
         return pd.DataFrame(columns=COLUMNS)
-    first_live = lv.time_local.min()
     both = pd.concat([f for f in (tail.assign(_src=0), lv.assign(_src=1)) if len(f)], ignore_index=True)   # empty frames have object dtypes
     value = both.rain_15min_mm.where(both.kind == "rf", both.wl_m)
-    both = both.assign(_nan=value.isna()).sort_values(["_nan", "_src"], kind="stable")      # valid first, archive before live
+    missing = value.isna() | ((both.kind == "wl") & (value == 0.0))      # a 0.00 river level is a first-fetch placeholder
+    both = both.assign(_nan=missing).sort_values(["_nan", "_src"], kind="stable")      # real values first, archive before live
     both = both.drop_duplicates(["graph_id", "kind", "time_local"], keep="first").drop(columns=["_src", "_nan"])
     both = both.sort_values(["graph_id", "time_local"], kind="stable")[COLUMNS]
     out, _ = qc.clean_readings(both, stations=stations if stations is not None else stations_mod.load_default())  # on the full span, then cut
-    return out[out.time_local >= first_live].reset_index(drop=True)
+    return out[out.time_local >= since_ts].reset_index(drop=True)

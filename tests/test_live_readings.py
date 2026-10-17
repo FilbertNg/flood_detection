@@ -135,7 +135,8 @@ def test_flat_run_longer_than_two_days_is_flagged_live(tmp_path):
     live_times = pd.date_range("2026-10-14 23:00", "2026-10-14 23:45", freq="15min")
     pd.DataFrame({"graph_id": "R", "source_time": live_times, "wl_m": 3.0}).to_parquet(live_dir / "wl" / "2026-10-14.parquet")
     out = live.load_live_readings(live_dir, T("00:00"), {"R", "G", "G2"}, stations=stations, archive_dir=hist)
-    assert len(out) == 4 and out.wl_m.isna().all()
+    river = out[out.graph_id == "R"]
+    assert len(river) > 4 and river.wl_m.isna().all()
 
 
 def test_a_reading_after_until_cannot_change_a_flag(tmp_path):
@@ -151,11 +152,34 @@ def test_a_reading_after_until_cannot_change_a_flag(tmp_path):
     assert until[until.time_local == T("12:00")].rain_15min_mm.tolist() == [25.0]
 
 
-def test_archive_tail_rows_before_the_first_live_reading_are_not_returned(tmp_path):
-    """The runner has the full-history QC for these rows; the tail-QC'd copy must not override it."""
+def test_rows_from_since_are_returned_even_before_the_first_live_reading(tmp_path):
+    """The tail is as long as the longest rule look-back, so its QC equals the full-history QC; a logger outage
+    at the window start must not leave a hole."""
     live_dir, hist = _stuck_setup(tmp_path)
     out = live.load_live_readings(live_dir, T("00:00"), {"G"}, stations=None, archive_dir=hist)
-    assert out.time_local.min() >= T("11:45")
+    assert out.time_local.min() == T("00:00")
+
+
+def test_live_rows_before_since_still_count_as_qc_history(tmp_path):
+    """Live files start at since - 1 day: 25 mm at 02:00, 04:00 and 12:00 is a stuck gauge even with since = 06:00."""
+    live_dir = tmp_path / "jps_live"
+    _write_live_rf(live_dir, [("G", T("01:45"), 0.0), ("G", T("02:00"), 25.0), ("G", T("03:45"), 25.0), ("G", T("04:00"), 50.0),
+                              ("G", T("11:45"), 50.0), ("G", T("12:00"), 75.0)])
+    for archive in (None, tmp_path / "nope"):
+        out = live.load_live_readings(live_dir, T("06:00"), {"G"}, stations=None, archive_dir=archive)
+        assert out[out.time_local == T("12:00")].rain_15min_mm.isna().all()
+
+
+def test_a_zero_river_level_is_a_placeholder_when_the_other_source_has_a_value(tmp_path):
+    live_dir, hist = tmp_path / "jps_live", tmp_path / "jps_hist"
+    (live_dir / "wl").mkdir(parents=True)
+    pd.DataFrame({"graph_id": "R", "source_time": [T("17:00"), T("17:15")], "wl_m": [2.47, 2.5]}).to_parquet(
+        live_dir / "wl" / "2026-10-14.parquet")
+    (hist / "wl").mkdir(parents=True)
+    pd.DataFrame({"graph_id": "R", "time_local": [T("16:45"), T("17:00"), T("17:15")],
+                  "wl_m": [2.4, 0.0, 2.5]}).to_parquet(hist / "wl" / "R.parquet")        # archive kept the first-fetch 0.00
+    out = live.load_live_readings(live_dir, T("16:00"), {"R"}, stations=None, archive_dir=hist).set_index("time_local")
+    assert out.loc[T("17:00"), "wl_m"] == 2.47
 
 
 def test_no_live_rows_and_no_archive_returns_empty(tmp_path):
@@ -197,4 +221,5 @@ def test_missing_archive_warning_is_logged_once_per_process(tmp_path, caplog, mo
 
 
 def test_tail_covers_the_longest_rule_history():
-    assert live.ARCHIVE_TAIL_DAYS >= 40 and live._TAIL_CACHE_DAYS >= live.ARCHIVE_TAIL_DAYS + 5
+    from floodready import qc
+    assert live.ARCHIVE_TAIL_DAYS == qc.QC_HISTORY_DAYS and live._TAIL_CACHE_DAYS >= live.ARCHIVE_TAIL_DAYS + 5

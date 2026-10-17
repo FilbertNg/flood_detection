@@ -101,7 +101,7 @@ train/serve difference (about 100 readings in 8 M).
 Live vs replay: a flat run lasts until the level moves, so whether a long run is flagged depends on how
 much history is loaded. Archive cleaning sees the whole history; live cleaning (live.load_live_readings)
 runs over the last QC_HISTORY_DAYS of the archive plus the live readings (the archive value wins on the same
-gauge and time), then returns the rows from the first live reading on, so a stuck gauge is judged as in
+gauge and time), then returns the rows from `since` on, so a stuck gauge is judged as in
 replay. A dead gauge or monthly rain total older than QC_HISTORY_DAYS is not seen live; that is the bound.
 
 Precondition: one row per (graph_id, kind, time_local); the loaders de-duplicate.
@@ -157,9 +157,10 @@ RAIN_MONTH_RADIUS_KM = 10.0
 RAIN_MONTH_MIN_NEIGHBOURS = 2
 RAIN_MONTH_DISTRICT_MAX_SPAN_KM = 25.0   # district fallback only where the district's gauges with coordinates span this much or less
 RAIN_MONTH_MIN_COVERAGE = 0.8     # a neighbour counts only if it has data in this share of the window
-# Longest look-back any rule needs: a stuck run can reach 32 days, the monthly rain window is 30 days (+ margin).
-# Live mode (PR #32, fix/qc-live-archive-tail) sizes the archive tail it loads before `since` from this constant.
-QC_HISTORY_DAYS = 40
+# History live QC must load (PR #32 sizes its archive tail from this). Most rules look back 24 h to 32 days, but
+# the dead-gauge state has no fixed look-back: measured against full-history QC on the real archive, a 40-day tail
+# lost DEAD for 26558 at 4 sample times (99 missed flags) and a 120-day tail gives 0 mismatches (4.6 s per call).
+QC_HISTORY_DAYS = 120
 STEP = pd.Timedelta(minutes=15)
 
 
