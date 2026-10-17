@@ -120,7 +120,7 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 
 ### D1b. Notification volume decides whether people keep listening
 - In Nov 2024 (a stormy month), issuing Watch as well as Warning/Danger gives about **17.5 messages per street** (alerts + all-clears; max 34). Pushing only Warning and Danger gives **3.2 per street** (max 8). Longer Watch cooldowns barely help (8.7 → 8.3 alerts per street).
-- **So:** Watch is shown in the app; push is for Warning and Danger (config `alerts.push_levels`, pending the team's decision).
+- **So:** this is the cost of pushing Watch. The team decided (17 Oct 2026) to push Watch, Warning and Danger (`alerts.push_levels`); the numbers above are what residents should expect in a stormy month.
 
 ### D1c. 85 BBR streets take their river signal from the dead gauge
 - The street→station mapping (`assets/geo/bbr_street_stations.json`) follows the flow path: **85 of 943 BBR streets** use Kg. Perepat (`26558`) as their own river (668 use Pekan Meru, 190 Pandamaran). With the gauge blanked, those streets keep their rain rules but have no river level or ML probability.

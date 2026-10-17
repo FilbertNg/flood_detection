@@ -15,7 +15,7 @@ stale_after_min: 120          # a station with no reading for longer is stale
 alerts:
   cooldown_min: 60            # no repeat alert for a street unless its level rises
   alert_levels: [watch, warning, danger]   # issued and stored (in-app)
-  push_levels: [warning, danger]          # only these are flagged push: true for a notifier (change here to push Watch)
+  push_levels: [watch, warning, danger]   # only these are flagged push: true for a notifier (team decision 17 Oct 2026: push Watch too)
   window_from: warning                    # the "flooding expected" nowcast window is only set from this level up
 
 # Which stations decide a street (scripts/build_street_stations.py). Radii follow a redundancy rule: the smallest
