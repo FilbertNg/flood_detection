@@ -122,17 +122,19 @@ def test_flat_run_longer_than_two_days_is_flagged_live(tmp_path):
     """wl_unresponsive has no fixed look-back: the heavy rain that started the run fell 4 days before the live window."""
     live_dir, hist = tmp_path / "jps_live", tmp_path / "jps_hist"
     stations = pd.DataFrame([{"graph_id": "R", "kind": "wl", "lat": 3.1, "lon": 101.4, "wl_alert_m": 10.0},
-                             {"graph_id": "G", "kind": "rf", "lat": 3.12, "lon": 101.4}])
+                             {"graph_id": "G", "kind": "rf", "lat": 3.12, "lon": 101.4},
+                             {"graph_id": "G2", "kind": "rf", "lat": 3.11, "lon": 101.42}])      # the rule needs two wet gauges
     times = pd.date_range("2026-10-10 00:00", "2026-10-14 22:45", freq="15min")
     rain = np.zeros(len(times))
     rain[16:28] = 10.0                                                  # 3 h of heavy rain on 10 Oct 04:00-07:00
     _write_archive_rf(hist, "G", times, rain)
+    _write_archive_rf(hist, "G2", times, rain)
     (hist / "wl").mkdir(parents=True)
     pd.DataFrame({"graph_id": "R", "time_local": times, "wl_m": 3.0}).to_parquet(hist / "wl" / "R.parquet")
     (live_dir / "wl").mkdir(parents=True)
     live_times = pd.date_range("2026-10-14 23:00", "2026-10-14 23:45", freq="15min")
     pd.DataFrame({"graph_id": "R", "source_time": live_times, "wl_m": 3.0}).to_parquet(live_dir / "wl" / "2026-10-14.parquet")
-    out = live.load_live_readings(live_dir, T("00:00"), {"R", "G"}, stations=stations, archive_dir=hist)
+    out = live.load_live_readings(live_dir, T("00:00"), {"R", "G", "G2"}, stations=stations, archive_dir=hist)
     assert len(out) == 4 and out.wl_m.isna().all()
 
 
