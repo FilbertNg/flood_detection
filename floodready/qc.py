@@ -50,10 +50,12 @@ wl_unresponsive     a river level that stayed within WL_FLAT_M for 4.5 h (the 3 
                     has data in that window, at least one of them must have moved >= WL_DEAD_NEIGHBOUR_RISE_M (0.3 m)
                     (otherwise a dry catchment would be called dead); with no such station the gauge's own misses
                     decide. A tidal neighbour (lag-25 autocorrelation < -0.2, the test of ml.evaluate.tidal_stations)
-                    is judged on its level minus the level one tide cycle (12.42 h) earlier, because the tide alone moves
-                    it by 0.3 m or more in nearly every 8 h window. A storm the gauge answers resets the count and the
-                    probation. DEAD ends when the 3-reading-median level rises by >= WL_DEAD_EXIT_RISE_M (0.2 m)
-                    within 8 h, or any reading reaches the alert level; that reading is kept (the median makes a
+                    never counts, because the tide alone moves it by 0.3 m or more in nearly every 8 h window. Excluding
+                    them was chosen over a tuned alternative (de-tiding by differencing was tried: it changed no flag
+                    on the archive and a tidal station still moved 0.3 m in 89 % of dry windows); the cost is that
+                    26558, whose corroboration came largely from tidal stations, is flagged 87 % rather than 90 %. A storm the gauge answers resets the count and the
+                    probation. DEAD ends when the 3-reading-median level rises or falls by >= WL_DEAD_EXIT_RISE_M
+                    (0.2 m) within 8 h (any real movement means the gauge is alive), or any reading reaches the alert level; that reading is kept (the median makes a
                     revived gauge leave DEAD one reading late: its first rising reading below alert is still blanked).
                     Probation: after DEAD ends, ONE unanswered qualifying storm within WL_DEAD_PROBATION_DAYS (30)
                     puts the gauge back (a gauge that glitched or jumped to a new stuck level is still dead).
@@ -147,7 +149,6 @@ WL_DEAD_NEIGHBOUR_RISE_M = 0.3     # ... by at least this much (range in the win
 WL_DEAD_EXIT_RISE_M = 0.2          # a rise of this much within 8 h ends DEAD
 WL_TIDAL_LAG = 25                  # quarter hours (6.25 h) for the tidal-station test
 WL_TIDAL_AUTOCORR = -0.2
-WL_TIDE_PERIOD_STEPS = 50          # 12.42 h, the semi-diurnal tide, in readings
 WL_DEAD_PROBATION_DAYS = 30        # after DEAD ends, one unanswered qualifying storm within this many days puts the gauge back
 WL_DEAD_MIN_VALID_FRAC = 0.5      # share of the response window's readings that must exist for the event to be judged
 RAIN_MONTH_STEPS = 30 * 96         # 30 days of 15-min readings
@@ -364,7 +365,7 @@ def _wl_unresponsive_mask(wl: pd.DataFrame, rain: pd.DataFrame, stations: pd.Dat
             neighbours = [lv_by[n].reindex(grid).to_numpy() for n in wl_xy.index
                           if n != gid and n in lv_by and _haversine_km(wl_xy.at[gid, "lat"], wl_xy.at[gid, "lon"],
                                                                        wl_xy.at[n, "lat"], wl_xy.at[n, "lon"]) <= WL_DEAD_NEIGHBOUR_KM]
-            neighbours = [_detide(n) if _is_tidal(n) else n for n in neighbours]
+            neighbours = [n for n in neighbours if not _is_tidal(n)]      # the tide alone moves a tidal station: it never corroborates
             closest = near[int(np.argmin(d[d <= WL_RAIN_RADIUS_KM]))]               # the rain gauge nearest to the station
             over_station = np.minimum(rain_sum.to_numpy(), sums[closest].to_numpy())    # the storm is over the station, not a cell in the next catchment
             hit |= _dead_gauge_hits(lvl, over_station, alert_m, neighbours)
@@ -377,14 +378,6 @@ def _is_tidal(level: np.ndarray) -> bool:
     floodready.ml.evaluate.tidal_stations. Needs two days of data. Uses the whole loaded series: a slow station property."""
     s = pd.Series(level)
     return bool(s.notna().sum() >= 2 * 96 and s.autocorr(WL_TIDAL_LAG) < WL_TIDAL_AUTOCORR)
-
-
-def _detide(level: np.ndarray) -> np.ndarray:
-    """Level minus the level one tidal cycle (12.42 h = WL_TIDE_PERIOD_STEPS readings) earlier: what the tide does not repeat.
-    The tide alone moves a tidal station by metres within 8 h, which says nothing about rain; this difference is near zero
-    on a dry day and rises when rain adds water. The first cycle is NaN."""
-    s = pd.Series(level)
-    return (s - s.shift(WL_TIDE_PERIOD_STEPS)).to_numpy()
 
 
 def _dead_gauge_hits(lvl: pd.Series, storm_mm: np.ndarray, alert_m: float, neighbours: list[np.ndarray]) -> np.ndarray:
@@ -411,8 +404,10 @@ def _dead_gauge_hits(lvl: pd.Series, storm_mm: np.ndarray, alert_m: float, neigh
         last = i
     fv = smooth(v)
     neighbours = [smooth(n) for n in neighbours]
-    rise = (pd.Series(fv) - pd.Series(fv).rolling(w + 1, min_periods=1).min()).to_numpy()
-    leave = (rise >= WL_DEAD_EXIT_RISE_M - eps) | (v >= alert_m)     # an alert-level reading always ends DEAD (raw value)
+    fs = pd.Series(fv)
+    rise = (fs - fs.rolling(w + 1, min_periods=1).min()).to_numpy()
+    fall = (fs.rolling(w + 1, min_periods=1).max() - fs).to_numpy()
+    leave = (rise >= WL_DEAD_EXIT_RISE_M - eps) | (fall >= WL_DEAD_EXIT_RISE_M - eps) | (v >= alert_m)     # an alert-level reading always ends DEAD (raw value)
     unresponsive, dead_until, last_exit = [], -1, -10 ** 9
     for onset in events:
         judged = onset + w                                          # the window has closed: all data <= judged

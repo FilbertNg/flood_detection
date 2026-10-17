@@ -219,6 +219,19 @@ def test_a_tidal_neighbour_does_not_corroborate_a_dry_catchment():
     assert not f                                         # the tide alone moves R2; the inland neighbour did not respond: a dry catchment
     _, f, _ = run([rain_at(storms), river("R", sawtooth()), river("R2", tidal()), river("R3", responding(storms))], st)
     assert f                                             # positive control: an inland neighbour that responded does corroborate
+    wave = tidal() + (responding(storms, rise=0.5, base=0.0))     # a tidal station that also rose with the storms
+    _, f, _ = run([rain_at(storms), river("R", sawtooth()), river("R2", wave), river("R3", quiet)], st)
+    assert not f                                         # a tidal neighbour never counts, whatever it does: the inland one decides
+
+
+def test_dead_state_also_ends_when_the_level_falls_by_0_2_m():
+    storms = [3, 10]
+    r = sawtooth()
+    r[30 * 96:] -= 0.6                                   # the gauge is repaired and now reads lower: any real movement means alive
+    clean, f, _ = run([rain_at(storms), river("R", r), river("R2", responding(storms))])
+    assert 30 * 96 in f and 30 * 96 + 1 not in f and max(f) == 30 * 96
+    wl = clean[(clean.graph_id == "R") & (clean.kind == "wl")].sort_values("time_local")
+    assert wl.wl_m.iloc[30 * 96 + 1:].notna().all()
 
 
 def test_real_pekan_meru_flood_onset_is_not_blanked_by_the_dead_state():
