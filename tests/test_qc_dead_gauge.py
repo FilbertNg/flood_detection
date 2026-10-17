@@ -1,6 +1,8 @@
 """wl_unresponsive, station-level dead-gauge state: two storms (two gauges >= 30 mm) in 30 days with no response
 at the gauge while a neighbouring river station responded -> every reading below alert is flagged until the gauge
 shows a real response. Synthetic series (no real data), 15-min steps."""
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -75,6 +77,40 @@ def test_two_storms_within_48_hours_are_one_miss_not_two():
     assert f
 
 
+def rain_nearest_dry(days):
+    """Two gauges 5.5 and 6.4 km away are drenched, the nearest one (3.3 km) stays dry: a cell over the next catchment."""
+    r = np.zeros(N)
+    for d in days:
+        r[int(d * 96): int(d * 96) + 8] = 10.0
+    parts = [pd.DataFrame({"graph_id": g, "kind": "rf", "time_local": times(), "rain_15min_mm": r * wet_, "wl_m": np.nan})
+             for g, wet_ in (("G", 0.0), ("G2", 1.0), ("G3", 1.0))]
+    return pd.concat(parts, ignore_index=True)
+
+
+def test_a_storm_that_missed_the_nearest_gauge_does_not_count_even_if_two_far_gauges_are_wet():
+    st = pd.concat([STATIONS, pd.DataFrame([{"graph_id": "G3", "kind": "rf", "lat": 3.140, "lon": 101.440}])], ignore_index=True)
+    storms = [3, 10]
+    _, f, _ = run([rain_nearest_dry(storms), river("R", sawtooth()), river("R2", responding(storms))], st)
+    assert not f                                         # without the nearest-gauge guard the gauge would be called dead
+    _, f, _ = run([rain_at(storms), river("R", sawtooth()), river("R2", responding(storms))], st)
+    assert f                                             # positive control: the same storms over the nearest gauge do count
+
+
+def glitchy(values, steps_):
+    v = values.copy()
+    for s in steps_:
+        v[s] -= 0.25                                     # one reading 25 cm low, then back: a sensor glitch, not a response
+    return v
+
+
+def test_one_reading_glitches_are_neither_a_response_nor_a_reason_to_leave_dead():
+    storms = [3, 10]
+    dips = [3 * 96 + 14, 10 * 96 + 14, 20 * 96 + 5, 25 * 96 + 5]          # inside both storm windows, and later while dead
+    _, f, _ = run([rain_at(storms), river("R", glitchy(sawtooth(), dips)), river("R2", responding(storms))])
+    eval_t = 10 * 96 + 32
+    assert f >= set(range(eval_t + 8, N))                # the dips in the windows did not count as a response; the later ones did not end DEAD
+
+
 def test_one_unresponsive_storm_is_not_enough():
     _, f, _ = run([rain_at([3]), river("R", sawtooth()), river("R2", responding([3]))])
     assert not f
@@ -116,6 +152,7 @@ def test_dead_state_ends_with_a_real_response_and_the_response_is_kept():
     r[30 * 96:] += 0.6                                   # the gauge comes back to life at day 30 (rise 0.6 m)
     clean, f, _ = run([rain_at(storms), river("R", r), river("R2", responding(storms))])
     assert max(f) < 30 * 96 + 40 and 30 * 96 + 40 not in f
+    assert 30 * 96 in f and 30 * 96 + 1 not in f         # the median makes the revived gauge leave DEAD one reading late
     wl = clean[(clean.graph_id == "R") & (clean.kind == "wl")].sort_values("time_local")
     assert wl.wl_m.iloc[40 * 96:].notna().all()
 
@@ -126,6 +163,7 @@ def test_never_flags_at_or_above_alert_even_while_dead():
     r[20 * 96: 20 * 96 + 4] = ALERT + 0.2                # a reading above alert while "dead": kept (and ends the dead state)
     clean, f, _ = run([rain_at(storms), river("R", r), river("R2", responding(storms))])
     assert not ({20 * 96, 20 * 96 + 1, 20 * 96 + 2, 20 * 96 + 3} & f)
+    assert set(range(10 * 96 + 40, 20 * 96)) <= f        # positive control: DEAD was active, the readings below alert before it were flagged
     wl = clean[(clean.graph_id == "R") & (clean.kind == "wl")].sort_values("time_local")
     assert (wl.wl_m >= ALERT).sum() == 4
 
@@ -141,6 +179,71 @@ def test_a_responsive_river_is_never_flagged():
     storms = [3, 10, 17]
     _, f, flags = run([rain_at(storms), river("R", responding(storms, base=1.2)), river("R2", responding(storms))])
     assert not f and flags.empty
+
+
+def revived(storms_list, at_day=20, rise=0.6):
+    r = sawtooth()
+    r[at_day * 96:] += rise                              # the gauge is repaired at `at_day` and then sits at a new level
+    return r
+
+
+def test_probation_one_unanswered_storm_after_dead_ends_puts_the_gauge_back_within_30_days():
+    storms = [3, 10, 27]
+    _, f, _ = run([rain_at(storms), river("R", revived(storms)), river("R2", responding(storms))])
+    judged = 27 * 96 + 32
+    assert 20 * 96 + 1 not in f and not (set(range(20 * 96 + 1, judged)) & f)       # alive between the exit and the storm
+    assert set(range(judged + 8, N)) <= f                # one miss within 30 days of the exit: DEAD again
+    _, f, _ = run([rain_at([3, 10, 55]), river("R", revived([3, 10, 55])), river("R2", responding([3, 10, 55]))])
+    assert not (set(range(20 * 96 + 1, N)) & f)          # 35 days after the exit: probation is over, one miss is not enough
+
+
+def test_probation_is_cleared_by_a_storm_the_gauge_answers():
+    r = revived([3, 10])
+    s = 27 * 96
+    r[s + 4: s + 40] += 0.5 * np.sin(np.pi * np.arange(36) / 36)              # it answers the storm at day 27
+    storms = [3, 10, 27, 34]
+    _, f, _ = run([rain_at(storms), river("R", r), river("R2", responding(storms))])
+    assert not (set(range(20 * 96 + 1, N)) & f)          # the miss at day 34 is a single miss again
+
+
+def tidal(base=1.0):
+    return base + 0.6 * np.sin(2 * np.pi * np.arange(N) * 15 / (12.42 * 60))      # the 12.4 h tide: moves >= 0.3 m in every 8 h window
+
+
+def test_a_tidal_neighbour_does_not_corroborate_a_dry_catchment():
+    st = pd.concat([STATIONS, pd.DataFrame([{"graph_id": "R3", "kind": "wl", "lat": 3.050, "lon": 101.400, "wl_alert_m": ALERT,
+                                              "thresholds_ok": True}])], ignore_index=True)          # 5.5 km, inland
+    quiet = 1.0 + 0.01 * ((np.arange(N) % 5) / 4)
+    storms = [3, 10]
+    _, f, _ = run([rain_at(storms), river("R", sawtooth()), river("R2", tidal()), river("R3", quiet)], st)
+    assert not f                                         # the tide alone moves R2; the inland neighbour did not respond: a dry catchment
+    _, f, _ = run([rain_at(storms), river("R", sawtooth()), river("R2", tidal()), river("R3", responding(storms))], st)
+    assert f                                             # positive control: an inland neighbour that responded does corroborate
+
+
+def test_real_pekan_meru_flood_onset_is_not_blanked_by_the_dead_state():
+    """PEKANMERU wl and the rain gauges within 10 km / river stations within 15 km, 20 Jan - 1 Mar 2025 (raw JPS archive rows,
+    see tests/fixtures/qc/README.md). On 26-27 Feb two storm cells over neighbouring catchments (the nearest gauge read 3 mm) left
+    the river flat at 2.95 m. Before the nearest-gauge guard and the tidal-neighbour exclusion existed, the gauge was called dead
+    and the rise to 4.17 m was blanked from 2.90 m (now either guard alone keeps it alive on this window; the nearest-gauge
+    guard is pinned by the 26039 test below)."""
+    fx = Path(__file__).parent / "fixtures" / "qc"
+    raw = pd.read_parquet(fx / "pekanmeru_feb2025.parquet")
+    clean, flags = qc.clean_readings(raw, stations=pd.read_parquet(fx / "stations_pekanmeru.parquet"))
+    f = flags[(flags.graph_id == "PEKANMERU") & (flags.rule == "wl_unresponsive")]
+    assert pd.to_datetime(f.time_local).max() <= pd.Timestamp("2025-02-27 06:00")      # only the run-rule flags before the rise
+    window = lambda d: d[(d.graph_id == "PEKANMERU") & (d.kind == "wl") & (d.time_local >= "2025-02-27 06:00") & (d.time_local <= "2025-02-28 00:00")]
+    assert window(clean).wl_m.notna().sum() == window(raw).wl_m.notna().sum() and window(clean).wl_m.max() > 4.1
+
+
+def test_real_26039_is_not_called_dead_after_storm_cells_that_missed_its_own_gauge():
+    """26039 (Kg. Budiman) with its gauges within 10 km and the river stations within 15 km, 20 Mar - 6 May 2026 (raw JPS archive
+    rows, tests/fixtures/qc/README.md). Two storms whose second-wettest gauge reached 30 mm but whose nearest gauge did not left the
+    river quiet while neighbours rose; without the nearest-gauge guard 593 readings (21-29 Apr 2026, 5.4-5.6 m, alert 7.4 m) are blanked."""
+    fx = Path(__file__).parent / "fixtures" / "qc"
+    raw = pd.read_parquet(fx / "river26039_apr2026.parquet")
+    _, flags = qc.clean_readings(raw, stations=pd.read_parquet(fx / "stations_26039.parquet"))
+    assert flags[flags.rule == "wl_unresponsive"].empty
 
 
 def test_dead_state_is_causal():

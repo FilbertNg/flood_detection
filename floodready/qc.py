@@ -49,9 +49,19 @@ wl_unresponsive     a river level that stayed within WL_FLAT_M for 4.5 h (the 3 
                     one-reading glitch from counting as a response. If another river station within WL_DEAD_NEIGHBOUR_KM (15 km)
                     has data in that window, at least one of them must have moved >= WL_DEAD_NEIGHBOUR_RISE_M (0.3 m)
                     (otherwise a dry catchment would be called dead); with no such station the gauge's own misses
-                    decide. A storm the gauge answers resets the count. DEAD ends when the level rises by >=
-                    WL_DEAD_EXIT_RISE_M (0.2 m) within 8 h, or any reading reaches the alert level; that reading is
-                    kept. Evidence: Kg. Perepat (26558) is a dead sensor (stuck -0.78 m, then 0.36 m since 22 Nov
+                    decide. A tidal neighbour (lag-25 autocorrelation < -0.2, the test of ml.evaluate.tidal_stations)
+                    is judged on its level minus the level one tide cycle (12.42 h) earlier, because the tide alone moves
+                    it by 0.3 m or more in nearly every 8 h window. A storm the gauge answers resets the count and the
+                    probation. DEAD ends when the 3-reading-median level rises by >= WL_DEAD_EXIT_RISE_M (0.2 m)
+                    within 8 h, or any reading reaches the alert level; that reading is kept (the median makes a
+                    revived gauge leave DEAD one reading late: its first rising reading below alert is still blanked).
+                    Probation: after DEAD ends, ONE unanswered qualifying storm within WL_DEAD_PROBATION_DAYS (30)
+                    puts the gauge back (a gauge that glitched or jumped to a new stuck level is still dead).
+                    The nearest-gauge condition, the 48 h separation and the median were added after looking at the
+                    archive, not before: without the nearest-gauge condition 3115084_ (800 readings) and 26039 (593)
+                    were called dead after cells over neighbouring catchments, and Pekan Meru lost the start of its
+                    27 Feb 2025 rise in an earlier version; without the median 26558 drops from 87 % to 70 % because
+                    one-reading dips count as responses. The 48 h condition changes nothing on this archive. Evidence: Kg. Perepat (26558) is a dead sensor (stuck -0.78 m, then 0.36 m since 22 Nov
                     2024) that ~60 storms moved by <= 0.08 m while neighbouring stations rose 0.6-1.6 m.
                     Not flagged (the value is kept), because there is no evidence either way: a station with fewer
                     than two rain gauges within the radius (the rule cannot check it; a gauge stuck low there reports
@@ -78,7 +88,8 @@ rain_monthly_implausible  a gauge whose rolling 30-day rain total (after the rul
                     flagged. Needs `stations`; skipped without it. A gauge with no coordinates in the lookup (the
                     DBKL "(F2)" gauges, including 26405: the frozen data.gov.my list has none and the Infobanjir live
                     tables carry no coordinates) is compared with the other gauges of its district instead, if the
-                    table has a `district` column; no coordinates are invented.
+                    table has a `district` column and the district's gauges that have coordinates span at most
+                    RAIN_MONTH_DISTRICT_MAX_SPAN_KM (25 km; the span is logged at INFO); no coordinates are invented.
 
 Live mode: wl_spike and rain_after_gap need the NEXT reading. When a gauge's latest reading has no
 next reading yet, it is KEPT and judged when the next one arrives (a real rise or storm after an outage
@@ -89,10 +100,15 @@ Live vs replay: a flat run lasts until the level moves, so whether a long run is
 much history is loaded. Archive cleaning sees the whole history; live cleaning sees only the live files
 (since - 1 day), so a stuck gauge whose heavy rain fell before that window is not flagged live. Live rows
 override archive rows in the runner. Not fixed (follow-up: run QC over archive + live together).
+The dead-gauge state and the monthly rain rule have the same property: live flags a long-dead gauge only if
+two unanswered storms (or one, on probation) fall inside the history it loads (QC_HISTORY_DAYS), so live flags
+less than the archive. Train/serve gap until PR #32 sizes the live tail from QC_HISTORY_DAYS.
 
 Precondition: one row per (graph_id, kind, time_local); the loaders de-duplicate.
 """
 from __future__ import annotations
+
+import logging
 
 import numpy as np
 import pandas as pd
@@ -129,14 +145,19 @@ WL_DEAD_NO_RESPONSE_M = 0.10       # range of the level in that window below thi
 WL_DEAD_NEIGHBOUR_KM = 15.0        # another river station this close must have responded ...
 WL_DEAD_NEIGHBOUR_RISE_M = 0.3     # ... by at least this much (range in the window)
 WL_DEAD_EXIT_RISE_M = 0.2          # a rise of this much within 8 h ends DEAD
-WL_DEAD_MIN_VALID_FRAC = 0.5       # share of the response window's readings that must exist for the event to be judged
+WL_TIDAL_LAG = 25                  # quarter hours (6.25 h) for the tidal-station test
+WL_TIDAL_AUTOCORR = -0.2
+WL_TIDE_PERIOD_STEPS = 50          # 12.42 h, the semi-diurnal tide, in readings
+WL_DEAD_PROBATION_DAYS = 30        # after DEAD ends, one unanswered qualifying storm within this many days puts the gauge back
+WL_DEAD_MIN_VALID_FRAC = 0.5      # share of the response window's readings that must exist for the event to be judged
 RAIN_MONTH_STEPS = 30 * 96         # 30 days of 15-min readings
 RAIN_MONTH_SHORT_STEPS = 7 * 96    # the short window that ends the flagged state
 RAIN_MONTH_MIN_MM = 600.0          # chosen before looking at 12 Nov 2024; see docs/data-qc-report.md
 RAIN_MONTH_RATIO = 3.0
 RAIN_MONTH_RADIUS_KM = 10.0
 RAIN_MONTH_MIN_NEIGHBOURS = 2
-RAIN_MONTH_MIN_COVERAGE = 0.8      # a neighbour counts only if it has data in this share of the window
+RAIN_MONTH_DISTRICT_MAX_SPAN_KM = 25.0   # district fallback only where the district's gauges with coordinates span this much or less
+RAIN_MONTH_MIN_COVERAGE = 0.8     # a neighbour counts only if it has data in this share of the window
 # Longest look-back any rule needs: a stuck run can reach 32 days, the monthly rain window is 30 days (+ margin).
 # Live mode (PR #32, fix/qc-live-archive-tail) sizes the archive tail it loads before `since` from this constant.
 QC_HISTORY_DAYS = 40
@@ -232,7 +253,14 @@ def _rain_monthly_mask(rf: pd.DataFrame, rain: pd.Series, stations: pd.DataFrame
             dist = _haversine_km(xy.at[gid, "lat"], xy.at[gid, "lon"], xy["lat"].to_numpy(), xy["lon"].to_numpy())
             nb = [g for g, km in zip(xy.index, dist) if g != gid and km <= RAIN_MONTH_RADIUS_KM and g in total.columns]
         elif gid in district.index:                           # no coordinates in the lookup: compare with the gauges of its district
-            nb = [g for g in district.index[district == district[gid]] if g != gid and g in total.columns]
+            peers = district.index[district == district[gid]]
+            at = xy.loc[xy.index.intersection(peers)]
+            span = max((float(_haversine_km(a.lat, a.lon, at.lat.to_numpy(), at.lon.to_numpy()).max()) for a in at.itertuples()), default=np.inf)
+            logging.getLogger(__name__).info("rain_monthly_implausible: %s has no coordinates, district %s spans %.1f km (limit %g km)",
+                                             gid, district[gid], span, RAIN_MONTH_DISTRICT_MAX_SPAN_KM)
+            if span > RAIN_MONTH_DISTRICT_MAX_SPAN_KM:              # a district that large is not one rain climate: skip
+                continue
+            nb = [g for g in peers if g != gid and g in total.columns]
         else:
             continue
         if len(nb) < RAIN_MONTH_MIN_NEIGHBOURS:
@@ -336,11 +364,27 @@ def _wl_unresponsive_mask(wl: pd.DataFrame, rain: pd.DataFrame, stations: pd.Dat
             neighbours = [lv_by[n].reindex(grid).to_numpy() for n in wl_xy.index
                           if n != gid and n in lv_by and _haversine_km(wl_xy.at[gid, "lat"], wl_xy.at[gid, "lon"],
                                                                        wl_xy.at[n, "lat"], wl_xy.at[n, "lon"]) <= WL_DEAD_NEIGHBOUR_KM]
+            neighbours = [_detide(n) if _is_tidal(n) else n for n in neighbours]
             closest = near[int(np.argmin(d[d <= WL_RAIN_RADIUS_KM]))]               # the rain gauge nearest to the station
             over_station = np.minimum(rain_sum.to_numpy(), sums[closest].to_numpy())    # the storm is over the station, not a cell in the next catchment
             hit |= _dead_gauge_hits(lvl, over_station, alert_m, neighbours)
         out.loc[g.index] = pd.Series(hit, index=grid).reindex(g["time_local"]).to_numpy() & g["wl_m"].notna().to_numpy()
     return out
+
+
+def _is_tidal(level: np.ndarray) -> bool:
+    """A station whose level follows the tide: autocorrelation at 6.25 h (half a tidal cycle) below -0.2, the same test as
+    floodready.ml.evaluate.tidal_stations. Needs two days of data. Uses the whole loaded series: a slow station property."""
+    s = pd.Series(level)
+    return bool(s.notna().sum() >= 2 * 96 and s.autocorr(WL_TIDAL_LAG) < WL_TIDAL_AUTOCORR)
+
+
+def _detide(level: np.ndarray) -> np.ndarray:
+    """Level minus the level one tidal cycle (12.42 h = WL_TIDE_PERIOD_STEPS readings) earlier: what the tide does not repeat.
+    The tide alone moves a tidal station by metres within 8 h, which says nothing about rain; this difference is near zero
+    on a dry day and rises when rain adds water. The first cycle is NaN."""
+    s = pd.Series(level)
+    return (s - s.shift(WL_TIDE_PERIOD_STEPS)).to_numpy()
 
 
 def _dead_gauge_hits(lvl: pd.Series, storm_mm: np.ndarray, alert_m: float, neighbours: list[np.ndarray]) -> np.ndarray:
@@ -369,7 +413,7 @@ def _dead_gauge_hits(lvl: pd.Series, storm_mm: np.ndarray, alert_m: float, neigh
     neighbours = [smooth(n) for n in neighbours]
     rise = (pd.Series(fv) - pd.Series(fv).rolling(w + 1, min_periods=1).min()).to_numpy()
     leave = (rise >= WL_DEAD_EXIT_RISE_M - eps) | (v >= alert_m)     # an alert-level reading always ends DEAD (raw value)
-    unresponsive, dead_until = [], -1
+    unresponsive, dead_until, last_exit = [], -1, -10 ** 9
     for onset in events:
         judged = onset + w                                          # the window has closed: all data <= judged
         if judged >= len(v) or judged <= dead_until:
@@ -378,20 +422,22 @@ def _dead_gauge_hits(lvl: pd.Series, storm_mm: np.ndarray, alert_m: float, neigh
         if np.isnan(own):
             continue
         if own >= WL_DEAD_NO_RESPONSE_M or np.nanmax(v[onset:judged + 1]) >= alert_m:
-            unresponsive = []                                       # it answered a storm: the count starts again
+            unresponsive, last_exit = [], -10 ** 9                  # it answered a storm: the count and the probation start again
             continue
         others = [m for m in (moved(n, onset, judged) for n in neighbours) if not np.isnan(m)]
         if others and max(others) < WL_DEAD_NEIGHBOUR_RISE_M:
             continue                                                # nobody responded: a dry catchment, not evidence
-        unresponsive = [e for e in unresponsive if judged - e <= WL_DEAD_WINDOW_DAYS * 96]
-        if unresponsive and judged - unresponsive[-1] < WL_DEAD_EVENTS_APART_H * 4:
-            continue                                                # the same weather system: one miss, not two
-        unresponsive.append(judged)
-        if len(unresponsive) >= WL_DEAD_EVENTS:
+        probation = judged - last_exit <= WL_DEAD_PROBATION_DAYS * 96     # it was dead a short while ago: one more miss is enough
+        if not probation:
+            unresponsive = [e for e in unresponsive if judged - e <= WL_DEAD_WINDOW_DAYS * 96]
+            if unresponsive and judged - unresponsive[-1] < WL_DEAD_EVENTS_APART_H * 4:
+                continue                                            # the same weather system: one miss, not two
+            unresponsive.append(judged)
+        if probation or len(unresponsive) >= WL_DEAD_EVENTS:
             gone = np.flatnonzero(leave[judged:])
             dead_until = judged + int(gone[0]) if len(gone) else len(v)
             hit[judged:dead_until] = v[judged:dead_until] < alert_m  # NaN compares False
-            unresponsive = []
+            unresponsive, last_exit = [], dead_until
     return hit
 
 

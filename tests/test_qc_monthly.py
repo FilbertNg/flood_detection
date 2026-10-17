@@ -127,8 +127,19 @@ def test_neighbours_need_80_percent_coverage_and_are_never_zero_filled():
         assert got == expect_flag
 
 
+def test_district_fallback_only_where_the_district_is_small():
+    assert qc.RAIN_MONTH_DISTRICT_MAX_SPAN_KM == 25.0
+    df = pd.concat([series("BAD", np.full(N, 0.8))] + neighbours(0.1), ignore_index=True)
+    st = STATIONS.assign(district=np.where(STATIONS.graph_id == "FAR", "ELSEWHERE", "KL"))
+    st.loc[st.graph_id == "BAD", ["lat", "lon"]] = np.nan
+    assert not monthly(qc.clean_readings(df, stations=st)[1]).empty            # N1..N3 span under 10 km
+    wide = st.copy()
+    wide.loc[wide.graph_id == "N3", ["lat", "lon"]] = [3.500, 101.400]         # a district that stretches 44 km
+    assert monthly(qc.clean_readings(df, stations=wide)[1]).empty
+
+
 def test_gauge_without_coordinates_is_compared_with_its_district():
-    st = STATIONS.assign(district="KL")
+    st = STATIONS.assign(district=np.where(STATIONS.graph_id == "FAR", "ELSEWHERE", "KL"))
     st.loc[st.graph_id == "BAD", ["lat", "lon"]] = np.nan                   # like 26405: no coordinates in the lookup
     df = pd.concat([series("BAD", np.full(N, 0.8))] + neighbours(0.1), ignore_index=True)
     assert not monthly(qc.clean_readings(df, stations=st)[1]).empty
