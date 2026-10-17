@@ -39,9 +39,14 @@
 
 ## 2. Decisions this plan makes (change them before dispatch if you disagree)
 
+*All five approved by the product owner on 17 Oct 2026.*
+
 1. **SQLite on the API host for the MVP demo**, through SQLAlchemy Core with portable types and a `DATABASE_URL`. Postgres (Supabase) works by URL but is a stretch goal. Reason: the API must run where the parquet archive and live logs are (the laptop or an always-on PC); a remote DB adds a failure point and no demo value.
 2. **The API process is the tick.** The existing runner already refreshes live data every 15 min; it now also persists and pushes. A separate GitHub Actions tick (D2) is dropped for the MVP (JPS may block foreign runners; the laptop logger already runs).
-3. **Hosting:** both apps on Cloudflare Pages (HTTPS, needed for PWA and push); the API on the laptop/PC behind a Cloudflare Tunnel (HTTPS). The video is recorded against this setup; a named tunnel keeps one URL for judges if a domain is available, else the README documents the local run.
+3. **Hosting:** both apps on **Cloudflare Pages (Free)**, checked 17 Oct against Cloudflare's docs: 500 builds/month, 1 concurrent build, 20 min build timeout, 20,000 files and 25 MiB per file per site, HTTPS included, and with no top-level `404.html` Pages "assumes that you are deploying a single-page application" and serves `/` for unknown paths, so react-router deep links (`/street/<id>`) work. The API runs on the laptop/PC and is exposed over HTTPS by:
+   - **Tailscale Funnel (recommended):** free on all plans, HTTPS certificates automatic, ports 443/8443/10000 only, bandwidth limited (not published), hostname is the machine's `<machine>.<tailnet>.ts.net` name, so the Pages build's `VITE_API_URL` stays valid across restarts (confirm on first setup).
+   - **Fallback, Cloudflare Quick Tunnel:** free, no account, but "the hostname changes each time", up to 200 in-flight requests, no Server-Sent Events (we use none), "for testing and development" with no uptime guarantee. After each restart, redeploy the Pages build with the new `VITE_API_URL` (`wrangler pages deploy`, about a minute).
+   - A named Cloudflare Tunnel gives a stable URL only with a domain on Cloudflare (paid domain); not needed.
 4. **Backfill scope: BBR only** (build plan §10 scope guard item 3).
 5. **Push is demonstrated on Android Chrome** (iPhone needs an installed PWA, iOS 16.4+; the install guide still ships).
 
@@ -214,7 +219,7 @@ Each WP lists files, the acceptance tests its TDD plan must contain (written fir
 
 ### WP14 — Hosting and end-to-end (D3) · Agent + Human (phone, accounts)
 
-**Depends:** WP3, WP10, WP12. **Files:** Create `deploy/cloudflare/README.md` (Pages projects, tunnel commands), `scripts/serve_demo.ps1` (API + tunnel), README "Live links" and setup update.
+**Depends:** WP3, WP10, WP12. **Files:** Create `deploy/cloudflare/README.md` (Pages projects for `apps/resident` and `apps/admin`, build command, `VITE_API_URL`, Tailscale Funnel and Quick Tunnel commands), `scripts/serve_demo.ps1` (API + funnel/tunnel), API `CORS_ORIGINS` set to the two Pages origins, README "Live links" and setup update.
 
 **Acceptance:** both apps load on a phone over HTTPS; the Resident PWA installs on Android; during a 12 Nov replay a push reaches the phone and opens the street page; "Is it flooding here?" from the phone appears in the Admin review queue; the admin stats page loads from the backfill. Recorded as a checklist with screenshots in the PR.
 
@@ -228,6 +233,8 @@ Each WP lists files, the acceptance tests its TDD plan must contain (written fir
 ### WP16 — Deck and video (P1, P2) · Human lead, agent support
 
 **Depends:** feature freeze. Deck ≤ 10 slides per build plan P1, with numbers only from `docs/findings.md` and the reports (gate failure stated plainly; dead-gauge story; 12 Nov replay). Video ≤ 5 min per build plan P2 script, recorded on the WP14 setup at 1080p with captions; replay and simulated sensor labelled on screen.
+
+**Video tooling (product owner, 17 Oct):** the team plans to use the **Brag** skill (`/brag`, Hyperframes; reads the project code and makes a short launch video). Use it for the video's opening/closing or a teaser. The P2 core (replay → phone push → verify → Admin stats/suggestions → live mode) must still be a screen recording of the working MVP on real data, because the submission asks for a demo of the prototype; nothing Brag renders may show invented numbers or screens. Check the result is ≤ 5 min in total.
 
 ## 5. Order and parallel waves
 
@@ -262,5 +269,6 @@ Never cut: DB persistence, push on the phone, verify/report, backfill statistics
 | Backfill over 34 months is slow | Time one month first; run in the background overnight; cache per-month results |
 | Few or no news labels for BBR streets | Statistics still honest ("unverified" is not a false alarm); SUG-5 and SUG-7 work from backfill alone |
 | Push blocked on iPhone | Record on Android; install guide for iPhone |
-| Cloudflare quick-tunnel URL changes on restart | Rebuild Pages with the new `VITE_API_URL`, or use a named tunnel if a domain is available |
+| API URL changes on restart | Tailscale Funnel keeps the machine hostname; with the Quick Tunnel fallback, redeploy Pages with the new `VITE_API_URL` |
+| Funnel or tunnel bandwidth limits during judging | Static apps are served by Pages; only small JSON goes through the tunnel; the video is the required artifact |
 | Usage limits stop agents mid-task | Checkpoints in memory; resume agents with SendMessage; one WP per agent |
