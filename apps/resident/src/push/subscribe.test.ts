@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { enablePush, isSubscribed, pushSupport, stopPush, syncPush, urlBase64ToUint8Array } from './subscribe';
+import { enablePush, permissionState, isSubscribed, pushSupport, stopPush, syncPush, urlBase64ToUint8Array } from './subscribe';
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1';
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36';
@@ -52,6 +52,16 @@ describe('pushSupport', () => {
     setup({ ua: IPHONE, standalone: true });
     expect(pushSupport()).toBe('ok');
   });
+  it('treats iPadOS 13+ (desktop UA, touch points) as iOS', () => {
+    setup({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.4 Safari/605.1.15' });
+    Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 5 });
+    expect(pushSupport()).toBe('needs-install');
+  });
+  it('does not treat a Mac without touch as iOS', () => {
+    setup({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.4 Safari/605.1.15' });
+    Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 0 });
+    expect(pushSupport()).toBe('ok');
+  });
   it('is unsupported without PushManager', () => {
     setup();
     Reflect.deleteProperty(window, 'PushManager');
@@ -96,6 +106,24 @@ describe('enablePush', () => {
       url.endsWith('/push/public-key') ? new Response(JSON.stringify({ key: 'AQID' })) : new Response('x', { status: 500 }),
     );
     expect(await enablePush(input)).toBe('error');
+  });
+});
+
+describe('subscription JSON', () => {
+  it('sends expirationTime null when the browser omits it', async () => {
+    const { fetchMock, pushManager } = setup();
+    const sub = await pushManager.subscribe({});
+    sub.toJSON = () => ({ endpoint: 'https://push.example/abc', keys: { p256dh: 'p', auth: 'a' } }) as typeof subJson;
+    pushManager.subscribe.mockResolvedValue(sub);
+    await enablePush(input);
+    expect(JSON.parse(calls(fetchMock, 'POST')[0][1]!.body as string).subscription.expirationTime).toBeNull();
+  });
+});
+
+describe('permissionState', () => {
+  it('reads Notification.permission', () => {
+    setup({ permission: 'denied' });
+    expect(permissionState()).toBe('denied');
   });
 });
 

@@ -16,6 +16,6 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data as { url?: string } | undefined)?.url ?? '/';
-  event.waitUntil(focusOrOpen(self.clients as unknown as Parameters<typeof focusOrOpen>[0], url));
+  const url = (event.notification.data as { url?: string } | undefined)?.url;
+  event.waitUntil(focusOrOpen(self.clients as unknown as Parameters<typeof focusOrOpen>[0], url, self.location.origin));
 });

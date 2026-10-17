@@ -11,7 +11,8 @@ export interface PushInput {
 }
 
 function isIos(): boolean {
-  return /iPhone|iPad|iPod/.test(navigator.userAgent);
+  // iPadOS 13+ reports a Macintosh user agent but has touch points
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 }
 
 function isStandalone(): boolean {
@@ -24,6 +25,10 @@ export function pushSupport(): PushSupport {
   if (isIos() && !isStandalone()) return 'needs-install';
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || typeof Notification === 'undefined') return 'unsupported';
   return 'ok';
+}
+
+export function permissionState(): NotificationPermission | 'unsupported' {
+  return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
 }
 
 export function urlBase64ToUint8Array(base64: string): Uint8Array {
@@ -49,7 +54,7 @@ export async function isSubscribed(): Promise<boolean> {
 function request(input: PushInput, subscription: PushSubscription): SubscriptionRequest {
   return {
     device_id: input.deviceId,
-    subscription: subscription.toJSON() as WebPushSubscription,
+    subscription: { ...(subscription.toJSON() as WebPushSubscription), expirationTime: subscription.toJSON().expirationTime ?? null },
     street_ids: input.streetIds,
     lang: input.lang,
   };

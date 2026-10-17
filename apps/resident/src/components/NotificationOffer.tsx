@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Lang } from '@floodready/shared';
 import { t } from '../lib/i18n';
-import { enablePush, isSubscribed, pushSupport, stopPush } from '../push/subscribe';
+import { enablePush, isSubscribed, permissionState, pushSupport, stopPush } from '../push/subscribe';
 import { InstallGuide } from './InstallGuide';
 
 type View = 'checking' | 'offer' | 'on' | 'stopped' | 'denied' | 'error' | 'stopError';
@@ -16,7 +16,7 @@ interface Props {
 
 /** Offer (or manage) push notifications for the followed streets. */
 export function NotificationOffer({ lang, deviceId, streetIds, onDone }: Props) {
-  const support = pushSupport();
+  const [support] = useState(pushSupport);
   const [view, setView] = useState<View>('checking');
   const [busy, setBusy] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -24,11 +24,26 @@ export function NotificationOffer({ lang, deviceId, streetIds, onDone }: Props) 
   useEffect(() => {
     let live = true;
     if (support !== 'ok') return;
+    if (permissionState() === 'denied') {
+      setView('denied');
+      return;
+    }
     isSubscribed().then((on) => live && setView(on ? 'on' : 'offer'));
     return () => {
       live = false;
     };
   }, [support]);
+
+  // After changing the site setting the resident comes back to this tab: leave the denied view.
+  useEffect(() => {
+    if (view !== 'denied') return;
+    const recheck = () => {
+      if (permissionState() === 'denied') return;
+      void isSubscribed().then((on) => setView(on ? 'on' : 'offer'));
+    };
+    window.addEventListener('focus', recheck);
+    return () => window.removeEventListener('focus', recheck);
+  }, [view]);
 
   useEffect(() => {
     if (view !== 'checking') heading.current?.focus();
@@ -70,7 +85,10 @@ export function NotificationOffer({ lang, deviceId, streetIds, onDone }: Props) 
       ) : view === 'stopped' ? (
         <>
           <p role="status">{t(lang, 'notifStopped')}</p>
-          {onDone && <div className="row"><button className="primary" onClick={onDone}>{t(lang, 'done')}</button></div>}
+          <div className="row">
+            <button className="primary" disabled={busy} onClick={enable}>{t(lang, 'notifEnable')}</button>
+            {onDone && <button className="secondary" onClick={onDone}>{t(lang, 'done')}</button>}
+          </div>
         </>
       ) : (
         <>

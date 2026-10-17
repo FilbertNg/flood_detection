@@ -11,6 +11,7 @@ const base = { deviceId: 'dev_1', streetIds: ['BBR-a'], onDone: () => {} };
 
 beforeEach(() => {
   mocked.pushSupport.mockReturnValue('ok');
+  mocked.permissionState.mockReturnValue('default');
   mocked.isSubscribed.mockResolvedValue(false);
   mocked.enablePush.mockResolvedValue('granted');
   mocked.stopPush.mockResolvedValue(undefined);
@@ -40,7 +41,51 @@ describe('NotificationOffer', () => {
     mocked.enablePush.mockResolvedValue('denied');
     render(<NotificationOffer lang="en" {...base} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Turn on alerts' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/blocked/);
+    expect(alert).toHaveTextContent(/reload/i);
+    expect(screen.queryByRole('button', { name: 'Turn on alerts' })).toBeNull();
+    expect(mocked.enablePush).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the denied explanation on mount when permission is already denied', async () => {
+    mocked.permissionState.mockReturnValue('denied');
+    render(<NotificationOffer lang="en" {...base} />);
     expect(await screen.findByRole('alert')).toHaveTextContent(/blocked/);
+    expect(screen.queryByRole('button', { name: 'Turn on alerts' })).toBeNull();
+  });
+
+  it('returns to the offer when permission is granted and the window regains focus', async () => {
+    mocked.permissionState.mockReturnValue('denied');
+    render(<NotificationOffer lang="en" {...base} />);
+    await screen.findByRole('alert');
+    mocked.permissionState.mockReturnValue('granted');
+    fireEvent.focus(window);
+    expect(await screen.findByRole('button', { name: 'Turn on alerts' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('moves focus to the heading once the state is known', async () => {
+    render(<NotificationOffer lang="en" {...base} />);
+    const heading = await screen.findByRole('heading', { name: 'Get flood alerts on this phone' });
+    await waitFor(() => expect(heading).toHaveFocus());
+  });
+
+  it('offers to turn alerts on again after stopping', async () => {
+    mocked.isSubscribed.mockResolvedValue(true);
+    render(<NotificationOffer lang="en" {...base} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop notifications' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on alerts' }));
+    expect(mocked.enablePush).toHaveBeenCalledWith({ deviceId: 'dev_1', streetIds: ['BBR-a'], lang: 'en' });
+    expect(await screen.findByText('Alerts are on for your streets.')).toBeInTheDocument();
+  });
+
+  it('checks support once per mount', async () => {
+    render(<NotificationOffer lang="en" {...base} />);
+    await screen.findByRole('button', { name: 'Turn on alerts' });
+    fireEvent.click(screen.getByRole('button', { name: 'Turn on alerts' }));
+    await screen.findByText('Alerts are on for your streets.');
+    expect(mocked.pushSupport).toHaveBeenCalledTimes(1);
   });
 
   it('shows the install guide on iPhone Safari outside the installed app', async () => {

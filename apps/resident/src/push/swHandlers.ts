@@ -26,8 +26,21 @@ export function showPushNotification(registration: Notifier, payload: PushPayloa
   });
 }
 
+/** Resolve a push-supplied URL to a same-origin path; anything else falls back to the home page. */
+export function sameOriginPath(url: string | undefined, origin: string): string {
+  if (!url) return '/';
+  try {
+    const resolved = new URL(url, origin);
+    if (resolved.origin !== new URL(origin).origin) return '/';
+    return resolved.pathname + resolved.search + resolved.hash;
+  } catch {
+    return '/';
+  }
+}
+
 /** On click: reuse an open app window if there is one, otherwise open the street page. */
-export async function focusOrOpen(clients: ClientsLike, url: string): Promise<void> {
+export async function focusOrOpen(clients: ClientsLike, rawUrl: string | undefined, origin: string): Promise<void> {
+  const url = sameOriginPath(rawUrl, origin);
   const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
   const open = windows[0];
   if (open) {
