@@ -56,13 +56,16 @@ npx pnpm@9.15.0 dev:resident                                                    
 
 ## 4. Results to know before the pitch (honest numbers)
 
-*Updated 16 Oct 2026 after the improvement plan (`docs/plans/2026-10-16-IMP-ml-data-street-improvements.md`). Numbers are provisional: 15 river stations; final retrain after the full archive. Facts for the pitch: `docs/findings.md`.*
+*Updated 17 Oct 2026 after the final retrain on the complete JPS archive (79 river stations, 233 rain gauges; 64 river stations in training). Facts for the pitch: `docs/findings.md`.*
 
-- **12 Nov 2024 replay (BBR), per-street, real JPS data:** 08:30 ML raises **449 streets to Watch** (an hour before the river crosses warning at 09:30) → 09:00 rain rule: 227 streets at Warning → 09:30: 367 at Warning → 10:00: 298 at Danger (Sg. Binjai 4.21 m).
-- **ML gate v2 (pre-registered): PASS → `ml_drives_alerts: true`, but ML may raise a street to *Watch* only** (clamped in code); Warning and Danger come only from JPS thresholds. Inland stations, out of sample, nested threshold (`docs/evaluation-report.md`):
-  - rules alone: 382/423 crossings, 75 min median lead, 5.50 false alarms per station-month;
-  - rules + ML Watch: **405/423, 135 min**, 7.86 false alarms (1.43×, limit 1.5×). Fresh-station check (criterion 3) pending the full archive.
-  - Probabilities are calibrated (Brier 0.0027); the tidal Bandar Klang station is reported separately.
+- **12 Nov 2024 replay (BBR), per-street, real JPS data:** 08:45 rain rule: **320 streets at Watch** → 09:00: 227 at Warning → 09:30: 367 at Warning → 10:00: 298 at Danger (Sg. Binjai 4.21 m). The ML probability at Sg. Binjai (out of sample) is shown alongside: 10% at 08:30, 31% at 09:00, 51% at 09:15.
+- **ML gate v2 (pre-registered): FAIL on criterion 3 → `ml_drives_alerts: false`.** ML shows a calibrated probability and the river forecast; JPS rules alone set Watch/Warning/Danger (`docs/evaluation-report.md`):
+  - inland, rules alone: 795/890 crossings, 90 min median lead, 6.56 false alarms per station-month;
+  - inland, rules + ML Watch: 823/890, **135 min**, 7.92 (1.21×): criteria 1–2 pass;
+  - **fresh stations** (49 the EDA never saw, 467 crossings): rules 105 min, rules + ML 120 min, only +15 (needs +30): **criterion 3 fails**. Reported as is; the bar was not moved.
+  - Probabilities are calibrated (Brier 0.00118, PR-AUC 0.578); tidal stations are reported separately.
+- **Dead gauges:** QC found JPS river gauges frozen for months (Kg. Perepat `26558` since Jul 2024; also `26376`, `26413`, `26353`, `3017107_`, `2717134_`) and rain gauges inventing rain (26405: 2,113 mm in May 2024). 193,723 river readings are blanked; nothing at or above an alert level ever is. **85 BBR streets use `26558` as their own river** and so have no river signal: fall back to the next river station (open).
+- **River forecast:** mean error vs "no change" +1 h 0.045 vs 0.061 m, +2 h 0.069 vs 0.103 m; under-forecasts flash rises (`docs/forecast-report.md`).
 - **Alerts are per street** (each street's own river station and ≥ 2 rain gauges within 10 km). Push only Warning/Danger by default (`alerts.push_levels`); Watch shows in the app.
 - **Terrain map v2 (FABDEM + distance to drains):** 48 of 61 memorandum segments in the top two fifths (40% by chance). Pre-specified, not tuned on those streets.
 - **Tide:** checked against the Port Kelang gauge: the model runs ~40 min early (corrected). 12 Nov 2024 08:00–09:00 was **low** water; say "tide was running high that week", never "flooded at high tide" (`docs/tide-check.md`).
@@ -81,21 +84,18 @@ npx pnpm@9.15.0 dev:resident                                                    
 
 **Committed:** streets GeoJSON, station reference list, models, test fixtures.
 
-**Running on Filbert's laptop right now:**
-- live loggers (since 14 Oct; restarted on 15 Oct after the placeholder fix);
-- the history archive (**82/310** stations; Klang done, Petaling/KL in progress; hours left);
-- the API on :8000 and the Resident dev server on :5173.
+**Running on Filbert's laptop right now:** the live loggers (they also refresh the tide table once a day). The history archive is complete (310/310 series, 17 Oct 2026).
 
-If the laptop sleeps, live logging stops. JPS gaps can be backfilled from the archive; MET warnings and forecasts can't.
+If the laptop sleeps, live logging stops (it did on 16–17 Oct). JPS gaps can be backfilled from the archive; MET warnings and forecasts can't.
 
-**When the archive finishes:**
+**To retrain** (after new archive data or a QC change), then commit models, config and reports via a PR:
 
 ```bash
-.venv/Scripts/python.exe scripts/build_station_lookup.py
-.venv/Scripts/python.exe -X utf8 scripts/train_trigger.py     # retrains on all stations, rewrites config/ml.yaml + report
+.venv/Scripts/python.exe -X utf8 scripts/qc_report.py
+.venv/Scripts/python.exe -X utf8 scripts/train_trigger.py     # gate v2; rewrites config/ml.yaml + evaluation report
+.venv/Scripts/python.exe -X utf8 scripts/train_forecast.py
+.venv/Scripts/python.exe -X utf8 scripts/replay.py --event 2024-11-12
 ```
-
-Then restart the API, and commit the new models, config and report via a PR.
 
 ## 6. Gotchas we already paid for
 
@@ -145,12 +145,13 @@ Work only on your task, on a branch, with TDD (`CLAUDE.md`). Expand your task in
 5. **A3** Admin statistics pages with Darrell.
 
 **Filbert (engine + ML, integration)**
-1. Retrain ML when the archive completes (§5). Re-check the gate with tide plus all stations.
+1. **Dead own-station fallback:** a street whose river station is dead or stale uses its next river station (85 BBR streets on `26558`).
 2. **E7 backfill** 2024–2026 alerts (out-of-fold ML) → feeds Admin statistics.
 3. **L1** `data/events/events.csv` (news labels with evidence quotes) → **L2** evaluation report.
 4. **S1** suggestion rules SUG-1..7; **E8** Outlook (MET warnings + forecast).
-5. Per-street triggers (nearest stations) to reduce township-wide alerts.
-6. Check JUPEM tide tables for 12 Nov 2024.
+5. QC follow-ups: rain gauge stuck at zero; heavy rain at one gauge while all neighbours are dry.
+
+Done: final retrain and gate v2 (17 Oct), per-street triggers, tide check against the Port Kelang gauge.
 
 ## 8. Rules (short)
 

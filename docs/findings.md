@@ -2,7 +2,7 @@
 
 A running log of facts we established while building, each with its evidence. Use it for the pitch and to understand why the system works the way it does. Started 16 Oct 2026; updated as work lands.
 
-**Status of numbers:** results come from the JPS archive as of 16 Oct 2026 (15 river stations, 1.05M training quarter hours). They will be re-measured after the full archive (~100 river stations) and retrain; entries marked *(provisional)* will change.
+**Status of numbers:** final. Results come from the complete JPS archive of 17 Oct 2026 (310 station series: 79 river stations, 233 rain gauges; 64 river stations with thresholds in training, 4.54M training quarter hours, 9,128 positives) after the final QC rules (#32, #35) and tide fix (#34). Earlier 15-station numbers are superseded.
 
 Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data-qc-report.md](data-qc-report.md), [evaluation-report.md](evaluation-report.md), and the PR reviews (#15–#22).
 
@@ -21,10 +21,18 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 ### A3. A flat river level is not a fault by itself
 - **Healthy gauges are flat most of the time.** Sg. Binjai at Pekan Meru stays within 1.5 cm for 6 h or more in **91% of its readings** (base flow). Yet on 12 Nov 2024 it rose **2.94 → 4.06 m in 90 minutes**. Flat means "nothing is happening", not "broken".
 - **The fault signature is flat during heavy nearby rain.** On 12 Nov 2024, 07:00–11:00, the same storm (**67.5 mm in 1 h, 79 mm in 3 h** at gauges within 10 km of both stations) hit Pekan Meru and Kg. Perepat (Sg. Kapar Kechil, `26558`). Pekan Meru rose 1.32 m; **Kg. Perepat stayed at exactly −0.78 m** for the whole period.
-- The Kg. Perepat gauge does work at other times: it has read up to 1.08 m (above its 1.0 m warning level) and was at alert on 27 days.
+- The Kg. Perepat gauge worked before July 2024 (see A3c): it has read up to 1.08 m (above its 1.0 m warning level) and was at alert on 27 days.
 - **So:** a QC rule flags a river gauge as *unresponsive* when it stays flat while ≥ 30 mm/3 h falls nearby, and the engine treats it as stale rather than as "river normal" (PR #24).
-- **How common:** on the 16 Oct archive the rule flags 12,644 readings at 9 of 15 river stations; **83% of them are one gauge, Kg. Perepat** (runs of up to 7 days at −0.78 m or 0.36 m), and Seri Kembangan (`3017107_`) sits pinned near 36.5 m for up to 9 days. *(Provisional: under review for false positives at base-flow rivers.)*
+- **The first version wasn't strict enough, then wasn't thorough enough.** A single wet gauge was enough to flag a river, which flagged Pekan Meru 247 times at base flow (one local cell). Requiring **two gauges ≥ 30 mm** cut that to 35, and the remaining 35 sit 0.9 m below alert.
 - **Pitch line:** "We don't just read sensors, we check them against each other: a river that doesn't react to a 68 mm storm is a broken gauge, not a safe street."
+
+### A3c. Some public JPS gauges have been dead for months, and nobody flags them
+- **Kg. Perepat (`26558`) has been dead since about 28 Jul 2024.** It read −0.78 m, then 0.36 m from 22 Nov 2024 to today. In ~60 storms since, including two-gauge storms of 70/61 mm, it moved **at most 0.08 m**, while after the same storms the inland Pekan Meru gauge rose a median 0.58 m. Before Aug 2024 every one of its 13 storms with data raised it 0.3–1.2 m.
+- Its daily range fell from **0.89 m (Q2 2024, tidal)** to **0.02–0.09 m every quarter since**. JPS Infobanjir still publishes it as a live reading.
+- The full archive shows the same at five more river stations: `26376` read 5–6 m below its normal 28 m for months while neighbours rose 0.5–3.8 m; `26413` sat at 18.86–18.88 m for 7 weeks; `26353`, `3017107_` (Seri Kembangan) and `2717134_` (Salak Tinggi) had dead periods of weeks to months.
+- **So:** QC now keeps a per-gauge **dead state**: after two unanswered two-gauge storms within 30 days (no movement ≥ 0.10 m within 8 h, while an inland river within 15 km did respond), every reading below alert is blanked until the gauge moves ≥ 0.2 m. On Kg. Perepat, the old rule blanked **13.8%** of the dead period; the dead state blanks **87.3%**. Nothing at or above an alert level is ever blanked, and 12 Nov 2024 at Pekan Meru and Pandamaran is untouched (PR #35).
+- **Why it matters:** a dead gauge reading "normal" teaches the model that heavy rain leaves rivers calm, and tells a street "river normal". Across the archive the QC now blanks **193,723** river readings as unresponsive or dead.
+- **Pitch line:** "Kg. Perepat's river gauge has been frozen since July 2024 and is still published. Our system noticed on its own, because in 60 storms it never moved while the river at Pekan Meru rose."
 
 ### A3b. Rivers answer rain late, and a stuck gauge at flood level must fail safe
 - **The most dangerous moment looks like a broken gauge:** heavy rain has started and the river hasn't moved yet. A first version of the stuck-gauge rule would have blanked Pekan Meru for up to 1.5 h at the start of a flood if the river responded 90 min after the rain. The rule now requires the rain to have ended ≥ 90 min earlier and the level to have stayed flat for 4.5 h. In tests, Pekan Meru then has 0 flags at any response delay from 0 to 120 min, and Kg. Perepat keeps 98% of its flags (8,307 vs 8,521 on its own gauge).
@@ -55,6 +63,11 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 ### B2. River gauges spike
 - Sg. Penchala (`3016080_`) read **10.22 → 13.08 → 10.88 m**: a one-reading spike that would have been a false crossing of its 13.0 m alert level. QC compares each reading with both neighbours (132 spikes flagged, none on 12 Nov).
 
+### B2b. Some rain gauges invent rain
+- **Gauge 26405 (Kuala Lumpur) recorded 2,113 mm in May 2024** (raw readings in `data/raw/jps_hist/rf/26405.parquet`), with weekly totals of 365–820 mm while the Kuala Lumpur median was 56–92 mm. Four single readings were above 100 mm in 15 minutes (max 340 mm).
+- **Gauge 26519 (Jambatan Petaling) reported ≥ 5 mm of rain on 48 of 50 days** (7 Jun–26 Jul 2026), 140–250 mm a week, while its daily totals correlated only 0.25 with its neighbours' median.
+- **So:** a monthly rule flags a gauge whose rolling 30-day total is > 600 mm and > 3× its neighbours' median (196 readings at 3 gauges, all confirmed faults). It is a backstop; most of 26405's fault is already removed by the 100 mm/15 min rule.
+
 ### B3. The tide model is 40 minutes early
 - Open-Meteo's global tide model vs the Port Kelang tide gauge (UHSLC station 140): **86 high waters, median 35 min early** (sd 10). Official forecasts relayed in the news: 48 min early; tide-forecast.com: 38 min. We shift high-water times by +40 min.
 - **12 Nov 2024 08:00–09:00 was low water**, not high water. News talk of "high tide" referred to spring tides that week.
@@ -70,25 +83,33 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 
 ### C2. Raw ML probabilities were 10× too confident
 - Before calibration, a predicted 50–70% meant **4.6%** observed; 90–100% meant 57%.
-- **The cause was the training setting, not the model:** `class_weight="balanced"` up-weights the 0.6% positives ~80×. Trained without it, the model is calibrated on its own (out of sample: Brier 0.0027, calibration error 0.0009) and ranks slightly better (PR-AUC 0.731 vs 0.714 balanced + isotonic). That variant now ships *(provisional, 15 stations)*.
+- **The cause was the training setting, not the model:** `class_weight="balanced"` up-weights the rare positives ~80×. Trained without it, the model is calibrated on its own. On the full archive, out of sample: Brier 0.00118, calibration error 0.0003, PR-AUC 0.578 (balanced + isotonic: 0.567). A predicted 30–50% comes true 38.7% of the time; 50–70%, 63.4%.
 - **So:** the probability shown to residents is calibrated, or not shown.
 
 ### C3. ML warns earlier; the rules catch more on their own
-- Inland, out of sample (nested threshold, pre-registered gate v2; retrained 16 Oct on QC-cleaned data): rules alone detect **382 / 423** crossings with **75 min** median warning; rules + ML Watch detect **405 / 423** with **135 min**, at 1.43× the false alarms (limit 1.5×). Gate passes *(provisional; fresh-station check pending the full archive)*.
-- On 12 Nov 2024 the ML alone raised 449 BBR streets to Watch at **08:30**, an hour before Sg. Binjai crossed warning (09:30) and 30 min before the rain rule's first Warning (09:00).
-- The extra false alarms concentrate at a few stations (Sg. Damansara at Kg. Melayu Subang: 5.6 → 16.4 per month).
+- Inland, out of sample, nested threshold, full archive (64 river stations, 890 inland crossings): rules alone detect **795 / 890** with **90 min** median warning and 6.56 false alarms per station-month; rules + ML Watch detect **823 / 890** with **135 min**, at 7.92 (1.21×). ML alone: 674 / 890, 105 min, but only 3.37 false alarms.
+- On 12 Nov 2024 the out-of-sample probability at Sg. Binjai was **10% at 08:30, 31% at 09:00, 51% at 09:15**; the river crossed warning at 09:30.
 - **So:** ML may raise a street to *Watch* only; Warning and Danger stay with JPS's official thresholds. This is enforced in code, not only in config.
+
+### C3b. The pre-registered gate failed on unseen stations, so ML does not raise alerts
+- Gate v2 was written down before the final run (16 Oct): ML may raise Watch only if, on inland stations, it adds **≥ 30 min** median warning at **≤ 1.5×** the false alarms, **and the same holds on stations the EDA never looked at** (if they have ≥ 30 crossings).
+- Criteria 1–2 pass (+45 min at 1.21×). **Criterion 3 fails:** on the **49 fresh stations (467 inland crossings)** the rules already warn **105 min** ahead; rules + ML give **120 min**, only +15 min.
+- **So:** `ml_drives_alerts` is **false**. The probability is shown to residents, the river forecast is shown, and the JPS rules alone set Watch/Warning/Danger. We did not move the threshold after seeing the result.
+- **Pitch line:** "We set the bar before the test and our ML missed it on rivers it had never seen, so it informs but doesn't raise alerts. Judges can trust our other numbers because we report this one."
 
 ### C5. Adding rain gauges changes the rule baseline too
 - As more gauges were archived (38 → 50 within 25 km), the rule floor's inland detections rose from **391 to 399 of 433** and its false alarms from **5.72 to 6.14** per station-month. ML alone stayed near 352–359.
 - **So:** every comparison must use the floor from the *same* run and data; numbers from different days are not comparable.
 
 ### C6. The river forecast helps most where the tide drives the river
-- Out of sample, median error vs "level stays the same": **tidal stations 0.068 vs 0.262 m** (+1 h), **inland 0.045 vs 0.068 m**. At two inland stations it is no better than persistence *(provisional)*.
+- Out of sample, mean absolute error vs "level stays the same", +1 h: **tidal stations 0.125 vs 0.255 m (−51%)**, **inland 0.040 vs 0.050 m (−20%)**. At some inland stations it is no better than persistence.
 
 ### C4. Forecasting the river level beats "no change", but under-forecasts flash rises
-- Median forecast error vs persistence: **+1 h 0.049 vs 0.097 m; +2 h 0.083 vs 0.173 m**; during rises 0.144 vs 0.392 m *(provisional)*.
-- On 12 Nov 2024 at 09:00 (3.52 m) it forecast 3.70 m (3.37–4.14) for 10:00; the river reached **4.21 m**. Flash rises are faster than the model learned; the forecast is information, not an alert trigger.
+- Mean absolute error vs persistence, all 64 stations: **+1 h 0.045 vs 0.061 m (−27%); +2 h 0.069 vs 0.103 m (−33%)**. The p10–p90 range holds the actual level 80% of the time, as intended.
+- On 12 Nov 2024 at 09:00 (3.52 m) it forecast 3.67 m (3.23–4.34) for 10:00; the river reached **4.21 m**. Flash rises are faster than the model learned; the forecast is information, not an alert trigger.
+
+### C7. Tide values were up to 45 minutes stale
+- The 15-minute features took the tide of the whole hour, so at 09:45 the model saw 09:00's tide. Measured on the harmonic tide curve at 15-minute steps (PR #34 review), the old hour value is off by **22.8 cm RMS (max 89 cm)**; evaluating at the exact time gives **2.3 cm RMS (max 7.6 cm)**.
 
 ## D. Streets and terrain
 
@@ -100,6 +121,10 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 ### D1b. Notification volume decides whether people keep listening
 - In Nov 2024 (a stormy month), issuing Watch as well as Warning/Danger gives about **17.5 messages per street** (alerts + all-clears; max 34). Pushing only Warning and Danger gives **3.2 per street** (max 8). Longer Watch cooldowns barely help (8.7 → 8.3 alerts per street).
 - **So:** Watch is shown in the app; push is for Warning and Danger (config `alerts.push_levels`, pending the team's decision).
+
+### D1c. 85 BBR streets take their river signal from the dead gauge
+- The street→station mapping (`assets/geo/bbr_street_stations.json`) follows the flow path: **85 of 943 BBR streets** use Kg. Perepat (`26558`) as their own river (668 use Pekan Meru, 190 Pandamaran). With the gauge blanked, those streets keep their rain rules but have no river level or ML probability.
+- **Open fix:** when a street's own river station is dead or stale, fall back to its next-nearest river station.
 
 ### D2. Flow paths on a 30 m DEM fail on the flat coast
 - D8 flow tracing links inland stations correctly (Damansara → Sri Muda; Kuyoh, Penchala → Puchong Drop) but finds **nothing upstream of Bandar Klang**: the coastal plain is too flat. Same-river links there are added by name with stated evidence.

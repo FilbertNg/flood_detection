@@ -253,9 +253,9 @@ def unresponsive_section(readings: pd.DataFrame, flags: pd.DataFrame, stations: 
                "- A run lasts until the level moves, so it continues after the rain stops. A genuinely flat river is kept NaN until it moves.\n"
                "- A gauge that is stuck for months (Kg. Perepat 26558: -0.78 m, then 0.36 m since 22 Nov 2024) is flagged only from the run or the dead-gauge "
                "state that proves it: the first weeks before two storms have shown no response are kept, and after every real jump the proof starts again "
-               "(on the partial archive about 87 % of 26558's readings since 1 Aug 2024 are flagged, not all). A station with fewer than two rain "
+               "(on the complete archive 87.3 % of 26558's valid readings since 1 Aug 2024 are flagged, not all). A station with fewer than two rain "
                "gauges in range, or with untrusted thresholds, is not checked at all, and a gauge stuck low there reports a normal level unnoticed.\n"
-               "- The dead-gauge state hides readings below the alert level until the gauge shows a rise of 0.2 m; a healthy but sluggish river that missed two "
+               "- The dead-gauge state hides readings below the alert level until the gauge moves 0.2 m (a rise or a fall within 8 h); a healthy but sluggish river that missed two "
                "storms over its station would lose its first rising readings (never those at or above alert). The nearest-gauge and 48 h conditions exist "
                "to keep that from happening: without them Pekan Meru (27 Feb 2025), 3115084_ and 26039 were wrongly called dead.\n"
                "- **Live vs replay**: live QC runs over the last 120 days of the archive plus the live readings (the archive value wins on the "
@@ -336,8 +336,10 @@ def main() -> None:
            f"{n_rf} rain gauges and {n_wl} river stations, {len(readings):,} 15-min rows, "
            f"{readings.time_local.min():%Y-%m-%d} to {readings.time_local.max():%Y-%m-%d}"
            + (f" (archive progress {progress.get('done')}/{progress.get('total')} station series)" if progress else "")
-           + ". **The archive is still being filled; this report will be regenerated when it finishes** "
-           "(`python scripts/qc_report.py`).\n",
+           + (". The archive is complete; regenerate after new data with `python scripts/qc_report.py`.\n"
+              if progress and progress.get("done") == progress.get("total") else
+              ". **The archive is still being filled; this report will be regenerated when it finishes** "
+              "(`python scripts/qc_report.py`).\n"),
            "Rules live in `floodready/qc.py` and run inside `engine/replay.py::load_archive_readings` and `live.py::load_live_readings`, "
            "so replay, training, the API and live data all see the cleaned values. A flagged value becomes NaN, never 0.\n",
            "**Live mode:** `wl_spike` and `rain_after_gap` need the next reading. A gauge's latest reading is kept and judged when the next "
