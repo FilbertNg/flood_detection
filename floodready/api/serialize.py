@@ -40,10 +40,11 @@ def streets_geojson(ctx: EngineContext, snap: Snapshot) -> dict:
 
 
 def _tide(ctx: EngineContext, start: datetime) -> list[dict]:
-    if ctx.tide is None or not len(ctx.tide):
+    table = ctx.tide_table()
+    if table is None or not len(table):
         return []
-    t = ctx.tide[(ctx.tide.time_local >= pd.Timestamp(start).floor("h")) &
-                 (ctx.tide.time_local <= pd.Timestamp(start) + timedelta(hours=12))]
+    t = table[(table.time_local >= pd.Timestamp(start).floor("h")) &
+              (table.time_local <= pd.Timestamp(start) + timedelta(hours=12))]
     return [{"time": iso(x), "height_m": round(float(h), 2)} for x, h in zip(t.time_local, t.tide_height_m) if pd.notna(h)]
 
 

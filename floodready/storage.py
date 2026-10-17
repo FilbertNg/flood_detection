@@ -11,8 +11,10 @@ import pandas as pd
 def save_raw(path: Path, text: str) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(path, "wt", encoding="utf-8") as handle:
+    tmp = path.with_name(path.name + ".tmp")          # atomic: a crash never leaves a half-written file
+    with gzip.open(tmp, "wt", encoding="utf-8") as handle:
         handle.write(text)
+    tmp.replace(path)
     return path
 
 

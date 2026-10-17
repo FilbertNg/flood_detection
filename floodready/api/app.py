@@ -17,6 +17,7 @@ import pandas as pd
 import yaml
 
 from .. import live, radar
+from .. import tide as tide_mod
 from ..engine import street_stations
 from ..engine.replay import load_archive_readings
 from ..ml import dataset, forecast as river, predict
@@ -62,8 +63,7 @@ def build_context(township_id: str = "BBR") -> EngineContext:
         f = f[(f.time_local > pd.Timestamp(at)) & (f.time_local <= pd.Timestamp(at) + timedelta(hours=12))]
         return [{"time": iso(t), "mm": float(mm or 0)} for t, mm in zip(f.time_local, f.precip_mm)]
 
-    tide_path = DATA / "interim" / "tide_hourly.parquet"
-    tide = pd.read_parquet(tide_path) if tide_path.exists() else None
+    tide_cache = tide_mod.TideTable(DATA / "interim" / "tide_hourly.parquet")   # reloaded when the daily refresh rewrites it
 
     bundles = river.BundleCache(ROOT / "models")
     river_cache: dict = {}
@@ -77,7 +77,7 @@ def build_context(township_id: str = "BBR") -> EngineContext:
             if key in river_cache:
                 return river_cache[key]
         bundle = bundles.get(at, is_live)
-        out = river.forecast_from_readings(bundle, readings, stations, tide, graph_id, at) if bundle else None
+        out = river.forecast_from_readings(bundle, readings, stations, tide_cache.get(), graph_id, at) if bundle else None
         if bundle is not None:                      # a missing model is retried later, never cached here
             with river_lock:
                 if len(river_cache) >= 64:
@@ -88,7 +88,7 @@ def build_context(township_id: str = "BBR") -> EngineContext:
     return EngineContext(
         township=town, streets=streets[["street_id", "name", "township_id", "susceptibility", "geometry"]],
         stations=stations, rules_cfg=_yaml("rules.yaml"), matrix=_yaml("risk_matrix.yaml")["matrix"],
-        ml_cfg=_yaml("ml.yaml"), tide=tide,
+        ml_cfg=_yaml("ml.yaml"), tide=tide_cache.get(), tide_loader=tide_cache.get,
         load_readings=load_readings, load_live_readings=load_live,
         bundle_for=lambda when, is_live: predict.bundle_for(ROOT / "models", when, live=is_live),
         radar=lambda now: radar.latest_reason(DATA / "raw" / "radar", town["centre"]["lat"], town["centre"]["lon"], now),

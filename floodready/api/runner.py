@@ -42,6 +42,10 @@ class EngineContext:
     street_stations: dict | None = None                                   # street_id -> {wl, rf, method, distance_m}; None = township-wide trigger
     # (readings, graph_id, at, live) -> RiverForecast dict | None; the station's level at +1 h / +2 h
     river_forecast: Callable[[pd.DataFrame, str, datetime, bool], dict | None] | None = None
+    tide_loader: Callable[[], pd.DataFrame | None] | None = None          # current tide table (reloads when the file changes); wins over `tide`
+
+    def tide_table(self) -> pd.DataFrame | None:
+        return self.tide_loader() if self.tide_loader is not None else self.tide
 
 
 @dataclass
@@ -90,7 +94,7 @@ class Runner:
         bundle = self.ctx.bundle_for(start, live)
         return replay.run(start, end, STEP, readings, self.ctx.stations, self.ctx.streets, self.station_ids,
                           self.ctx.rules_cfg, self.ctx.matrix, ml_bundle=bundle, ml_cfg=self.ctx.ml_cfg,
-                          wl_ids=self.wl_ids, tide=self.ctx.tide, street_stations=self.ctx.street_stations)
+                          wl_ids=self.wl_ids, tide=self.ctx.tide_table(), street_stations=self.ctx.street_stations)
 
     def _record(self, step: ReplayStep, is_replay: bool) -> None:
         with self._lock:
