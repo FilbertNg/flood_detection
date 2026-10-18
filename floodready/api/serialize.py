@@ -93,10 +93,11 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
     row = match.iloc[0]
     state = _states(snap).get(street_id)
     data_time = snap.step.time if snap.step else datetime.now()
-    history = [a for a in snap.alerts if a["street_id"] == street_id]
+    history = snap.alerts_for(street_id)
     latest = history[0] if history else None
+    still_elevated = state is None or state.level.json != "normal"      # a missed all-clear must not stay active
     active = ({"alert_id": latest["alert_id"], "level": latest["level"], "issued_at": latest["issued_at"]}
-              if latest and latest["kind"] == "alert" else None)
+              if latest and latest["kind"] == "alert" and still_elevated else None)
     rain_next = ctx.forecast(data_time) if (ctx.forecast is not None and snap.mode == "live") else []
     reasons = [reason(r) for r in state.reasons] if state else []
     if ctx.radar is not None and snap.mode == "live":

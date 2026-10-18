@@ -13,7 +13,7 @@ from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 
 import yaml
-from sqlalchemy import Engine, and_, bindparam, create_engine, delete, func, insert, select, update
+from sqlalchemy import Engine, and_, bindparam, case, create_engine, delete, func, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
@@ -115,6 +115,13 @@ def save_street_states(conn, states: list[StreetState], mode: str) -> None:
     conn.execute(insert(t.street_state), rows)
 
 
+def clear_replay(conn) -> None:
+    """Delete replay-mode alerts and street states so a new replay starts clean and re-issues (and re-pushes) its alerts.
+    Live and backfill rows are untouched."""
+    conn.execute(delete(t.alerts).where(t.alerts.c.is_replay.is_(True), t.alerts.c.is_backfill.is_(False)))
+    conn.execute(delete(t.street_state).where(t.street_state.c.mode == "replay"))
+
+
 def get_street_states(conn, township_id: str, mode: str) -> list[dict]:
     """States of one township; street ids are `<TOWNSHIP>-<slug>`, so the prefix selects the township."""
     q = select(t.street_state).where(t.street_state.c.mode == mode,
@@ -170,16 +177,21 @@ def replace_backfill(conn, township_id: str, start: datetime, end: datetime) -> 
 
 
 def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
-                include_replay: bool = True, since: datetime | None = None, include_backfill: bool = False) -> list[dict]:
+                include_replay: bool = True, since: datetime | None = None, include_backfill: bool = False,
+                replay_only: bool = False) -> list[dict]:
     """AlertSummary dicts, newest first. Backfill rows are excluded unless `include_backfill`.
 
-    active: per street and per mode (live / replay / backfill) the latest row, if it is an 'alert' (not an all-clear).
-    This matches the engine: an alert stays active until the street's all-clear (no wall-clock test)."""
+    replay_only: only replay rows (the API's view while a replay is on).
+    active: per street and per mode (live / replay / backfill) the latest row, if it is an 'alert' (not an all-clear)
+    AND the street's current state in that mode is not 'normal' (a missed all-clear, e.g. the API was down, must not
+    leave an alert active for ever). Streets without a saved state row, and backfill rows, are not filtered by state."""
     a = t.alerts
     q = select(a).order_by(a.c.issued_at.desc(), a.c.alert_id)
     if street_id is not None:
         q = q.where(a.c.street_id == street_id)
-    if not include_replay:
+    if replay_only:
+        q = q.where(a.c.is_replay.is_(True))
+    elif not include_replay:
         q = q.where(a.c.is_replay.is_(False))
     if not include_backfill:
         q = q.where(a.c.is_backfill.is_(False))
@@ -191,6 +203,11 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
         q = (q.join(latest, and_(a.c.street_id == latest.c.street_id, a.c.is_replay == latest.c.is_replay,
                                  a.c.is_backfill == latest.c.is_backfill, a.c.issued_at == latest.c.m))
              .where(a.c.kind == "alert"))
+        ss = t.street_state
+        normal_now = (select(ss.c.street_id).where(
+            ss.c.street_id == a.c.street_id, ss.c.level == "normal",
+            ss.c.mode == case((a.c.is_replay.is_(True), "replay"), else_="live")).exists())
+        q = q.where(a.c.is_backfill.is_(True) | ~normal_now)
     pl = push_levels()
     return [{
         "alert_id": r.alert_id, "street_id": r.street_id, "horizon": r.horizon, "kind": r.kind, "level": r.level,
@@ -212,6 +229,12 @@ def upsert_subscription(conn, device_id: str, sub: dict, street_ids: list[str], 
                                                 auth=keys["auth"], lang=lang, created_at=created or now_myt()))
     if street_ids:
         conn.execute(insert(t.subscription_streets), [{"device_id": device_id, "street_id": s} for s in dict.fromkeys(street_ids)])
+
+
+def delete_subscription(conn, device_id: str) -> None:
+    """Drop only the push subscription and its street links (e.g. the push service said 410 Gone); answers stay."""
+    conn.execute(delete(t.subscription_streets).where(t.subscription_streets.c.device_id == device_id))
+    conn.execute(delete(t.subscriptions).where(t.subscriptions.c.device_id == device_id))
 
 
 def delete_device(conn, device_id: str, *, uploads: Path | str | None = None) -> list[Path]:

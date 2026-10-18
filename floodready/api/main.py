@@ -7,18 +7,23 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+import re
 import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 import jwt
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from urllib3.exceptions import LocationParseError
+from urllib3.util import parse_url
 
+from ..db import repo
 from . import serialize
 from .runner import Runner
 
@@ -38,6 +43,58 @@ class ReplayRequest(BaseModel):
     start: str = "06:00"
     end: str = "14:00"
     stop_at: str | None = None
+
+
+# Push services a browser can hand out. Anything else would let a client make the API host POST to arbitrary URLs.
+PUSH_HOSTS = ("fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com")
+PUSH_HOST_SUFFIXES = (".notify.windows.com", ".push.apple.com")
+DEVICE_ID_RE = r"^[A-Za-z0-9_-]{16,64}$"
+_ENDPOINT_CHARS = re.compile(r"[\x21-\x7e]+")      # printable ASCII without space or control characters
+_HOSTNAME = re.compile(r"[a-z0-9.-]+")
+_B64URL =r"^[A-Za-z0-9_-]+={0,2}$"
+
+
+class WebPushKeys(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    p256dh: str = Field(min_length=1, max_length=128, pattern=_B64URL)
+    auth: str = Field(min_length=1, max_length=64, pattern=_B64URL)
+
+
+class WebPushSubscriptionBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    endpoint: str = Field(min_length=1, max_length=2048)
+    expirationTime: float | None = None
+    keys: WebPushKeys
+
+    @field_validator("endpoint")
+    @classmethod
+    def _push_service_endpoint(cls, v: str) -> str:
+        # Printable ASCII only, no space or backslash: urlsplit and urllib3 (used by pywebpush) read such URLs
+        # differently, so a host check here could pass "https://evil.com<backslash>.push.apple.com/" while the
+        # request goes to evil.com. The host urllib3 will connect to must equal the host validated here.
+        if not _ENDPOINT_CHARS.fullmatch(v) or "\\" in v:
+            raise ValueError("invalid endpoint")
+        try:
+            u = urlsplit(v)
+            host, port = (u.hostname or "").lower(), u.port
+            sent_to = (parse_url(v).host or "").lower()
+        except (ValueError, LocationParseError):
+            raise ValueError("invalid endpoint") from None
+        if u.scheme != "https" or u.username or u.password or port not in (None, 443):
+            raise ValueError("endpoint must be an https URL of a push service")
+        if not _HOSTNAME.fullmatch(host) or sent_to != host:
+            raise ValueError("invalid endpoint host")
+        if host not in PUSH_HOSTS and not host.endswith(PUSH_HOST_SUFFIXES):
+            raise ValueError("endpoint is not a known push service")
+        return v
+
+
+class SubscriptionBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    device_id: str = Field(pattern=DEVICE_ID_RE)
+    subscription: WebPushSubscriptionBody
+    street_ids: list[str] = Field(max_length=200)
+    lang: Literal["en", "ms"]
 
 
 def _secret() -> str:
@@ -86,6 +143,7 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
         yield
         stop.set()
         runner.stop_replay(keep_mode=True)
+        runner.push.shutdown()
 
     app = FastAPI(title="Flood-Ready Township API", version="0.1.0", lifespan=lifespan)
     origins = [o for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174").split(",") if o]
@@ -121,16 +179,42 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
 
     @app.get(f"{api}/alerts")
     def get_alerts(street_id: str | None = None, active: bool = False):
-        alerts = runner.snapshot().alerts
-        if street_id:
-            alerts = [a for a in alerts if a["street_id"] == street_id]
-        if active:
-            latest = {}
-            for a in alerts:
-                latest.setdefault(a["street_id"], a)
-            alerts = [a for a in latest.values() if a["kind"] == "alert"]
-        return alerts
+        return runner.alerts(street_id=street_id, active=active)    # read from the database
 
+    # ---------- WP3: Web Push ----------
+    @app.get(f"{api}/push/public-key")
+    def get_push_public_key():
+        if not runner.push.enabled or not runner.push.public_key:
+            raise HTTPException(status_code=503, detail="Push is not configured on this server")
+        return {"key": runner.push.public_key}
+
+    @app.post(f"{api}/subscriptions", status_code=204)
+    def subscribe(body: SubscriptionBody):
+        """Store a push subscription (422 on invalid input).
+
+        device_id matches ^[A-Za-z0-9_-]{16,64}$ (the client uses crypto.randomUUID()). subscription.endpoint is an
+        https URL, printable ASCII without backslash or space, on a push-service host (fcm.googleapis.com,
+        updates.push.services.mozilla.com, *.notify.windows.com, web.push.apple.com, *.push.apple.com) and urllib3
+        must read the same host. keys has only p256dh (<= 128) and auth (<= 64), base64url. Unknown streets: 400.
+        """
+        keys = body.subscription.keys.model_dump()
+        known = set(ctx.streets.street_id)
+        unknown = [s for s in body.street_ids if s not in known]
+        if unknown:
+            raise HTTPException(status_code=400, detail=f"Unknown street {unknown[0]}")
+        with runner.db.begin() as conn:
+            repo.upsert_subscription(conn, body.device_id, {"endpoint": body.subscription.endpoint, "keys": keys},
+                                     body.street_ids, body.lang)
+        return Response(status_code=204)
+
+    @app.delete(f"{api}/subscriptions/{{device_id}}", status_code=204)
+    def delete_subscription(device_id: Annotated[str, Path(pattern=DEVICE_ID_RE)]):
+        with runner.db.begin() as conn:
+            files = repo.delete_device(conn, device_id)
+        repo.remove_files(files)          # only after the transaction committed
+        return Response(status_code=204)
+
+    # ---------- admin ----------
     @app.post(f"{api}/admin/login")
     def login(body: LoginRequest):
         email, password = _admin_credentials()
