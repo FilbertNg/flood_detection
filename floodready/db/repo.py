@@ -1,0 +1,340 @@
+"""Repository over the database tables (build plan §4.3; WP1 interface §3.1).
+
+SQLAlchemy 2 Core only. Callers pass a Connection (e.g. `with engine.begin() as conn`) and own the transaction.
+Datetimes are stored naive MYT and returned as ISO 8601 with +08:00.
+"""
+from __future__ import annotations
+
+import json
+import os
+import uuid
+from functools import lru_cache
+from pathlib import Path
+from datetime import date, datetime, timedelta, timezone
+
+import yaml
+from sqlalchemy import Engine, and_, bindparam, create_engine, delete, func, insert, select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.pool import StaticPool
+
+from ..engine.types import Alert, StreetState
+from ..jobs import now_myt
+from . import schema as t
+
+# Single-writer assumption: the API process is the only writer (build plan decision 2). The delete/select-then-insert
+# upserts below are not safe against two concurrent writers on Postgres (PK races); add ON CONFLICT if that changes.
+
+ROOT = Path(__file__).resolve().parents[2]
+_CHUNK = 400
+
+
+@lru_cache(maxsize=1)
+def _alerts_cfg() -> dict:
+    """`alerts:` block of config/rules.yaml: the single source of truth for push levels."""
+    with open(ROOT / "config" / "rules.yaml", encoding="utf-8") as f:
+        return yaml.safe_load(f)["alerts"]
+
+
+def push_levels() -> tuple[str, ...]:
+    return tuple(_alerts_cfg().get("push_levels", ["watch", "warning", "danger"]))
+
+
+def uploads_dir() -> Path:
+    """Directory resident photos live in (env UPLOADS_DIR, default <repo>/data/uploads)."""
+    return Path(os.environ.get("UPLOADS_DIR", ROOT / "data" / "uploads"))
+
+
+class DuplicateAnswer(Exception):
+    """A device already answered this alert."""
+
+
+# ---------- helpers ----------
+
+def _iso(dt: datetime | None) -> str | None:
+    return None if dt is None else dt.strftime("%Y-%m-%dT%H:%M:%S") + "+08:00"
+
+
+def _naive(dt: datetime | str | None) -> datetime | None:
+    """Accept datetimes or ISO strings (with or without offset); store naive MYT."""
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        dt = datetime.fromisoformat(dt)
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone(timedelta(hours=8))).replace(tzinfo=None)
+    return dt
+
+
+def _window(start: datetime | None, end: datetime | None) -> dict | None:
+    return {"start": _iso(start), "end": _iso(end)} if start else None
+
+
+def _reason_dict(r) -> dict:
+    return {"code": r.code, "value": r.value, "unit": r.unit, "station": r.station,
+            "text": {"en": r.text_en, "ms": r.text_ms}}
+
+
+def _chunks(items: list, n: int = _CHUNK):
+    for i in range(0, len(items), n):
+        yield items[i:i + n]
+
+
+# ---------- connection ----------
+
+def connect(url: str) -> Engine:
+    """Create the engine and any missing tables. `sqlite://` (in memory) shares one connection."""
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url.removeprefix("postgres://")
+    elif url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url.removeprefix("postgresql://")   # psycopg 3 (the `postgres` extra), not psycopg2
+    kwargs: dict = {}
+    if url in ("sqlite://", "sqlite:///:memory:"):
+        kwargs = {"connect_args": {"check_same_thread": False}, "poolclass": StaticPool}
+    elif url.startswith("sqlite"):
+        kwargs = {"connect_args": {"check_same_thread": False}}
+    engine = create_engine(url, **kwargs)
+    t.metadata.create_all(engine)
+    return engine
+
+
+# ---------- street states ----------
+
+def save_street_states(conn, states: list[StreetState], mode: str) -> None:
+    now = now_myt()
+    rows = [{
+        "street_id": s.street_id, "mode": mode, "level": s.level.json, "trigger_level": s.trigger_level.json,
+        "confidence": s.confidence, "flood_probability": s.flood_probability,
+        "fired_by_json": json.dumps(list(s.fired_by)), "window_start": s.window_start, "window_end": s.window_end,
+        "reasons_json": json.dumps([_reason_dict(r) for r in s.reasons]), "data_time": s.data_time, "updated_at": now,
+    } for s in states]
+    if not rows:
+        return
+    conn.execute(delete(t.street_state).where(and_(t.street_state.c.street_id == bindparam("b_street"),
+                                                   t.street_state.c.mode == bindparam("b_mode"))),
+                 [{"b_street": r["street_id"], "b_mode": mode} for r in rows])
+    conn.execute(insert(t.street_state), rows)
+
+
+def get_street_states(conn, township_id: str, mode: str) -> list[dict]:
+    """States of one township; street ids are `<TOWNSHIP>-<slug>`, so the prefix selects the township."""
+    q = select(t.street_state).where(t.street_state.c.mode == mode,
+                                     t.street_state.c.street_id.startswith(f"{township_id}-", autoescape=True)).order_by(t.street_state.c.street_id)
+    return [{
+        "street_id": r.street_id, "mode": r.mode, "level": r.level, "trigger_level": r.trigger_level,
+        "confidence": r.confidence, "flood_probability": r.flood_probability,
+        "fired_by": json.loads(r.fired_by_json or "[]"), "window": _window(r.window_start, r.window_end),
+        "reasons": json.loads(r.reasons_json or "[]"), "data_time": _iso(r.data_time), "updated_at": _iso(r.updated_at),
+    } for r in conn.execute(q)]
+
+
+# ---------- alerts ----------
+
+def _alert_id(a: Alert, is_replay: bool, is_backfill: bool, horizon: str) -> str:
+    """Live nowcast ids equal the runner's `<street>@<time>-<kind>`; other horizons and modes add a suffix."""
+    h = "" if horizon == "nowcast" else f"~{horizon}"
+    mode = "~backfill" if is_backfill else "~replay" if is_replay else ""
+    return f"{a.street_id}@{a.issued_at:%Y%m%dT%H%M}-{a.kind}{h}{mode}"
+
+
+def insert_alerts(conn, alerts: list[Alert], *, is_replay: bool, is_backfill: bool,
+                  horizon: str = "nowcast") -> list[str]:
+    """Insert alerts and return the ids of the NEWLY inserted ones (in order). An id that already exists is left
+    untouched and not returned, so callers (push) act only on new alerts after a restart."""
+    ids = [_alert_id(a, is_replay, is_backfill, horizon) for a in alerts]
+    existing: set[str] = set()
+    for part in _chunks(ids):
+        existing |= {r[0] for r in conn.execute(select(t.alerts.c.alert_id).where(t.alerts.c.alert_id.in_(part)))}
+    rows, seen, new_ids = [], set(existing), []
+    for a, aid in zip(alerts, ids):
+        if aid in seen:
+            continue
+        seen.add(aid)
+        new_ids.append(aid)
+        rows.append({
+            "alert_id": aid, "street_id": a.street_id, "township_id": a.street_id.split("-", 1)[0],
+            "horizon": horizon, "level": a.level.json, "kind": a.kind, "issued_at": a.issued_at,
+            "window_start": a.window_start, "window_end": a.window_end,
+            "fired_by_json": json.dumps(list(a.fired_by)), "reasons_json": json.dumps([_reason_dict(r) for r in a.reasons]),
+            "inputs_json": None, "recipients": 0, "is_replay": is_replay, "is_backfill": is_backfill,
+        })
+    if rows:
+        conn.execute(insert(t.alerts), rows)
+    return new_ids
+
+
+def replace_backfill(conn, township_id: str, start: datetime, end: datetime) -> int:
+    """Delete the township's backfill alerts issued in [start, end) so a re-run rewrites them (idempotent). Returns the count."""
+    res = conn.execute(delete(t.alerts).where(t.alerts.c.is_backfill.is_(True), t.alerts.c.township_id == township_id,
+                                              t.alerts.c.issued_at >= _naive(start), t.alerts.c.issued_at < _naive(end)))
+    return res.rowcount
+
+
+def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
+                include_replay: bool = True, since: datetime | None = None, include_backfill: bool = False) -> list[dict]:
+    """AlertSummary dicts, newest first. Backfill rows are excluded unless `include_backfill`.
+
+    active: per street and per mode (live / replay / backfill) the latest row, if it is an 'alert' (not an all-clear).
+    This matches the engine: an alert stays active until the street's all-clear (no wall-clock test)."""
+    a = t.alerts
+    q = select(a).order_by(a.c.issued_at.desc(), a.c.alert_id)
+    if street_id is not None:
+        q = q.where(a.c.street_id == street_id)
+    if not include_replay:
+        q = q.where(a.c.is_replay.is_(False))
+    if not include_backfill:
+        q = q.where(a.c.is_backfill.is_(False))
+    if since is not None:
+        q = q.where(a.c.issued_at >= _naive(since))
+    if active:
+        latest = (select(a.c.street_id, a.c.is_replay, a.c.is_backfill, func.max(a.c.issued_at).label("m"))
+                  .group_by(a.c.street_id, a.c.is_replay, a.c.is_backfill).subquery())
+        q = (q.join(latest, and_(a.c.street_id == latest.c.street_id, a.c.is_replay == latest.c.is_replay,
+                                 a.c.is_backfill == latest.c.is_backfill, a.c.issued_at == latest.c.m))
+             .where(a.c.kind == "alert"))
+    pl = push_levels()
+    return [{
+        "alert_id": r.alert_id, "street_id": r.street_id, "horizon": r.horizon, "kind": r.kind, "level": r.level,
+        "issued_at": _iso(r.issued_at), "window": _window(r.window_start, r.window_end),
+        "outcome": "unverified",   # TODO(WP4): computed from answers and sensor readings (stats.outcomes.alert_outcome)
+        "is_replay": bool(r.is_replay), "push": r.kind == "alert" and r.level in pl,
+    } for r in conn.execute(q)]
+
+
+# ---------- subscriptions ----------
+
+def upsert_subscription(conn, device_id: str, sub: dict, street_ids: list[str], lang: str) -> None:
+    """`sub` is a WebPushSubscription: {endpoint, keys: {p256dh, auth}} (flat p256dh/auth also accepted)."""
+    keys = sub.get("keys", sub)
+    created = conn.execute(select(t.subscriptions.c.created_at).where(t.subscriptions.c.device_id == device_id)).scalar()
+    conn.execute(delete(t.subscriptions).where(t.subscriptions.c.device_id == device_id))
+    conn.execute(delete(t.subscription_streets).where(t.subscription_streets.c.device_id == device_id))
+    conn.execute(insert(t.subscriptions).values(device_id=device_id, endpoint=sub["endpoint"], p256dh=keys["p256dh"],
+                                                auth=keys["auth"], lang=lang, created_at=created or now_myt()))
+    if street_ids:
+        conn.execute(insert(t.subscription_streets), [{"device_id": device_id, "street_id": s} for s in dict.fromkeys(street_ids)])
+
+
+def delete_device(conn, device_id: str, *, uploads: Path | str | None = None) -> list[Path]:
+    """Delete every DB row of the device: subscription, street links, answers.
+
+    Returns the photo files to remove, restricted to those inside the uploads directory (anything else is ignored).
+    The caller unlinks them with `remove_files` AFTER its transaction commits."""
+    root = Path(uploads or uploads_dir()).resolve()
+    photos = [p for (p,) in conn.execute(select(t.answers.c.photo_path).where(
+        t.answers.c.device_id == device_id, t.answers.c.photo_path.is_not(None)))]
+    conn.execute(delete(t.answers).where(t.answers.c.device_id == device_id))
+    conn.execute(delete(t.subscription_streets).where(t.subscription_streets.c.device_id == device_id))
+    conn.execute(delete(t.subscriptions).where(t.subscriptions.c.device_id == device_id))
+    safe = []
+    for p in photos:
+        path = Path(p).resolve()
+        if path != root and path.is_relative_to(root):
+            safe.append(path)
+    return safe
+
+
+def remove_files(paths: list[Path]) -> None:
+    """Unlink files returned by `delete_device` (call after commit); missing files are ignored."""
+    for p in paths:
+        try:
+            Path(p).unlink()
+        except OSError:
+            pass
+
+
+def list_subscribers(conn, street_id: str) -> list[dict]:
+    q = (select(t.subscriptions).join(t.subscription_streets, t.subscription_streets.c.device_id == t.subscriptions.c.device_id)
+         .where(t.subscription_streets.c.street_id == street_id).order_by(t.subscriptions.c.device_id))
+    return [{"device_id": r.device_id, "endpoint": r.endpoint, "p256dh": r.p256dh, "auth": r.auth, "lang": r.lang}
+            for r in conn.execute(q)]
+
+
+# ---------- answers ----------
+
+def insert_answer(conn, answer: dict) -> str:
+    """Store an answer and return its id. Raises DuplicateAnswer on (device_id, alert_id); reports (alert_id None) are free."""
+    alert_id = answer.get("alert_id")
+    if alert_id is not None and conn.execute(select(t.answers.c.answer_id).where(
+            t.answers.c.device_id == answer["device_id"], t.answers.c.alert_id == alert_id)).first():
+        raise DuplicateAnswer(f"{answer['device_id']} already answered {alert_id}")
+    answer_id = answer.get("answer_id") or uuid.uuid4().hex
+    row = {"answer_id": answer_id, "device_id": answer["device_id"], "alert_id": alert_id,
+           "street_id": answer["street_id"], "answer": answer["answer"], "depth": answer.get("depth"),
+           "photo_path": answer.get("photo_path"), "lat3": answer.get("lat3"), "lon3": answer.get("lon3"),
+           "distance_m": answer.get("distance_m"), "answered_at": _naive(answer.get("answered_at")) or now_myt(),
+           "review_status": answer.get("review_status", "pending"), "source": answer.get("source", "resident")}
+    try:
+        with conn.begin_nested():   # SAVEPOINT: a failed insert must not abort the caller's transaction (Postgres)
+            conn.execute(insert(t.answers).values(**row))
+    except IntegrityError as exc:
+        msg = str(exc.orig)
+        if "uq_answers_device_alert" in msg or "answers.alert_id" in msg:
+            raise DuplicateAnswer(msg) from exc
+        raise
+    return answer_id
+
+
+def list_answers(conn, *, alert_id=None, street_id=None, review_status=None) -> list[dict]:
+    """Rows as stored. `photo_path` is a server file path; the API layer maps it to the `photo_url` of the Answer type."""
+    q = select(t.answers).order_by(t.answers.c.answered_at, t.answers.c.answer_id)
+    for col, val in ((t.answers.c.alert_id, alert_id), (t.answers.c.street_id, street_id),
+                     (t.answers.c.review_status, review_status)):
+        if val is not None:
+            q = q.where(col == val)
+    return [{
+        "answer_id": r.answer_id, "device_id": r.device_id, "alert_id": r.alert_id, "street_id": r.street_id,
+        "answer": r.answer, "depth": r.depth, "photo_path": r.photo_path, "lat3": r.lat3, "lon3": r.lon3,
+        "distance_m": r.distance_m, "answered_at": _iso(r.answered_at), "review_status": r.review_status,
+        "source": r.source,
+    } for r in conn.execute(q)]
+
+
+def set_answer_review(conn, answer_id: str, status: str) -> None:
+    conn.execute(update(t.answers).where(t.answers.c.answer_id == answer_id).values(review_status=status))
+
+
+# ---------- sensor, suggestions, notes ----------
+
+def insert_sensor_reading(conn, device_id: str, time_local: datetime, level_cm: float, simulated: bool) -> None:
+    conn.execute(insert(t.sensor_readings).values(device_id=device_id, time_local=_naive(time_local),
+                                                  level_cm=level_cm, simulated=simulated))
+
+
+def upsert_suggestions(conn, suggestions: list[dict]) -> None:
+    """Replace by id (evidence stored as JSON). For an existing id, `status`, `note` and `created_at` are kept
+    unless the caller passes status/note, so regenerating suggestions does not lose admin decisions."""
+    now = now_myt()
+    old: dict = {}
+    ids = [s["id"] for s in suggestions]
+    for part in _chunks(ids):
+        for r in conn.execute(select(t.suggestions.c.id, t.suggestions.c.status, t.suggestions.c.note,
+                                     t.suggestions.c.created_at).where(t.suggestions.c.id.in_(part))):
+            old[r.id] = r
+    rows = []
+    for s in suggestions:
+        o = old.get(s["id"])
+        rows.append({
+            "id": s["id"], "street_id": s.get("street_id"), "rule": s["rule"], "priority": s["priority"], "text": s["text"],
+            "evidence_json": json.dumps(s.get("evidence", {})),
+            "status": s["status"] if "status" in s else (o.status if o else "open"),
+            "note": s["note"] if "note" in s else (o.note if o else None),
+            "period_from": _date(s.get("period_from")), "period_to": _date(s.get("period_to")),
+            "created_at": o.created_at if o else now,
+        })
+    if not rows:
+        return
+    conn.execute(delete(t.suggestions).where(t.suggestions.c.id == bindparam("b_id")), [{"b_id": r["id"]} for r in rows])
+    conn.execute(insert(t.suggestions), rows)
+
+
+def _date(d: date | str | None) -> date | None:
+    return date.fromisoformat(d) if isinstance(d, str) else d
+
+
+def update_suggestion(conn, suggestion_id: str, status: str, note: str | None) -> None:
+    conn.execute(update(t.suggestions).where(t.suggestions.c.id == suggestion_id).values(status=status, note=note))
+
+
+def insert_note(conn, street_id: str, text: str, author: str) -> int:
+    res = conn.execute(insert(t.ops_notes).values(street_id=street_id, text=text, author=author, created_at=now_myt()))
+    return int(res.inserted_primary_key[0])
