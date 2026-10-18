@@ -17,10 +17,10 @@ import geopandas as gpd
 import pandas as pd
 import yaml
 
-from .. import live, radar
+from .. import live, met_parse, radar
 from .. import tide as tide_mod
 from ..db import repo
-from ..engine import street_stations
+from ..engine import outlook, street_stations
 from ..engine.replay import load_archive_readings
 from ..ml import dataset, forecast as river, predict
 from .main import create_app
@@ -96,6 +96,8 @@ def build_context(township_id: str = "BBR") -> EngineContext:
         radar=lambda now: radar.latest_reason(DATA / "raw" / "radar", town["centre"]["lat"], town["centre"]["lon"], now),
         street_stations=street_stations.load(ROOT / "assets" / "geo" / f"{township_id.lower()}_street_stations.json"),
         forecast=forecast, river_forecast=river_forecast,
+        outlook_inputs=lambda now: (met_parse.load_latest(DATA / "raw" / "met_warnings"),
+                                    outlook.load_forecast(DATA / "raw" / "openmeteo_live", township_id)),
     )
 
 
