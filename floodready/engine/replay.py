@@ -43,16 +43,22 @@ def _dated(trigger: TriggerResult, t: pd.Timestamp) -> TriggerResult:
     return trigger
 
 
-def _no_river_data(trigger: TriggerResult, dead: tuple[str, ...], names: dict) -> TriggerResult:
-    """Every river station of the street is dead or stale: the rain rules stand and the reasons say why there is no
-    river reading. The level is never lowered by this."""
-    label = ", ".join(str(names.get(g, g)) for g in dead)
-    reason = Reason(code="stale_data", value=float(len(dead)), unit="stations", station=None,
-                    text_en=f"No recent data from river station {label}",
-                    text_ms=f"Tiada data terkini daripada stesen sungai {label}")
+def _gauge_notice(trigger: TriggerResult, dead: tuple[str, ...], substitute: str | None, names: dict) -> TriggerResult:
+    """The street's own river gauge(s) `dead` are offline. With a `substitute` gauge the street is judged on that
+    river instead; with none the rain rules stand alone. Either way the first reason says so, confidence is low
+    (contract: low = stale data), the dead gauges join `stale_stations`, and the level is never lowered by this."""
+    own = ", ".join(str(names.get(g, g)) for g in dead)
+    if substitute:
+        sub = str(names.get(substitute, substitute))
+        reason = Reason(code="stale_data", value=float(len(dead)), unit="stations", station=sub,
+                        text_en=f"Own river gauge {own} is offline; using the nearest working gauge {sub}",
+                        text_ms=f"Tolok sungai sendiri {own} tidak berfungsi; menggunakan tolok berfungsi terdekat, {sub}")
+    else:
+        reason = Reason(code="stale_data", value=float(len(dead)), unit="stations", station=None,
+                        text_en=f"No recent data from river station {own}",
+                        text_ms=f"Tiada data terkini daripada stesen sungai {own}")
     kept = tuple(r for r in trigger.reasons if r.code != "stale_data")
-    confidence = trigger.confidence if trigger.confidence == "low" else "medium"   # rain still reports; the river is blind
-    return dataclasses.replace(trigger, reasons=(reason, *kept), confidence=confidence,
+    return dataclasses.replace(trigger, reasons=(reason, *kept), confidence="low",
                                stale_stations=tuple(sorted(set(trigger.stale_stations) | set(dead))))
 
 
@@ -124,12 +130,13 @@ def run(start: datetime, end: datetime, step: timedelta, readings: pd.DataFrame,
                 street_trigger, p = trigger, ml.p if ml is not None else None
             else:
                 wl = next((gid for gid in candidates if gid not in dead), None)
-                group = (wl, rf, tuple(c for c in candidates if c in dead) if candidates and wl is None else ())
+                skipped = tuple(c for c in candidates[:candidates.index(wl)] if c in dead) if wl else tuple(c for c in candidates if c in dead)
+                group = (wl, rf, skipped)
                 if group not in group_triggers:
                     own = _dated(rules.township_trigger(_own_features(feats, wl, rf),
                                                         ([wl] if wl else []) + list(rf), rules_cfg), t)
                     if group[2]:
-                        own = _no_river_data(own, group[2], wl_names)
+                        own = _gauge_notice(own, group[2], wl, wl_names)
                     own_ml = ml_by_station.get(wl) if wl else None
                     group_triggers[group] = (levels.combine(own, own_ml, ml_cfg) if own_ml is not None else own,
                                              own_ml.p if own_ml is not None else None)

@@ -1,5 +1,6 @@
 """WP2: a street whose own river station is dead or stale falls back to its next candidate."""
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -101,7 +102,15 @@ def test_dead_first_station_falls_back_for_river_rules_and_names_the_station(rea
     assert fb.level == alone.level and fb.trigger_level == alone.trigger_level
     river = [r for r in fb.reasons if r.code == "river_level"]
     assert river and all("Pekan Meru" in r.text_en for r in river)   # the station actually used
-    assert not any(r.code == "stale_data" for r in fb.reasons)
+    # the substitute is labelled first, in EN and MS, naming both gauges; confidence is low; the dead gauge is recorded
+    note = fb.reasons[0]
+    assert note.code == "stale_data" and note.station == "Sg. Binjai di Pekan Meru"
+    assert "Own river gauge Sg. Kapar Kechil di Kg. Perepat, Kapar is offline" in note.text_en
+    assert "using the nearest working gauge Sg. Binjai di Pekan Meru" in note.text_en
+    assert "Tolok sungai sendiri Sg. Kapar Kechil di Kg. Perepat, Kapar tidak berfungsi" in note.text_ms
+    assert "Sg. Binjai di Pekan Meru" in note.text_ms
+    assert fb.confidence == "low"
+    assert not any(r.code == "stale_data" for r in alone.reasons) and alone.confidence == "high"
 
 
 def test_all_candidates_dead_keeps_rain_rules_and_adds_stale_data(readings, stations, rules_cfg, matrix_cfg):
@@ -111,7 +120,7 @@ def test_all_candidates_dead_keeps_rain_rules_and_adds_stale_data(readings, stat
     assert any(r.code == "stale_data" for r in solo.reasons)
     assert any(r.code.startswith("rain") for r in solo.reasons)      # rain rules still fire
     assert solo.level >= Level.WATCH                                 # never silently lowered
-    assert solo.confidence == "medium"                               # rain reports, the river is blind
+    assert solo.confidence == "low"                                  # contract: low = stale data
     early = state(steps[T("06:00")], "solo")                         # quiet rain, dead river: still told why
     assert early.level is Level.NORMAL and early.reasons[0].code == "stale_data"
     stale = next(r for r in solo.reasons if r.code == "stale_data")
@@ -162,3 +171,34 @@ def test_ml_probability_comes_from_the_fallback_station(readings, stations, rule
     at = steps[T("09:00")]
     assert state(at, "fb").flood_probability == 0.5          # via PEKANMERU
     assert state(at, "solo").flood_probability is None       # every candidate dead: no ML either
+
+
+def test_gauge_notice_records_the_dead_own_gauge_in_stale_stations():
+    from floodready.engine.types import TriggerResult
+    base = TriggerResult(level=Level.NORMAL, confidence="high", fired_by=(), reasons=(), data_time=T("09:00"),
+                         stale_stations=("X",))
+    names = {"26558": "Own", "PEKANMERU": "Sub"}
+    out = replay._gauge_notice(base, ("26558",), "PEKANMERU", names)
+    assert out.stale_stations == ("26558", "X") and out.confidence == "low" and out.level is Level.NORMAL
+    assert out.reasons[0].text_en == "Own river gauge Own is offline; using the nearest working gauge Sub"
+    none = replay._gauge_notice(base, ("26558",), None, names)
+    assert none.stale_stations == ("26558", "X") and none.confidence == "low"
+
+
+def test_dead_set_is_causal_with_qc_on_truncated_readings(stations):
+    """Cut the raw readings at t, run QC + features, and the dead/stale set at t equals the full-history one."""
+    from floodready import qc
+    from floodready.engine.features import station_features
+    raw = pd.read_csv(Path(__file__).resolve().parents[1] / "fixtures" / "engine" / "bbr_20241112_readings.csv",
+                      parse_dates=["time_local"], dtype={"graph_id": str})
+    wl_ids = ["26558", "PEKANMERU", "PANDAMARAN"]
+    raw = blank_wl(raw, "PANDAMARAN", "2024-11-12 08:00")           # PANDAMARAN stops reporting at 08:00
+    full, _ = qc.clean_readings(raw, stations=stations)
+    for hhmm in ("06:00", "07:45", "08:30", "09:30", "10:15", "10:45", "11:30"):
+        t = pd.Timestamp(f"2024-11-12 {hhmm}")
+        clean, _ = qc.clean_readings(raw[raw.time_local <= t], stations=stations)
+        cut = ss.dead_wl(station_features(clean[(clean.kind == "wl") & clean.graph_id.isin(wl_ids)], t, stations, 120), wl_ids)
+        ref = ss.dead_wl(station_features(full[(full.kind == "wl") & full.graph_id.isin(wl_ids) & (full.time_local <= t)],
+                                          t, stations, 120), wl_ids)
+        assert cut == ref, hhmm
+    assert ref >= {"PANDAMARAN"} and "PEKANMERU" not in ref          # sanity: it did flip
