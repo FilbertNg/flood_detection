@@ -40,11 +40,22 @@ _BODY = {
 _WINDOW = {"en": " Expected {a} to {b}.", "ms": " Dijangka {a} hingga {b}."}
 
 
-def payload(alert: dict, street_name: str, lang: str) -> dict:
+_CONFIRMED = {
+    "en": ("Confirmed by neighbours: {street}", "Neighbours report flooding near {street}. Take care and follow official instructions."),
+    "ms": ("Disahkan oleh jiran: {street}", "Jiran melaporkan banjir berhampiran {street}. Berhati-hati dan ikut arahan rasmi."),
+}
+
+
+def payload(alert: dict, street_name: str, lang: str, confirmed: bool = False) -> dict:
     """PushPayload {title, body, url, alert_id, level}. `alert` is an AlertSummary (optionally with
     `reason_text` {en, ms}); replay alerts get a "[Replay] " title prefix."""
     lang = lang if lang in _TITLE else "en"
     level = alert["level"]
+    if confirmed:        # follow-up "Confirmed by neighbours" (ALR-4): same shape, no window or reasons
+        title, body = (x.format(street=street_name) for x in _CONFIRMED[lang])
+        if alert.get("is_replay"):
+            title = "[Replay] " + title
+        return {"title": title, "body": body, "url": f"/street/{alert['street_id']}", "alert_id": alert["alert_id"], "level": level}
     title = _TITLE[lang].get(level, _TITLE[lang]["watch"]).format(street=street_name)
     if alert.get("is_replay"):
         title = "[Replay] " + title
@@ -71,11 +82,12 @@ def _pushable(alert: dict) -> bool:
     return bool(alert.get("push")) and alert.get("kind", "alert") == "alert"
 
 
-def _deliver(subs: list[dict], alert: dict, street_name: str, send: Callable[[dict, str], None]) -> tuple[int, list[str]]:
+def _deliver(subs: list[dict], alert: dict, street_name: str, send: Callable[[dict, str], None],
+             confirmed: bool = False) -> tuple[int, list[str]]:
     """Send to each subscriber (no database access). Returns (sent count, device ids the push service reported gone)."""
     sent, gone = 0, []
     for sub in subs:
-        data = json.dumps(payload(alert, street_name, sub["lang"]), ensure_ascii=False)
+        data = json.dumps(payload(alert, street_name, sub["lang"], confirmed), ensure_ascii=False)
         try:
             send(sub, data)
             sent += 1
@@ -153,14 +165,24 @@ class PushService:
             self._futures = [f for f in self._futures if not f.done()]
             self._futures.append(self._pool.submit(self._run, list(alerts), dict(street_names)))
 
-    def _run(self, alerts: list[dict], names: dict[str, str]) -> None:
+    def enqueue_confirmed(self, alerts: list[dict], street_names: dict[str, str]) -> None:
+        """Queue the "Confirmed by neighbours" follow-up (only for alerts with push true); returns immediately."""
+        if not alerts or not self.enabled:
+            return
+        with self._lock:
+            if self._pool is None:
+                self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="push")
+            self._futures = [f for f in self._futures if not f.done()]
+            self._futures.append(self._pool.submit(self._run, list(alerts), dict(street_names), True))
+
+    def _run(self, alerts: list[dict], names: dict[str, str], confirmed: bool = False) -> None:
         for alert in alerts:
             try:
                 if not _pushable(alert):
                     continue
                 with self.engine.begin() as conn:                 # short read; closed before any network I/O
                     subs = repo.list_subscribers(conn, alert["street_id"])
-                _, gone = _deliver(subs, alert, names.get(alert["street_id"], alert["street_id"]), self._send)
+                _, gone = _deliver(subs, alert, names.get(alert["street_id"], alert["street_id"]), self._send, confirmed)
                 if gone:
                     with self.engine.begin() as conn:             # short write of its own
                         for device_id in gone:

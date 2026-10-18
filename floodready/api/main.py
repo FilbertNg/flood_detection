@@ -24,7 +24,7 @@ from urllib3.exceptions import LocationParseError
 from urllib3.util import parse_url
 
 from ..db import repo
-from . import serialize
+from . import answers, serialize
 from .runner import Runner
 
 log = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ def _parse_time(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
 
 
-def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
+def create_app(runner: Runner, start_live_loop: bool = True, on_alert_confirmed=None) -> FastAPI:
     stop = threading.Event()
 
     def live_loop():
@@ -150,6 +150,7 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"])
     ctx = runner.ctx
     api = "/api/v1"
+    answers.install(app, ctx=ctx, runner=runner, api=api, on_confirmed=on_alert_confirmed)   # WP4: POST /answers, /sensor/readings
 
     @app.get(f"{api}/status")
     def get_status():
@@ -179,7 +180,7 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
 
     @app.get(f"{api}/alerts")
     def get_alerts(street_id: str | None = None, active: bool = False):
-        return runner.alerts(street_id=street_id, active=active)    # read from the database
+        return runner.alerts(street_id=street_id, active=active)    # read from the database (outcomes included)
 
     # ---------- WP3: Web Push ----------
     @app.get(f"{api}/push/public-key")
