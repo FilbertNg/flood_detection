@@ -81,13 +81,14 @@ def main() -> None:
     own = [s["graph_id"] for s in town["stations"]]
     names = {s["graph_id"]: s["name"] for s in town["stations"]}
     health = sug.station_health(readings[readings["graph_id"].isin(own)], args.start, args.end, names=names)
+    stat_names = dict(zip(stations['graph_id'], stations['name'])) | names
     mapping = street_stations.load(ROOT / "assets" / "geo" / f"{args.township.lower()}_street_stations.json")
     events = pd.read_csv(args.events) if args.events else None
 
     engine = repo.connect(args.db)
     with engine.begin() as conn:
         out = sug.suggestions(conn, args.start, args.end, tide, health, onset_rain=make_onset_rain(readings, mapping),
-                              events=events)
+                              events=events, street_stations=mapping, station_names=stat_names)
         if not args.dry_run:
             sug.save(conn, out, args.start, args.end)
 

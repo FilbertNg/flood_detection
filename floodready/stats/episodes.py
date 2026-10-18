@@ -18,11 +18,16 @@ def cooldown_default() -> timedelta:
     return timedelta(minutes=int(repo._alerts_cfg()["cooldown_min"]))
 
 
-def episodes(alerts: list[dict], cooldown: timedelta | None = None, period_end: datetime | None = None) -> list[dict]:
+MAX_OPEN_GAP = timedelta(hours=48)    # an open episode with no row for this long is cut at its last row
+
+
+def episodes(alerts: list[dict], cooldown: timedelta | None = None, max_open_gap: timedelta = MAX_OPEN_GAP) -> list[dict]:
     """alerts: AlertSummary dicts (street_id, kind 'alert'|'all_clear', level, issued_at, alert_id), any order.
 
-    Returns [{street_id, start, end, level, alert_ids, rows}] sorted by start; `end` is the all-clear time (or
-    period_end / last row when still open), `rows` the number of alert rows merged into it."""
+    Returns [{street_id, start, end, level, alert_ids, rows}] sorted by start. `end` is the all-clear time, or None
+    while the episode is open; `level` is the highest level reached; `alert_ids` are the alert rows merged into it
+    (to aggregate outcomes); an open episode splits when `max_open_gap` (48 h) passes with no row (the first part
+    ends at its last row); `rows` = len(alert_ids). Count an episode in the period its `start` falls in."""
     cooldown = cooldown_default() if cooldown is None else cooldown
     by_street: dict[str, list[dict]] = {}
     for a in alerts:
@@ -32,8 +37,13 @@ def episodes(alerts: list[dict], cooldown: timedelta | None = None, period_end: 
         rows = sorted(rows, key=lambda r: (outcomes._dt(r["issued_at"]), r["kind"] == "alert"))
         cur: dict | None = None
         closed_at: datetime | None = None
+        last_t: datetime | None = None
         for r in rows:
             t = outcomes._dt(r["issued_at"])
+            if cur is not None and cur["end"] is None and t - last_t > max_open_gap:
+                cur["end"] = last_t
+                cur = None
+            last_t = t
             if r["kind"] == "alert":
                 if cur is None:
                     cur = {"street_id": street, "start": t, "end": None, "level": r["level"], "alert_ids": [], "rows": 0}
@@ -50,6 +60,4 @@ def episodes(alerts: list[dict], cooldown: timedelta | None = None, period_end: 
                     cur["level"] = r["level"]
             elif cur is not None and cur["end"] is None:
                 cur["end"] = closed_at = t
-        for e in (e for e in out if e["street_id"] == street and e["end"] is None):
-            e["end"] = period_end if period_end is not None else outcomes._dt(rows[-1]["issued_at"])
     return sorted(out, key=lambda e: (e["start"], e["street_id"]))

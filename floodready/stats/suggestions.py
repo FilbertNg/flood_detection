@@ -32,10 +32,16 @@ JPS_GUIDE_MM = 60.0               # "convective rain more than 60 mm in 2-4 hour
 MIN_FLOODS_SUG1, MIN_FLOODS_SUG2, TIDE_SHARE, TIDE_WINDOW_H = 3, 2, 0.7, 2.0
 NEIGHBOUR_M, NEIGHBOUR_MIN, ADJACENT_M = 500.0, 3, 30.0
 CLUSTER_MIN, REPEAT_MIN, HIGH_SUSCEPTIBILITY = 3, 2, 4
-READINESS_MIN, MISSED_MIN, STALE_PCT = 5, 2, 10.0
+READINESS_MIN, MISSED_MIN, STALE_MAX = 5, 2, 0.10
 FLOOD_GAP = timedelta(hours=6)    # confirmed alerts on a street closer than this are one flood
 GEO = Path(__file__).resolve().parents[2] / "assets" / "geo"
 SLOT_MIN = 15
+
+def _sug5_top_n() -> int:
+    import yaml
+    with open(GEO.parents[1] / "config" / "rules.yaml", encoding="utf-8") as f:
+        return int(yaml.safe_load(f)["suggestions"]["sug5_top_n"])
+
 
 OnsetRain = Callable[[str, datetime], "float | None"]
 
@@ -43,7 +49,7 @@ OnsetRain = Callable[[str, datetime], "float | None"]
 # ---------- station health ----------
 
 def station_health(readings: pd.DataFrame, date_from: date, date_to: date, names: dict[str, str] | None = None) -> list[dict]:
-    """[{graph_id, name, stale_pct}] over [date_from, date_to] inclusive, worst first.
+    """[{graph_id, name, stale_pct}] (stale_pct is a 0-1 fraction) over [date_from, date_to] inclusive, worst first.
 
     `readings`: graph_id, kind ('rf'|'wl'), time_local, rain_15min_mm, wl_m, AFTER QC (floodready.qc), so a reading the
     QC blanked (including a gauge in dead state) is NaN. A 15-minute slot is stale when its series has no valid value
@@ -60,7 +66,7 @@ def station_health(readings: pd.DataFrame, date_from: date, date_to: date, names
         col = "rain_15min_mm" if kind == "rf" else "wl_m"
         sub = df[(df["graph_id"] == gid) & (df["kind"] == kind) & df[col].notna()]
         valid = sub["time_local"].dt.floor(f"{SLOT_MIN}min").nunique()
-        stale = round(100.0 * (1 - min(valid, slots) / slots), 1)
+        stale = round(1 - min(valid, slots) / slots, 3)
         worst[gid] = max(worst.get(gid, 0.0), stale)
     out = [{"graph_id": g, "name": names.get(g, g), "stale_pct": s} for g, s in worst.items()]
     return sorted(out, key=lambda h: (-h["stale_pct"], h["graph_id"]))
@@ -185,13 +191,16 @@ def _clusters(streets, candidates: list[str]) -> list[list[str]]:
 # ---------- the rules ----------
 
 def suggestions(conn, date_from: date, date_to: date, tide: pd.DataFrame | None, station_health: list[dict], *,
-                streets=None, onset_rain: OnsetRain | None = None, events: pd.DataFrame | None = None) -> list[dict]:
+                streets=None, onset_rain: OnsetRain | None = None, events: pd.DataFrame | None = None, street_stations: dict | None = None,
+                station_names: dict[str, str] | None = None, sug5_top_n: int | None = None) -> list[dict]:
     """SUG-1..SUG-7 for [date_from, date_to] inclusive, as Suggestion dicts (status 'open', note None), highest priority first.
 
     tide: hourly table (time_local, tide_height_m, hours_to_high_tide) or None (SUG-2 then yields nothing).
     station_health: [{graph_id, name, stale_pct}] (see `station_health`).
     streets: GeoDataFrame (street_id, name, susceptibility, centroid_lat/lon, geometry); default assets/geo/*_streets.geojson.
     onset_rain(street_id, onset) -> mm of rain in the 2-4 h before the flood onset, or None; without it SUG-1 yields nothing.
+    street_stations/station_names: street -> {wl: river station} mapping and graph_id -> name (SUG-5 evidence).
+    sug5_top_n: SUG-5 cap, default `suggestions.sug5_top_n` of config/rules.yaml.
     events: labelled news events (floodready.stats.outcomes.news_outcomes); omitted = residents and sensors only."""
     if streets is None:
         streets = _load_streets()
@@ -270,15 +279,27 @@ def suggestions(conn, date_from: date, date_to: date, tide: pd.DataFrame | None,
 
     # SUG-5 pre-event readiness: count alert EPISODES (flapping merged, see stats/episodes.py), not raw alert rows
     ready: dict[str, list[dict]] = defaultdict(list)
-    for e in episodes_mod.episodes(alerts, period_end=end):
+    for e in episodes_mod.episodes(alerts):
         if e["level"] in ("warning", "danger") and _in(e["start"], start, end):
             ready[e["street_id"]].append(e)
-    for sid, eps in sorted(ready.items()):
-        if len(eps) >= READINESS_MIN:
-            add("SUG-5", sid, sid, f"Add {name(sid)} to the pre-storm drain-clearing and staff deployment list.",
-                {"alert_count": len(eps), "episodes": len(eps), "raw_alert_rows": sum(e["rows"] for e in eps),
-                 "flood_dates": sorted(_iso(e["start"]) for e in eps),
-                 "notes": f"Reached Warning or Danger in {len(eps)} separate alert episodes in the period (flapping alert/all-clear cycles merged; dates are episode starts, not confirmed floods)."})
+    eligible = {sid: eps for sid, eps in ready.items() if len(eps) >= READINESS_MIN}
+    ranked = sorted(eligible, key=lambda sid: (-len(eligible[sid]), -sum(e["level"] == "danger" for e in eligible[sid]),
+                                               -susc.get(sid, 0), sid))
+    wl_of = {sid: ((street_stations or {}).get(sid) or {}).get("wl") for sid in ranked}
+    for rank, sid in enumerate(ranked[:sug5_top_n if sug5_top_n is not None else _sug5_top_n()], start=1):
+        eps = eligible[sid]
+        wl = wl_of[sid]
+        shared = sum(1 for o in ranked if wl and wl_of[o] == wl)
+        ev = {"alert_count": len(eps), "episodes": len(eps), "danger_episodes": sum(e["level"] == "danger" for e in eps),
+              "raw_alert_rows": sum(e["rows"] for e in eps), "rank": rank, "eligible_streets": len(ranked),
+              "flood_dates": sorted(_iso(e["start"]) for e in eps),
+              "notes": f"Rank {rank} of {len(ranked)} eligible streets (at least {READINESS_MIN} Warning/Danger episodes; ranked by episodes, Danger episodes, susceptibility). "
+                       f"{len(eps)} separate alert episodes in the period (flapping merged); dates are episode starts, not confirmed floods."}
+        if wl:
+            wl_name = (station_names or {}).get(wl, wl)
+            ev.update({"river_station": wl, "river_station_name": wl_name, "eligible_streets_on_same_river_station": shared})
+            ev["notes"] += f" The count is driven by river station {wl_name}, shared by {shared} of the eligible streets."
+        add("SUG-5", sid, sid, f"Add {name(sid)} to the pre-storm drain-clearing and staff deployment list.", ev)
 
     # SUG-6 monitoring gap
     reports = [r for r in repo.list_answers(conn) if r["answer"] == "report" and _in(outcomes._dt(r["answered_at"]), start, end)]
@@ -293,11 +314,11 @@ def suggestions(conn, date_from: date, date_to: date, tide: pd.DataFrame | None,
 
     # SUG-7 data health
     for h in station_health:
-        if h["stale_pct"] > STALE_PCT:
+        if h["stale_pct"] > STALE_MAX:
             add("SUG-7", h["graph_id"], f"station:{h['graph_id']}",
-                f"JPS station {h['name']} is often offline ({h['stale_pct']:.0f}% of the period without valid data); consider a backup station or our own rain gauge.",
+                f"JPS station {h['name']} is often offline ({h['stale_pct']:.0%} of the period without valid data); consider a backup station or our own rain gauge.",
                 {"graph_id": h["graph_id"], "stale_pct": h["stale_pct"],
-                 "stale_hours": round(((date_to - date_from).days + 1) * 24 * h["stale_pct"] / 100, 1),
+                 "stale_hours": round(((date_to - date_from).days + 1) * 24 * h["stale_pct"], 1),
                  "notes": "Stale = no valid reading in the 15-minute slot (missing, or blanked by QC including dead-gauge time)."},
                 sname=h["name"])
 

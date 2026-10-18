@@ -23,9 +23,9 @@ The PRD table has no priority column, so priorities are derived here: **SUG-1, S
 | SUG-2 | >= 2 floods with known tide and >= 70% within +-2 h of high water | high |
 | SUG-3 | (a) >= 2 floods while >= 3 neighbours within 500 m of susceptibility +-1 have none; or (b) floods >= 2 x same-length window a year earlier (earlier count >= 1, this count >= 2) | medium |
 | SUG-4 | >= 3 streets of susceptibility 4-5 within 30 m of each other (connected), each with >= 2 floods | medium |
-| SUG-5 | >= 5 Warning/Danger alert EPISODES in the period (flapping merged, `stats/episodes.py`; cooldown 60 min) | medium |
+| SUG-5 | >= 5 Warning/Danger alert EPISODES in the period (flapping merged, `stats/episodes.py`; cooldown 60 min) ; ranked by episodes, Danger episodes, susceptibility, street_id; top `suggestions.sug5_top_n` (10, config/rules.yaml) | medium |
 | SUG-6 | >= 2 missed floods | high |
-| SUG-7 | a station is stale > 10% of the period (QC-blanked or dead time counts as stale) | low |
+| SUG-7 | a station is stale fraction > 0.10 of the period (`stale_pct` is a 0-1 fraction) (QC-blanked or dead time counts as stale) | low |
 
 Ids: `s_<rule>_<key>_<YYMMDD-YYMMDD>` (rule lower case without hyphen, key = street id; a 10-char hash if the id would exceed 40 chars). SUG-7 uses `street_id = "station:<graph_id>"`. The script drops `status`/`note` before `repo.upsert_suggestions`, which keeps admin decisions on re-runs.
 

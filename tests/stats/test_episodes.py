@@ -28,10 +28,10 @@ def test_escalation_while_open_stays_one_episode():
     assert e["level"] == "danger" and e["rows"] == 3
 
 
-def test_open_episode_ends_at_period_end_and_streets_are_separate():
-    end = T + timedelta(days=1)
-    out = episodes([row(0), row(5, street="BBR-b")], CD, period_end=end)
-    assert [(e["street_id"], e["end"]) for e in out] == [("BBR-a", end), ("BBR-b", end)]
+def test_open_episode_has_no_end_and_streets_are_separate():
+    out = episodes([row(0), row(5, street="BBR-b")], CD)
+    assert [(e["street_id"], e["end"]) for e in out] == [("BBR-a", None), ("BBR-b", None)]
+    assert out[0]["alert_ids"] == ["BBR-a-0-alert"]
 
 
 def test_unsorted_input_and_seventy_six_watch_rows():
@@ -39,3 +39,12 @@ def test_unsorted_input_and_seventy_six_watch_rows():
     for k in range(76):
         rows += [row(k * 30), row(k * 30 + 5, "all_clear", "normal")]
     assert len(episodes(list(reversed(rows)), CD)) == 1
+
+
+def test_open_episode_splits_after_48h_without_a_row():
+    rows = [row(0), row(60, level="warning"), row(60 + 49 * 60, level="watch"), row(60 + 49 * 60 + 30, "all_clear", "normal")]
+    a, b = episodes(rows, CD)
+    assert a["end"] == T + timedelta(minutes=60) and a["level"] == "warning"
+    assert b["start"] == T + timedelta(minutes=60 + 49 * 60) and b["end"] is not None and a["rows"] == 2
+    [one] = episodes([row(0), row(47 * 60, level="warning"), row(47 * 60 + 5, "all_clear", "normal")], CD)
+    assert one["level"] == "warning"

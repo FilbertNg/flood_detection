@@ -232,6 +232,42 @@ def test_sug5_watch_escalating_to_warning_is_one_warning_episode(conn):
     assert run(conn)[0]["evidence"]["episodes"] == 5
 
 
+def sug5_streets(spec):
+    """spec: {street: (episodes, danger_episodes, susceptibility)}"""
+    for sid, (n, danger, _) in spec.items():
+        for k in range(n):
+            episode(conn_holder[0], sid, datetime(2024, 11, 1 + k, 6, 0), Level.DANGER if k < danger else Level.WARNING)
+    return streets([(sid, sid, susc_, i * 1000) for i, (sid, (_, _, susc_)) in enumerate(spec.items())])
+
+
+conn_holder: list = []
+
+
+def test_sug5_is_capped_and_ranked(conn):
+    conn_holder[:] = [conn]
+    st = sug5_streets({"BBR-e": (5, 0, 5), "BBR-d": (6, 0, 1), "BBR-c": (5, 2, 1), "BBR-b": (5, 0, 3),
+                       "BBR-a": (5, 0, 3), "BBR-low": (4, 4, 5)})
+    out = sug.suggestions(conn, FROM, TO, tide_table(), [], streets=st, sug5_top_n=4,
+                          street_stations={s: {"wl": "PEKANMERU"} for s in ("BBR-a", "BBR-b", "BBR-c", "BBR-d", "BBR-e")},
+                          station_names={"PEKANMERU": "Pekan Meru"})
+    got = sorted(out, key=lambda s: s["evidence"]["rank"])
+    # episodes, then Danger episodes, then susceptibility, then street_id; BBR-low has only 4 episodes: not eligible
+    assert [s["street_id"] for s in got] == ["BBR-d", "BBR-c", "BBR-e", "BBR-a"]
+    assert [s["evidence"]["rank"] for s in got] == [1, 2, 3, 4]
+    assert all(s["evidence"]["eligible_streets"] == 5 for s in got)
+    ev = got[0]["evidence"]
+    assert ev["river_station_name"] == "Pekan Meru" and ev["eligible_streets_on_same_river_station"] == 5
+    assert "Rank 1 of 5 eligible streets" in ev["notes"] and "Pekan Meru" in ev["notes"]
+
+
+def test_sug5_cap_defaults_to_config(conn):
+    conn_holder[:] = [conn]
+    st = sug5_streets({f"BBR-s{i:02d}": (5, 0, 3) for i in range(15)})
+    out = sug.suggestions(conn, FROM, TO, tide_table(), [], streets=st)
+    assert len(out) == 10 and {s["evidence"]["eligible_streets"] for s in out} == {15}
+    assert sorted(s["street_id"] for s in out) == [f"BBR-s{i:02d}" for i in range(10)]     # full tie: street_id order
+
+
 def test_sug5_outside_period_is_ignored(conn):
     for d in range(1, 6):
         episode(conn, "BBR-a", datetime(2024, 12, d, 6, 0))
@@ -270,18 +306,18 @@ def health(stale):
 
 
 def test_sug7_data_health(conn):
-    out = run(conn, health=health(87.3))
+    out = run(conn, health=health(0.873))
     assert rules(out) == ["SUG-7"]
     s = out[0]
     assert s["priority"] == "low" and s["street_id"] == "station:26558" and s["street_name"] == "Kg. Perepat, Kapar"
-    assert s["evidence"]["stale_pct"] == 87.3 and s["text"].endswith(END)
+    assert s["evidence"]["stale_pct"] == 0.873 and s["text"].endswith(END) and "87%" in s["text"]
     assert "backup station" in s["text"]
 
 
 def test_sug7_threshold_is_strictly_above_ten_percent(conn):
-    assert run(conn, health=health(10.0)) == []
+    assert run(conn, health=health(0.10)) == []
     assert run(conn, health=health(0.0)) == []
-    assert rules(run(conn, health=health(10.5))) == ["SUG-7"]
+    assert rules(run(conn, health=health(0.105))) == ["SUG-7"]
 
 
 def test_replay_demo_and_simulated_rows_never_count(conn):
@@ -372,8 +408,8 @@ def test_station_health_counts_blank_and_missing_time_as_stale():
     out = {h["graph_id"]: h for h in sug.station_health(pd.concat([good, dead, short]), date(2024, 11, 1),
                                                         date(2024, 11, 10), names={"D": "Dead gauge"})}
     assert out["G"]["stale_pct"] == 0.0
-    assert out["D"]["stale_pct"] == 80.0 and out["D"]["name"] == "Dead gauge"
-    assert out["S"]["stale_pct"] == 50.0 and out["S"]["name"] == "S"
+    assert out["D"]["stale_pct"] == 0.8 and out["D"]["name"] == "Dead gauge"
+    assert out["S"]["stale_pct"] == 0.5 and out["S"]["name"] == "S"
 
 
 def test_station_health_takes_worst_series_of_a_station():
@@ -381,7 +417,7 @@ def test_station_health_takes_worst_series_of_a_station():
     rf = readings("X", "rf", "2024-11-01", n)
     wl = readings("X", "wl", "2024-11-01", n, np.full(n, np.nan))
     [h] = sug.station_health(pd.concat([rf, wl]), date(2024, 11, 1), date(2024, 11, 1))
-    assert h["stale_pct"] == 100.0
+    assert h["stale_pct"] == 1.0
 
 
 def test_station_health_empty_input():

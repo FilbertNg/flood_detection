@@ -18,6 +18,11 @@ alerts:
   push_levels: [watch, warning, danger]   # only these are flagged push: true for a notifier (team decision 17 Oct 2026: push Watch too)
   window_from: warning                    # the "flooding expected" nowcast window is only set from this level up
 
+# Improvement suggestions (WP7). SUG-5 (pre-event readiness) lists only the top N streets, ranked by Warning/Danger
+# alert episodes, then Danger episodes, then susceptibility: a manager needs an action list, not every street on one river.
+suggestions:
+  sug5_top_n: 10
+
 # Ground-truth sensors (WP4). A reading above threshold_cm confirms alerts on the streets that device speaks for.
 # Unknown device ids are rejected. sim-1 is the simulated sensor (scripts/sim_sensor.py); it is placed on a street from the
 # residents' memorandum, and its readings only ever confirm labelled replay alerts, never live ones.
