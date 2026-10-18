@@ -239,6 +239,10 @@ export interface Kpis {
   confirmation_rate: number;
   missed_floods: number;
   median_lead_min: number | null;
+  /** `alerts` counts episodes (alert to all-clear, flapping merged); these are additive extras. */
+  alert_rows?: number;
+  by_level?: { watch: number; warning: number; danger: number };
+  street_days_with_alert?: number;
 }
 
 export interface StreetStat {

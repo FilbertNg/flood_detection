@@ -1,0 +1,329 @@
+"""Admin endpoints and auth (WP8)."""
+import logging
+from datetime import date, datetime, timedelta, timezone
+
+import jwt
+import numpy as np
+import pandas as pd
+import pytest
+from fastapi.testclient import TestClient
+
+from floodready.api import auth
+from floodready.api.main import create_app
+from floodready.db import repo
+from floodready.engine.types import Alert, Level, Reason
+
+API = "/api/v1"
+SECRET = "test-secret-that-is-at-least-32-bytes-long"
+STREET = "BBR-prone-street"
+SUFFIX = "Screening suggestion; site survey needed."
+
+
+def make_alert(street=STREET, level=Level.WARNING, kind="alert", at=datetime(2024, 11, 12, 9, 0)):
+    return Alert(street, level, kind, at, at + timedelta(minutes=30), at + timedelta(minutes=90),
+                 (Reason("rain_1h", 60.0, "mm", "1", "Heavy rain", "Hujan lebat"),), ("rule_rain",))
+
+
+class Admin:
+    def __init__(self, client, engine, uploads):
+        self.client, self.engine, self.uploads = client, engine, uploads
+
+    def token(self, email="boss@test", password="pw-boss-12345"):
+        r = self.client.post(f"{API}/admin/login", json={"email": email, "password": password})
+        assert r.status_code == 200, r.text
+        return {"Authorization": f"Bearer {r.json()['token']}"}
+
+    def seed_alert(self, **kw):
+        with self.engine.begin() as c:
+            return repo.insert_alerts(c, [make_alert(**kw)], is_replay=False, is_backfill=True)[0]
+
+    def seed_answer(self, **kw):
+        row = {"device_id": "d1", "street_id": STREET, "answer": "yes", "answered_at": datetime(2024, 11, 12, 9, 30), **kw}
+        with self.engine.begin() as c:
+            return repo.insert_answer(c, row)
+
+
+@pytest.fixture()
+def adm(runner, tmp_path, monkeypatch):
+    monkeypatch.setenv("UPLOADS_DIR", str(tmp_path / "uploads"))
+    monkeypatch.setenv("JWT_SECRET", SECRET)
+    monkeypatch.setenv("EVENTS_CSV", str(tmp_path / "events.csv"))
+    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD"):
+        monkeypatch.delenv(var, raising=False)
+    (tmp_path / "uploads").mkdir()
+    with runner.db.begin() as c:
+        auth.create_user(c, "boss@test", "pw-boss-12345", "admin")
+        auth.create_user(c, "view@test", "pw-view-12345", "viewer")
+    with TestClient(create_app(runner, start_live_loop=False)) as client:
+        yield Admin(client, runner.db, tmp_path / "uploads")
+
+
+PROTECTED = [
+    ("GET", "/admin/stats?from=2024-11-01&to=2024-11-30"), ("GET", "/admin/report?month=2024-11"),
+    ("GET", "/admin/suggestions"), ("PATCH", "/admin/suggestions/s1"), ("GET", "/admin/answers"),
+    ("PATCH", "/admin/answers/a1"), ("POST", "/admin/notes"), ("POST", "/admin/replay"), ("DELETE", "/admin/replay"),
+]
+
+
+# ---------- auth ----------
+
+def test_wrong_password_and_unknown_user_are_401(adm):
+    for email, pw in (("boss@test", "nope"), ("ghost@test", "pw-boss-12345"), ("boss@test", "")):
+        r = adm.client.post(f"{API}/admin/login", json={"email": email, "password": pw})
+        assert r.status_code == 401
+
+
+def test_login_returns_a_12_hour_hs256_token_with_role(adm):
+    r = adm.client.post(f"{API}/admin/login", json={"email": "view@test", "password": "pw-view-12345"})
+    assert r.status_code == 200 and set(r.json()) == {"token"}
+    claims = jwt.decode(r.json()["token"], SECRET, algorithms=["HS256"])
+    assert claims["sub"] == "view@test" and claims["role"] == "viewer"
+    assert abs(claims["exp"] - (datetime.now(timezone.utc) + timedelta(hours=12)).timestamp()) < 60
+
+
+@pytest.mark.parametrize("method,path", PROTECTED)
+def test_every_admin_route_needs_a_token(adm, method, path):
+    assert adm.client.request(method, f"{API}{path}").status_code == 401
+
+
+@pytest.mark.parametrize("method,path", PROTECTED)
+def test_bad_tokens_are_401(adm, method, path):
+    now = datetime.now(timezone.utc)
+    tokens = [
+        jwt.encode({"sub": "boss@test", "role": "admin", "exp": now - timedelta(minutes=1)}, SECRET, algorithm="HS256"),
+        jwt.encode({"sub": "boss@test", "role": "admin", "exp": now + timedelta(hours=1)}, "x" * 40, algorithm="HS256"),
+        jwt.encode({"sub": "boss@test", "role": "admin"}, SECRET, algorithm="HS256"),            # no exp
+        "not-a-token",
+    ]
+    for tok in tokens:
+        assert adm.client.request(method, f"{API}{path}", headers={"Authorization": f"Bearer {tok}"}).status_code == 401
+
+
+def test_viewer_reads_but_cannot_write(adm):
+    h = adm.token("view@test", "pw-view-12345")
+    assert adm.client.get(f"{API}/admin/stats?from=2024-11-01&to=2024-11-30", headers=h).status_code == 200
+    assert adm.client.get(f"{API}/admin/answers", headers=h).status_code == 200
+    assert adm.client.patch(f"{API}/admin/suggestions/s1", json={"status": "done"}, headers=h).status_code == 403
+    assert adm.client.patch(f"{API}/admin/answers/a1", json={"review_status": "valid"}, headers=h).status_code == 403
+    assert adm.client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": "x"}, headers=h).status_code == 403
+    assert adm.client.post(f"{API}/admin/replay", json={"event": "2024-11-12", "speed": 60}, headers=h).status_code == 403
+    assert adm.client.delete(f"{API}/admin/replay", headers=h).status_code == 403
+
+
+def test_token_without_role_is_a_viewer(adm):
+    tok = jwt.encode({"sub": "boss@test", "exp": datetime.now(timezone.utc) + timedelta(hours=1)}, SECRET, algorithm="HS256")
+    r = adm.client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": "x"}, headers={"Authorization": f"Bearer {tok}"})
+    assert r.status_code == 403
+
+
+def test_passwords_are_stored_as_bcrypt_hashes(adm):
+    with adm.engine.begin() as c:
+        row = auth.get_user(c, "boss@test")
+    assert row["password_hash"].startswith("$2") and "pw-boss-12345" not in row["password_hash"]
+
+
+def test_env_admin_still_works_and_is_admin(runner, monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAIL", "env@test")
+    monkeypatch.setenv("ADMIN_PASSWORD", "env-pass-12345")
+    monkeypatch.setenv("JWT_SECRET", SECRET)
+    with TestClient(create_app(runner, start_live_loop=False)) as client:
+        r = client.post(f"{API}/admin/login", json={"email": "env@test", "password": "env-pass-12345"})
+        assert r.status_code == 200
+        assert jwt.decode(r.json()["token"], SECRET, algorithms=["HS256"])["role"] == "admin"
+        assert client.post(f"{API}/admin/login", json={"email": "env@test", "password": "x"}).status_code == 401
+
+
+def test_dev_login_only_when_nothing_is_configured_and_warns(runner, monkeypatch, caplog):
+    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD", "JWT_SECRET"):
+        monkeypatch.delenv(var, raising=False)
+    body = {"email": auth.DEV_ADMIN[0], "password": auth.DEV_ADMIN[1]}
+    with caplog.at_level(logging.WARNING):
+        with TestClient(create_app(runner, start_live_loop=False)) as client:
+            assert client.post(f"{API}/admin/login", json=body).status_code == 200
+    assert any("DEVELOPMENT" in m for m in caplog.messages)
+
+
+def test_dev_login_is_off_once_an_admin_user_exists(runner, monkeypatch):
+    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD", "JWT_SECRET"):
+        monkeypatch.delenv(var, raising=False)
+    with runner.db.begin() as c:
+        auth.create_user(c, "boss@test", "pw-boss-12345", "admin")
+    with TestClient(create_app(runner, start_live_loop=False)) as client:
+        body = {"email": auth.DEV_ADMIN[0], "password": auth.DEV_ADMIN[1]}
+        assert client.post(f"{API}/admin/login", json=body).status_code in (401, 503)
+        assert client.post(f"{API}/admin/login", json={"email": "boss@test", "password": "pw-boss-12345"}).status_code == 503
+
+
+def test_dev_login_is_off_when_jwt_secret_is_set(runner, monkeypatch):
+    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("JWT_SECRET", SECRET)
+    with TestClient(create_app(runner, start_live_loop=False)) as client:
+        body = {"email": auth.DEV_ADMIN[0], "password": auth.DEV_ADMIN[1]}
+        assert client.post(f"{API}/admin/login", json=body).status_code == 401
+
+
+def test_long_passwords_are_rejected_not_truncated(adm):
+    with adm.engine.begin() as c, pytest.raises(ValueError):
+        auth.create_user(c, "long@test", "x" * 73, "admin")
+    assert adm.client.post(f"{API}/admin/login", json={"email": "boss@test", "password": "x" * 500}).status_code == 401
+
+
+# ---------- stats and report ----------
+
+def test_stats_endpoint_shape_and_validation(adm):
+    a = adm.seed_alert()
+    adm.seed_answer(alert_id=a)
+    adm.seed_answer(alert_id=a, device_id="d2")
+    h = adm.token()
+    r = adm.client.get(f"{API}/admin/stats", params={"from": "2024-11-01", "to": "2024-11-30"}, headers=h)
+    assert r.status_code == 200
+    s = r.json()
+    assert set(s) == {"period", "kpis", "by_week", "by_street", "rain_at_onset", "station_health", "sources"}
+    assert s["kpis"]["alerts"] == 1 and s["kpis"]["confirmed"] == 1 and s["kpis"]["confirmation_rate"] == 1.0
+    assert s["by_street"][0]["name"] == "Prone Street"
+    assert adm.client.get(f"{API}/admin/stats", params={"from": "2024-11-30", "to": "2024-11-01"}, headers=h).status_code == 422
+    assert adm.client.get(f"{API}/admin/stats", params={"from": "x", "to": "2024-11-01"}, headers=h).status_code == 422
+    assert adm.client.get(f"{API}/admin/stats", headers=h).status_code == 422
+
+
+def test_stats_station_health_lists_26558_as_stale_when_blanked(adm, runner):
+    day = pd.date_range(datetime(2024, 11, 12), datetime(2024, 11, 12, 23, 45), freq="15min")
+    rows = []
+    for st in runner.ctx.township["stations"]:
+        for kind in (k.lower() for k in st["types"]):
+            dead = st["graph_id"] == "26558"
+            rows += [(st["graph_id"], kind, t, np.nan if dead else 0.0, np.nan if dead else 1.0) for t in day]
+    blank = pd.DataFrame(rows, columns=["graph_id", "kind", "time_local", "rain_15min_mm", "wl_m"])
+    runner.ctx.load_readings = lambda start, end: blank
+    r = adm.client.get(f"{API}/admin/stats", params={"from": "2024-11-12", "to": "2024-11-12"}, headers=adm.token())
+    health = {h["graph_id"]: h for h in r.json()["station_health"]}
+    assert health["26558"]["stale_pct"] == 1.0
+    assert all(h["stale_pct"] == 0.0 for g, h in health.items() if g != "26558") and len(health) == 7
+    assert r.json()["station_health"][0]["graph_id"] == "26558"
+
+
+def test_report_lists_the_12_nov_event(adm, tmp_path):
+    (tmp_path / "events.csv").write_text(
+        "event_id,street_id,start_time_local,date_precision,flooded,place_name,source_type,source_url\n"
+        f"BBR-2024-11-12-01,{STREET},2024-11-12 09:00,hour,1,Persiaran Sungai Keramat,news,https://example.org/n\n",
+        encoding="utf-8")
+    adm.seed_alert()
+    r = adm.client.get(f"{API}/admin/report", params={"month": "2024-11"}, headers=adm.token())
+    assert r.status_code == 200
+    rep = r.json()
+    assert set(rep) == {"month", "summary", "events", "top_streets", "suggestions", "data_health"}
+    assert [e["event_id"] for e in rep["events"]] == ["BBR-2024-11-12-01"]
+    assert rep["events"][0]["date"] == "2024-11-12" and rep["summary"]["confirmed"] == 1     # news confirmed the alert
+    assert adm.client.get(f"{API}/admin/report", params={"month": "2024-13"}, headers=adm.token()).status_code == 422
+
+
+# ---------- suggestions ----------
+
+def seed_suggestion(adm, sid="s1", text="Drainage capacity review."):
+    with adm.engine.begin() as c:
+        repo.upsert_suggestions(c, [{"id": sid, "street_id": STREET, "rule": "SUG-1", "priority": "high", "text": text,
+                                     "evidence": {"rain_at_onset_mm": [35, 42, 48]},
+                                     "period_from": date(2024, 1, 1), "period_to": date(2024, 12, 31)}])
+
+
+def test_suggestions_list_and_update(adm):
+    seed_suggestion(adm)
+    h = adm.token()
+    [s] = adm.client.get(f"{API}/admin/suggestions", params={"from": "2024-11-01", "to": "2024-11-30"}, headers=h).json()
+    assert s == {"id": "s1", "street_id": STREET, "street_name": "Prone Street", "rule": "SUG-1", "priority": "high",
+                 "text": f"Drainage capacity review. {SUFFIX}", "evidence": {"rain_at_onset_mm": [35, 42, 48]},
+                 "status": "open", "note": None}
+    assert adm.client.get(f"{API}/admin/suggestions", params={"from": "2026-01-01", "to": "2026-02-01"}, headers=h).json() == []
+    r = adm.client.patch(f"{API}/admin/suggestions/s1", json={"status": "accepted", "note": "Survey booked"}, headers=h)
+    assert r.status_code == 200 and r.json()["status"] == "accepted" and r.json()["note"] == "Survey booked"
+    assert adm.client.get(f"{API}/admin/suggestions", headers=h).json()[0]["status"] == "accepted"
+
+
+def test_suggestion_text_with_the_suffix_is_not_doubled(adm):
+    seed_suggestion(adm, text=f"Check it. {SUFFIX}")
+    [s] = adm.client.get(f"{API}/admin/suggestions", headers=adm.token()).json()
+    assert s["text"] == f"Check it. {SUFFIX}"
+
+
+def test_suggestion_update_validation(adm):
+    seed_suggestion(adm)
+    h = adm.token()
+    assert adm.client.patch(f"{API}/admin/suggestions/s1", json={"status": "bogus"}, headers=h).status_code == 422
+    assert adm.client.patch(f"{API}/admin/suggestions/s1", json={}, headers=h).status_code == 422
+    assert adm.client.patch(f"{API}/admin/suggestions/missing", json={"status": "done"}, headers=h).status_code == 404
+    assert adm.client.patch(f"{API}/admin/suggestions/s1", json={"status": "done", "note": "x" * 2001}, headers=h).status_code == 422
+
+
+# ---------- answers ----------
+
+def test_answers_filter_review_and_photo_url(adm):
+    a = adm.seed_alert()
+    pending = adm.seed_answer(alert_id=a, photo_path="abc123.jpg")
+    adm.seed_answer(device_id="d2", alert_id=a, review_status="valid")
+    h = adm.token()
+    rows = adm.client.get(f"{API}/admin/answers", params={"review_status": "pending"}, headers=h).json()
+    assert [r["answer_id"] for r in rows] == [pending]
+    assert rows[0]["photo_url"] == "/uploads/abc123.jpg" and "photo_path" not in rows[0]
+    assert set(rows[0]) == {"answer_id", "device_id", "alert_id", "street_id", "answer", "depth", "photo_url", "lat3", "lon3",
+                            "distance_m", "answered_at", "review_status", "source"}
+    assert len(adm.client.get(f"{API}/admin/answers", headers=h).json()) == 2
+    assert adm.client.get(f"{API}/admin/answers", params={"review_status": "bogus"}, headers=h).status_code == 422
+    r = adm.client.patch(f"{API}/admin/answers/{pending}", json={"review_status": "spam"}, headers=h)
+    assert r.status_code == 200 and r.json()["review_status"] == "spam"
+    assert adm.client.get(f"{API}/admin/answers", params={"review_status": "pending"}, headers=h).json() == []
+
+
+def test_answer_review_validation(adm):
+    aid = adm.seed_answer()
+    h = adm.token()
+    for body in ({"review_status": "pending"}, {"review_status": "bogus"}, {}):
+        assert adm.client.patch(f"{API}/admin/answers/{aid}", json=body, headers=h).status_code == 422
+    assert adm.client.patch(f"{API}/admin/answers/nope", json={"review_status": "valid"}, headers=h).status_code == 404
+
+
+def test_demo_answers_are_listed_for_review_but_labelled(adm):
+    adm.seed_answer(source="demo")
+    [row] = adm.client.get(f"{API}/admin/answers", headers=adm.token()).json()
+    assert row["source"] == "demo"
+
+
+# ---------- notes ----------
+
+def test_note_stores_author_from_the_token(adm):
+    r = adm.client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": "drain cleared"}, headers=adm.token())
+    assert r.status_code == 204 and r.content == b""
+    with adm.engine.begin() as c:
+        from sqlalchemy import select
+        from floodready.db import schema
+        [row] = c.execute(select(schema.ops_notes)).all()
+    assert (row.street_id, row.text, row.author) == (STREET, "drain cleared", "boss@test")
+
+
+def test_note_validation(adm):
+    h = adm.token()
+    assert adm.client.post(f"{API}/admin/notes", json={"street_id": "BBR-nope", "text": "x"}, headers=h).status_code == 404
+    assert adm.client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": ""}, headers=h).status_code == 422
+    assert adm.client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": "x" * 2001}, headers=h).status_code == 422
+    assert adm.client.post(f"{API}/admin/notes", json={"text": "x"}, headers=h).status_code == 422
+
+
+# ---------- uploads ----------
+
+def test_uploads_are_served_read_only(adm):
+    (adm.uploads / "abc123.jpg").write_bytes(b"\xff\xd8jpegdata")
+    r = adm.client.get("/uploads/abc123.jpg")
+    assert r.status_code == 200 and r.content == b"\xff\xd8jpegdata"
+    assert r.headers["content-type"] == "image/jpeg" and r.headers["x-content-type-options"] == "nosniff"
+    assert adm.client.get("/uploads/missing.jpg").status_code == 404
+    assert adm.client.put("/uploads/abc123.jpg", content=b"x").status_code == 405
+    assert adm.client.delete("/uploads/abc123.jpg").status_code == 405
+
+
+@pytest.mark.parametrize("name", ["..%2Fsecret.txt", "..%5Csecret.txt", "%2e%2e%2fsecret.txt", "a.txt", ".hidden.jpg",
+                                  "abc.jpg%00.png", "sub%2Fabc.jpg", "C%3A%5Cwindows%5Cwin.ini", "abc"])
+def test_upload_paths_are_confined(adm, name):
+    (adm.uploads.parent / "secret.txt").write_text("secret")
+    (adm.uploads / "a.txt").write_text("not an image")
+    r = adm.client.get(f"/uploads/{name}")
+    assert r.status_code in (404, 422) and b"secret" not in r.content and b"not an image" not in r.content
