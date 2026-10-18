@@ -77,7 +77,10 @@ def sub(**over):
 @pytest.mark.parametrize("endpoint", [
     "http://fcm.googleapis.com/fcm/send/x", "http://127.0.0.1:22/", "file:///etc/passwd", "https://127.0.0.1/x",
     "https://evil.example.com/push", "https://fcm.googleapis.com.evil.com/x", "https://user@evil.com@fcm.googleapis.com/x",
-    "https://fcm.googleapis.com:8443/x", "ftp://fcm.googleapis.com/x", "https://" + "a" * 2100 + ".notify.windows.com/x"])
+    "https://fcm.googleapis.com:8443/x", "ftp://fcm.googleapis.com/x",
+    "https://evil.com\.push.apple.com/x", "https://127.0.0.1\.notify.windows.com/x", "https://fcm.googleapis.com/x y",
+    "https://fcm.googleapis.com/x\ty", "https://fcm.googleapis.com/x\x00", "https://fcm.googleapis.com\@evil.com/x",
+    "https://FCM.googleapis.com\u2025evil.com/x", "https://" + "a" * 2100 + ".notify.windows.com/x"])
 def test_bad_or_foreign_endpoints_are_rejected(client, endpoint):
     assert client.post("/api/v1/subscriptions", json=sub(endpoint=endpoint)).status_code == 422
 

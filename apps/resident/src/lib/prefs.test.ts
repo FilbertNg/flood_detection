@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadPrefs } from './prefs';
 
 const KEY = 'floodready.prefs.v1';
@@ -24,5 +24,26 @@ describe('device id', () => {
     expect(p.deviceId).toMatch(VALID);
     expect(p.deviceId).not.toBe(bad);
     expect(p.streets).toEqual(['BBR-a']);
+  });
+
+  describe('without crypto.randomUUID (insecure context)', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('falls back to crypto.getRandomValues', () => {
+      vi.stubGlobal('crypto', { getRandomValues: (a: Uint8Array) => a.fill(171) });
+      const id = loadPrefs().deviceId;
+      expect(id).toMatch(VALID);
+      expect(id).toBe('ab'.repeat(16));
+    });
+
+    it('still returns prefs when no crypto is available at all', () => {
+      vi.stubGlobal('crypto', undefined);
+      expect(loadPrefs().deviceId).toMatch(VALID);
+    });
+
+    it('keeps working when randomUUID throws', () => {
+      vi.stubGlobal('crypto', { randomUUID: () => { throw new Error('insecure'); }, getRandomValues: (a: Uint8Array) => a.fill(1) });
+      expect(loadPrefs().deviceId).toMatch(VALID);
+    });
   });
 });

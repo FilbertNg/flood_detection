@@ -140,7 +140,8 @@ class Runner:
 
     def alerts(self, street_id: str | None = None, active: bool = False) -> list[dict]:
         """AlertSummary list from the database: live rows in live mode, replay rows only while a replay is on."""
-        replaying = self.mode == "replay"
+        with self._lock:
+            replaying = self.mode == "replay"
         with self._db_lock, self.db.begin() as conn:
             return repo.list_alerts(conn, street_id=street_id, active=active, include_replay=replaying, replay_only=replaying)
 

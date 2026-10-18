@@ -149,3 +149,15 @@ def test_no_database_connection_is_held_while_sending(tmp_path):
     assert held == [0, 0]
     with eng.begin() as c:
         assert [s["device_id"] for s in repo.list_subscribers(c, "BBR-a")] == ["d2"]
+
+
+def test_shutdown_has_one_overall_deadline(monkeypatch):
+    import time
+    eng = repo.connect("sqlite://")
+    with eng.begin() as c:
+        repo.upsert_subscription(c, "d", SUB("d"), ["BBR-a"], "en")
+    svc = push.PushService(eng, send=lambda s, d: time.sleep(0.4), public_key="k")
+    svc.enqueue([summary(sid="BBR-a") for _ in range(10)], {})     # 4 s of sends in total
+    t0 = time.monotonic()
+    svc.shutdown(timeout=0.5)
+    assert time.monotonic() - t0 < 1.5

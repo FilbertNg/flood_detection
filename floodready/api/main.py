@@ -7,6 +7,7 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+import re
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -19,6 +20,8 @@ from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from urllib3.exceptions import LocationParseError
+from urllib3.util import parse_url
 
 from ..db import repo
 from . import serialize
@@ -46,7 +49,9 @@ class ReplayRequest(BaseModel):
 PUSH_HOSTS = ("fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com")
 PUSH_HOST_SUFFIXES = (".notify.windows.com", ".push.apple.com")
 DEVICE_ID_RE = r"^[A-Za-z0-9_-]{16,64}$"
-_B64URL = r"^[A-Za-z0-9_-]+={0,2}$"
+_ENDPOINT_CHARS = re.compile(r"[\x21-\x7e]+")      # printable ASCII without space or control characters
+_HOSTNAME = re.compile(r"[a-z0-9.-]+")
+_B64URL =r"^[A-Za-z0-9_-]+={0,2}$"
 
 
 class WebPushKeys(BaseModel):
@@ -64,13 +69,21 @@ class WebPushSubscriptionBody(BaseModel):
     @field_validator("endpoint")
     @classmethod
     def _push_service_endpoint(cls, v: str) -> str:
+        # Printable ASCII only, no space or backslash: urlsplit and urllib3 (used by pywebpush) read such URLs
+        # differently, so a host check here could pass "https://evil.com<backslash>.push.apple.com/" while the
+        # request goes to evil.com. The host urllib3 will connect to must equal the host validated here.
+        if not _ENDPOINT_CHARS.fullmatch(v) or "\\" in v:
+            raise ValueError("invalid endpoint")
         try:
             u = urlsplit(v)
             host, port = (u.hostname or "").lower(), u.port
-        except ValueError:
+            sent_to = (parse_url(v).host or "").lower()
+        except (ValueError, LocationParseError):
             raise ValueError("invalid endpoint") from None
         if u.scheme != "https" or u.username or u.password or port not in (None, 443):
             raise ValueError("endpoint must be an https URL of a push service")
+        if not _HOSTNAME.fullmatch(host) or sent_to != host:
+            raise ValueError("invalid endpoint host")
         if host not in PUSH_HOSTS and not host.endswith(PUSH_HOST_SUFFIXES):
             raise ValueError("endpoint is not a known push service")
         return v
@@ -177,6 +190,13 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
 
     @app.post(f"{api}/subscriptions", status_code=204)
     def subscribe(body: SubscriptionBody):
+        """Store a push subscription (422 on invalid input).
+
+        device_id matches ^[A-Za-z0-9_-]{16,64}$ (the client uses crypto.randomUUID()). subscription.endpoint is an
+        https URL, printable ASCII without backslash or space, on a push-service host (fcm.googleapis.com,
+        updates.push.services.mozilla.com, *.notify.windows.com, web.push.apple.com, *.push.apple.com) and urllib3
+        must read the same host. keys has only p256dh (<= 128) and auth (<= 64), base64url. Unknown streets: 400.
+        """
         keys = body.subscription.keys.model_dump()
         known = set(ctx.streets.street_id)
         unknown = [s for s in body.street_ids if s not in known]

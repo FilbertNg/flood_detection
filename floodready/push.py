@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import threading
+import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Callable
 
@@ -168,16 +169,17 @@ class PushService:
                 log.exception("push job failed for %s", alert.get("alert_id"))
 
     def flush(self, timeout: float | None = 30) -> None:
-        """Wait for queued sends (tests, shutdown)."""
+        """Wait for queued sends (tests, shutdown); `timeout` is one overall deadline, not per queued job."""
         with self._lock:
             futures = list(self._futures)
+        deadline = None if timeout is None else time.monotonic() + timeout
         for f in futures:
-            f.result(timeout=timeout)
+            f.result(timeout=None if deadline is None else max(0.0, deadline - time.monotonic()))
 
-    def shutdown(self) -> None:
+    def shutdown(self, timeout: float = 5) -> None:
         if self._pool is not None:
             try:
-                self.flush(timeout=5)          # let queued alerts go out before the process exits
+                self.flush(timeout=timeout)    # let queued alerts go out before the process exits (one overall deadline)
             except Exception:  # noqa: BLE001
                 log.warning("push queue not drained at shutdown")
             self._pool.shutdown(wait=False, cancel_futures=True)
