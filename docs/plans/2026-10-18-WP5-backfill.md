@@ -4,7 +4,7 @@ Parent: `docs/plans/2026-10-17-MVP2-remaining-mvp.md` WP5. Branch `feat/backfill
 
 ## Design
 
-- `floodready/engine/backfill.py: run_backfill(start, end, township_id, conn, step=15 min, *, data_dir=None, models_dir=None, readings=None, stations=None, tide=None, mapping=None) -> dict[str, int]` returns alert rows inserted per month (`"YYYY-MM"`). The keyword arguments only inject data for tests; the script passes `data_dir`.
+- `floodready/engine/backfill.py: run_backfill(start, end, township_id, engine, step=15 min, *, data_dir=None, models_dir=None, readings=None, stations=None, tide=None, mapping=None) -> dict[str, int]` returns alert rows inserted per month (`"YYYY-MM"`). The keyword arguments only inject data for tests; the script passes `data_dir`.
 - Month by month. Per month: load readings (`replay.load_archive_readings`, from 5 days before the month for the features; QC runs on each gauge's full archive history, which covers `qc.QC_HISTORY_DAYS = 120`), take the out-of-fold model for the month (`predict.bundle_for(..., live=False)`), run `replay.run`, then `repo.replace_backfill` for the month and `repo.insert_alerts(..., is_backfill=True, is_replay=False)`.
 - Honest ML: a calendar month sits inside one quarter, so one fold model per month. The model must be `out_of_sample`, its sidecar json `excluded_fold` must equal `dataset.fold_of(month)`, and every step asserts `fold_of(t)` equals that fold, else `RuntimeError`. Probabilities are display-only (`ml_drives_alerts: false`).
 - Writes only alerts, never `street_state`. State (previous levels, last alerts) restarts at each month start, so an alert open across midnight of the 1st is re-issued on the 1st (documented limitation).

@@ -40,8 +40,7 @@ def main() -> None:
 
     t0 = time.perf_counter()
     engine = repo.connect(args.db)
-    with engine.begin() as conn:
-        backfill.run_backfill(start, end, args.township, conn, data_dir=args.data_dir)
+    backfill.run_backfill(start, end, args.township, engine, data_dir=args.data_dir)   # commits each month
     with engine.connect() as conn:
         counts = backfill.monthly_counts(conn, args.township)
     print(f"{'month':8s} {'watch':>7s} {'warning':>8s} {'danger':>7s}   (alert rows by level; all-clears not counted)")

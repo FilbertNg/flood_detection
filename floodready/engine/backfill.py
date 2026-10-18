@@ -3,7 +3,8 @@
 Honest ML: each month is scored by the fold model that never trained on its quarter, and every step asserts
 it. The ML probability is display-only (`ml_drives_alerts: false`). Only alerts are written (flagged
 `is_backfill`, ids end `~backfill`); street states are not. A month's previous rows are replaced first, so a
-re-run is idempotent. State restarts at each month start (an alert open across midnight of the 1st is re-issued).
+re-run is idempotent. Each month is committed on its own (a crash keeps the finished months). The engine starts `WARMUP` before the
+month so alerts already open at the 1st are not re-issued; only alerts issued from the month start are kept.
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from . import replay, street_stations
 
 log = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[2]
+WARMUP = timedelta(days=1)   # engine state is rebuilt from this long before each month
 
 
 def _cfg(name: str) -> dict:
@@ -72,14 +74,14 @@ def monthly_counts(conn, township_id: str) -> dict[str, dict[str, int]]:
     return dict(sorted(out.items()))
 
 
-def run_backfill(start: datetime, end: datetime, township_id: str, conn, step: timedelta = timedelta(minutes=15), *,
+def run_backfill(start: datetime, end: datetime, township_id: str, engine, step: timedelta = timedelta(minutes=15), *,
                  data_dir: Path | None = None, models_dir: Path | None = None, readings: pd.DataFrame | None = None,
                  stations: pd.DataFrame | None = None, tide: pd.DataFrame | None = None,
                  mapping: dict | None = None) -> dict[str, int]:
     """Replay [start, end] for the township month by month and store the alerts. Returns rows inserted per month.
 
     `data_dir` holds raw/jps_hist and interim/ (read only). `readings`/`stations`/`tide`/`mapping` override the
-    data loading (tests). `conn` is an open SQLAlchemy connection inside the caller's transaction."""
+    data loading (tests). `engine` is a SQLAlchemy engine; each month is written in its own transaction."""
     town = next(t for t in _cfg("townships.yaml")["townships"] if t["id"] == township_id)
     station_ids = [s["graph_id"] for s in town["stations"]]
     wl_ids = [s["graph_id"] for s in town["stations"] if "WL" in s.get("types", [])]
@@ -106,16 +108,19 @@ def run_backfill(start: datetime, end: datetime, township_id: str, conn, step: t
         t0 = time.perf_counter()
         bundle, fold = oof_bundle(models_dir, first)
         month_readings = readings if readings is not None else replay.load_archive_readings(
-            hist, ids, first - timedelta(days=5), last, stations=stations)   # QC sees each gauge's whole archive
+            hist, ids, first - WARMUP - timedelta(days=5), last, stations=stations)   # QC sees each gauge's whole archive
         rows = []
-        for s in replay.run(first, last, step, month_readings, stations, streets, station_ids, rules_cfg, matrix,
+        for s in replay.run(first - WARMUP, last, step, month_readings, stations, streets, station_ids, rules_cfg, matrix,
                             ml_bundle=bundle, ml_cfg=ml_cfg, wl_ids=wl_ids, tide=tide, street_stations=mapping):
+            if s.time < first:
+                continue   # warm-up step: builds state, nothing kept (and may lie in the previous quarter)
             step_fold = int(dataset.fold_of([s.time])[0])
             if step_fold != fold:
                 raise RuntimeError(f"{s.time}: fold {step_fold} scored by the model that excluded fold {fold}")
-            rows.extend(s.alerts)
-        repo.replace_backfill(conn, township_id, first, last + step)
-        repo.insert_alerts(conn, rows, is_replay=False, is_backfill=True)
+            rows.extend(a for a in s.alerts if a.issued_at >= first)
+        with engine.begin() as conn:
+            repo.replace_backfill(conn, township_id, first, last + step)
+            repo.insert_alerts(conn, rows, is_replay=False, is_backfill=True)
         key = f"{first:%Y-%m}"
         inserted[key] = inserted.get(key, 0) + len(rows)
         log.info("backfill %s %s: %d alert rows in %.0f s", township_id, key, len(rows), time.perf_counter() - t0)
