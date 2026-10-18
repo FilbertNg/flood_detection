@@ -122,6 +122,12 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - In Nov 2024 (a stormy month), issuing Watch as well as Warning/Danger gives about **17.5 messages per street** (alerts + all-clears; max 34). Pushing only Warning and Danger gives **3.2 per street** (max 8). Longer Watch cooldowns barely help (8.7 → 8.3 alerts per street).
 - **So:** this is the cost of pushing Watch. The team decided (17 Oct 2026) to push Watch, Warning and Danger (`alerts.push_levels`); the numbers above are what residents should expect in a stormy month.
 
+### D1d. A minimum alert duration removes sub-hour flapping, but most Watch repeats are hours apart
+- When rain hovers around the Watch threshold the street used to get an all-clear on the first normal tick and then a new alert. `alerts.clear_after_min: 60` now holds the all-clear until the alert is 60 min old.
+- BBR, 1 Apr to 1 May 2024, full replay (rules + out-of-sample ML, per-street stations, 943 streets), before (`clear_after_min: 0`) vs after (60): **alerts 8,782 → 8,426 (−4%)**, Watch alerts 6,689 → 6,333, Warning (1,689) and Danger (404) unchanged, **all-clears 6,684 → 6,205**, push-eligible alerts 8,782 → 8,426. **Median alerts per street stays 8; the maximum falls 76 → 65.**
+- Holding for 120 or 180 min gives the same 8,426 alerts (all-clears 5,575 and 5,420). The remaining repeats are separate episodes more than an hour apart, not flaps, so a longer hold does not help; the cooldown already blocks anything faster.
+- **So:** this fix stops the 15-30 min alert, all-clear, alert chatter, but it does not bring Watch push volume down. Pushing Watch is still about 8 messages per street in a wet month (see D1b).
+
 ### D1c. 85 BBR streets take their river signal from the dead gauge
 - The street→station mapping (`assets/geo/bbr_street_stations.json`) follows the flow path: **85 of 943 BBR streets** use Kg. Perepat (`26558`) as their own river (668 use Pekan Meru, 190 Pandamaran). With the gauge blanked, those streets keep their rain rules but have no river level or ML probability.
 - **Open fix:** when a street's own river station is dead or stale, fall back to its next-nearest river station.
