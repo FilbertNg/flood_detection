@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { LEVEL_LABEL, LEVEL_ORDER, LEVEL_STYLE } from '@floodready/shared';
 import { Credits } from '../components/Credits';
 import { OpsMapView } from '../components/OpsMapView';
@@ -16,6 +16,7 @@ export function OpsMapPage() {
   const props = streets.data?.features.map((f) => f.properties) ?? [];
   const atRisk = props.filter((p) => p.level === 'warning' || p.level === 'danger').length;
   const atWatch = props.filter((p) => p.level === 'watch').length;
+  const alerting = props.filter((p) => p.level === 'warning' || p.level === 'danger');
   const stale = (stations.data ?? []).filter((s) => s.is_stale);
 
   return (
@@ -35,6 +36,13 @@ export function OpsMapPage() {
             <h2>Streets</h2>
             <p className="count">{`${atRisk} at Warning or Danger`}</p>
             <p className="count">{`${atWatch} at Watch`}</p>
+            <h3 className="small">Streets at Warning or Danger</h3>
+            {alerting.length === 0 && <p className="muted small">None.</p>}
+            <ul className="street-list">
+              {alerting.map((p) => (
+                <li key={p.street_id}><Link to={`/street/${p.street_id}`} className="link">{p.name}</Link> <span className="muted small">{LEVEL_LABEL.en[p.level]}</span></li>
+              ))}
+            </ul>
           </section>
           <section className="card" aria-label="Legend">
             <h2>Legend</h2>

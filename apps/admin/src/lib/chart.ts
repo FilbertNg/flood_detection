@@ -29,3 +29,10 @@ export function dayTime(iso: string): string {
   const [y, m, d] = iso.slice(0, 10).split('-');
   return `${Number(d)} ${months[Number(m) - 1]} ${y}, ${hhmm(iso)}`;
 }
+
+/** Axis label: "09:30", or "11 Nov 23:00" when the chart spans midnight. */
+export function axisTime(iso: string, withDate: boolean): string {
+  if (!withDate) return hhmm(iso);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${Number(iso.slice(8, 10))} ${months[Number(iso.slice(5, 7)) - 1]} ${hhmm(iso)}`;
+}

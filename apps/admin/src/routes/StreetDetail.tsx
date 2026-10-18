@@ -1,6 +1,7 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import { LEVEL_LABEL, LEVEL_STYLE, type RiverForecast } from '@floodready/shared';
+import { Credits } from '../components/Credits';
 import { StationChart } from '../components/StationChart';
 import { ModeRibbon } from '../components/ReplayControl';
 import { api } from '../lib/api';
@@ -18,7 +19,8 @@ export function StreetDetailPage() {
   const stations = useQuery({ queryKey: ['stations'], queryFn: () => api.stations(), refetchInterval: 30_000 });
 
   const detail = street.data;
-  const ids = detail?.stations ?? [];
+  // A river and a rain gauge can share one graph_id; one series request per id feeds both charts.
+  const ids = [...new Set(detail?.stations ?? [])];
   const to = detail?.data_time;
   const from = to ? shiftIso(to, -24) : undefined;
   const series = useQueries({
@@ -79,14 +81,15 @@ export function StreetDetailPage() {
           <h2>Last 24 h at the stations that decide this street</h2>
           {ids.length === 0 && <p className="muted">No stations are mapped to this street.</p>}
           {ids.map((gid, i) => {
-            const station = stations.data?.find((s) => s.graph_id === gid);
+            const matches = (stations.data ?? []).filter((s) => s.graph_id === gid);
             const q = series[i];
-            if (!station || !q) return <p key={gid} className="muted small">Loading {gid}…</p>;
-            if (q.isError) return <p key={gid} className="muted small">Could not load readings for {station.name}.</p>;
-            return <StationChart key={gid} station={station} series={q.data ?? []} />;
+            if (matches.length === 0 || !q) return <p key={gid} className="muted small">Loading {gid}…</p>;
+            if (q.isError) return <p key={gid} className="muted small">Could not load readings for {matches[0].name}.</p>;
+            return matches.map((station) => <StationChart key={`${gid}:${station.kind}`} station={station} series={q.data ?? []} />);
           })}
         </section>
         <p className="footer">Advisory only. JPS, MET and NADMA are the official sources.</p>
+        <Credits />
       </main>
     </>
   );

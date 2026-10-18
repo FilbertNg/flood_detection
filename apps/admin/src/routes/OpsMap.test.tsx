@@ -31,6 +31,22 @@ describe('OpsMapPage', () => {
     expect(screen.getByText(/Kg\. Perepat, Kapar.*stale/)).toBeInTheDocument();
   });
 
+  it('cancel leaves replay untouched', async () => {
+    const fn = stubApi({ 'GET /status': live, 'GET /streets': streets, 'GET /stations': stations });
+    renderApp(<OpsMapPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Start replay: 12 Nov 2024' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(methods(fn)).not.toContain('POST');
+    expect(screen.getByRole('button', { name: 'Start replay: 12 Nov 2024' })).toBeInTheDocument();
+  });
+
+  it('lists Warning and Danger streets as links to their detail page', async () => {
+    stubApi({ 'GET /status': live, 'GET /streets': streets, 'GET /stations': stations });
+    renderApp(<OpsMapPage />);
+    const link = await screen.findByRole('link', { name: /Jalan Makyong/ });
+    expect(link).toHaveAttribute('href', '/street/BBR-jalan-makyong');
+  });
+
   it('shows the replay ribbon and a stop button in replay mode', async () => {
     const fn = stubApi({
       'GET /status': status,
@@ -41,6 +57,9 @@ describe('OpsMapPage', () => {
     renderApp(<OpsMapPage />);
     expect(await screen.findByText(/Replay: 12 Nov 2024, 09:00/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Stop replay' }));
+    expect(screen.getByText(/returns to live/)).toBeInTheDocument();
+    expect(methods(fn)).not.toContain('DELETE');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
     await waitFor(() => expect(methods(fn)).toContain('DELETE'));
   });
 
@@ -53,8 +72,10 @@ describe('OpsMapPage', () => {
     });
     renderApp(<OpsMapPage />);
     fireEvent.click(await screen.findByRole('button', { name: 'Start replay: 12 Nov 2024' }));
+    expect(methods(fn)).not.toContain('POST');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
     await waitFor(() => expect(methods(fn)).toContain('POST'));
     const post = fn.mock.calls.find((c) => (c[1] as RequestInit | undefined)?.method === 'POST')!;
-    expect(JSON.parse((post[1] as RequestInit).body as string).event).toBe('2024-11-12');
+    expect(JSON.parse((post[1] as RequestInit).body as string)).toEqual({ event: '2024-11-12', speed: 60 });
   });
 });

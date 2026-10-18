@@ -1,12 +1,29 @@
 import 'leaflet/dist/leaflet.css';
 import type { Feature } from 'geojson';
 import type { PathOptions } from 'leaflet';
-import { CircleMarker, GeoJSON, MapContainer, TileLayer, Tooltip } from 'react-leaflet';
+import L from 'leaflet';
+import { useEffect, useRef } from 'react';
+import { CircleMarker, GeoJSON, MapContainer, TileLayer, Tooltip, useMap } from 'react-leaflet';
 import { LEVEL_STYLE, type Level, type Station, type StreetCollection, type StreetProperties } from '@floodready/shared';
 
 import { STALE_GREY } from '../lib/colours';
 
 const CENTRE: [number, number] = [3.0852, 101.4377];
+
+/** Zoom to the streets once, when they first arrive. */
+function FitStreets({ streets }: { streets: StreetCollection }) {
+  const map = useMap();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current || streets.features.length === 0) return;
+    const bounds = L.geoJSON(streets as unknown as GeoJSON.FeatureCollection).getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [20, 20] });
+      done.current = true;
+    }
+  }, [map, streets]);
+  return null;
+}
 
 /** Streets coloured by level; rain gauges (circles) and river gauges (squares-ish, larger) with stale ones grey. */
 export function OpsMapView({ streets, stations, onSelect }: {
@@ -25,6 +42,7 @@ export function OpsMapView({ streets, stations, onSelect }: {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · JPS · MET · Open-Meteo'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <FitStreets streets={streets} />
       <GeoJSON
         key={key}
         data={streets as unknown as GeoJSON.FeatureCollection}
@@ -37,7 +55,7 @@ export function OpsMapView({ streets, stations, onSelect }: {
       />
       {stations.map((s) => (
         <CircleMarker
-          key={s.graph_id}
+          key={`${s.graph_id}:${s.kind}`}
           center={[s.lat, s.lon]}
           radius={s.kind === 'wl' ? 8 : 6}
           pathOptions={{
