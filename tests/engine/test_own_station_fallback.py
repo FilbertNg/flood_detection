@@ -105,9 +105,9 @@ def test_dead_first_station_falls_back_for_river_rules_and_names_the_station(rea
     # the substitute is labelled first, in EN and MS, naming both gauges; confidence is low; the dead gauge is recorded
     note = fb.reasons[0]
     assert note.code == "stale_data" and note.station == "Sg. Binjai di Pekan Meru"
-    assert "Own river gauge Sg. Kapar Kechil di Kg. Perepat, Kapar is offline" in note.text_en
-    assert "using the nearest working gauge Sg. Binjai di Pekan Meru" in note.text_en
-    assert "Tolok sungai sendiri Sg. Kapar Kechil di Kg. Perepat, Kapar tidak berfungsi" in note.text_ms
+    assert "This street's river gauge (Sg. Kapar Kechil di Kg. Perepat, Kapar) is offline" in note.text_en
+    assert "using the nearest working gauge, Sg. Binjai di Pekan Meru" in note.text_en
+    assert "Tolok paras air sungai bagi jalan ini (Sg. Kapar Kechil di Kg. Perepat, Kapar) tidak berfungsi" in note.text_ms
     assert "Sg. Binjai di Pekan Meru" in note.text_ms
     assert fb.confidence == "low"
     assert not any(r.code == "stale_data" for r in alone.reasons) and alone.confidence == "high"
@@ -180,7 +180,7 @@ def test_gauge_notice_records_the_dead_own_gauge_in_stale_stations():
     names = {"26558": "Own", "PEKANMERU": "Sub"}
     out = replay._gauge_notice(base, ("26558",), "PEKANMERU", names)
     assert out.stale_stations == ("26558", "X") and out.confidence == "low" and out.level is Level.NORMAL
-    assert out.reasons[0].text_en == "Own river gauge Own is offline; using the nearest working gauge Sub"
+    assert out.reasons[0].text_en == "This street's river gauge (Own) is offline; using the nearest working gauge, Sub"
     none = replay._gauge_notice(base, ("26558",), None, names)
     assert none.stale_stations == ("26558", "X") and none.confidence == "low"
 
@@ -202,3 +202,16 @@ def test_dead_set_is_causal_with_qc_on_truncated_readings(stations):
                                           t, stations, 120), wl_ids)
         assert cut == ref, hhmm
     assert ref >= {"PANDAMARAN"} and "PEKANMERU" not in ref          # sanity: it did flip
+
+
+def test_substitute_notice_stays_first_when_ml_puts_its_reason_first(readings, stations, rules_cfg, matrix_cfg):
+    from floodready.ml import dataset
+    ml_cfg = {"p_watch": 0.35, "p_warning": 0.4, "smoothing_min": 30, "horizon_h": 2, "ml_drives_alerts": False,
+              "ml_max_level": "watch"}
+    bundle = {"model": HalfModel(), "features": dataset.FEATURES}
+    steps = run(blank_wl(readings, "26558"), stations, rules_cfg, matrix_cfg, mapping(), ml_bundle=bundle, ml_cfg=ml_cfg,
+                wl_ids=["26558", "PEKANMERU", "PANDAMARAN"])
+    fb = state(steps[T("07:00")], "fb")                      # a Normal step: combine() lists the ML reason first
+    assert fb.level is Level.NORMAL
+    assert any(r.code == "ml_probability" for r in fb.reasons)
+    assert fb.reasons[0].code == "stale_data" and fb.confidence == "low"

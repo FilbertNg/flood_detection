@@ -51,8 +51,8 @@ def _gauge_notice(trigger: TriggerResult, dead: tuple[str, ...], substitute: str
     if substitute:
         sub = str(names.get(substitute, substitute))
         reason = Reason(code="stale_data", value=float(len(dead)), unit="stations", station=sub,
-                        text_en=f"Own river gauge {own} is offline; using the nearest working gauge {sub}",
-                        text_ms=f"Tolok sungai sendiri {own} tidak berfungsi; menggunakan tolok berfungsi terdekat, {sub}")
+                        text_en=f"This street's river gauge ({own}) is offline; using the nearest working gauge, {sub}",
+                        text_ms=f"Tolok paras air sungai bagi jalan ini ({own}) tidak berfungsi; menggunakan tolok terdekat yang berfungsi, {sub}")
     else:
         reason = Reason(code="stale_data", value=float(len(dead)), unit="stations", station=None,
                         text_en=f"No recent data from river station {own}",
@@ -135,11 +135,11 @@ def run(start: datetime, end: datetime, step: timedelta, readings: pd.DataFrame,
                 if group not in group_triggers:
                     own = _dated(rules.township_trigger(_own_features(feats, wl, rf),
                                                         ([wl] if wl else []) + list(rf), rules_cfg), t)
-                    if group[2]:
-                        own = _gauge_notice(own, group[2], wl, wl_names)
                     own_ml = ml_by_station.get(wl) if wl else None
-                    group_triggers[group] = (levels.combine(own, own_ml, ml_cfg) if own_ml is not None else own,
-                                             own_ml.p if own_ml is not None else None)
+                    combined = levels.combine(own, own_ml, ml_cfg) if own_ml is not None else own
+                    if group[2]:   # after combine: the notice stays the first reason, ahead of the ML reason
+                        combined = _gauge_notice(combined, group[2], wl, wl_names)
+                    group_triggers[group] = (combined, own_ml.p if own_ml is not None else None)
                 street_trigger, p = group_triggers[group]
             states.append(levels.street_state(street_id, susceptibility, street_trigger, rules_cfg, matrix_table,
                                               flood_probability=p))
