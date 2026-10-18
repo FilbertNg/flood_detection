@@ -276,7 +276,9 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
     replay_only: only replay rows (the API's view while a replay is on).
     active: per street, mode (live / replay / backfill) and horizon (nowcast / outlook) the latest row, if it is an 'alert' (not an all-clear)
     AND the street's current state in that mode is not 'normal' (a missed all-clear, e.g. the API was down, must not
-    leave an alert active for ever). Streets without a saved state row, and backfill rows, are not filtered by state."""
+    leave an alert active for ever). Since the engine holds an all-clear for `alerts.clear_after_min`, a street can be normal
+    while its latest row is still an 'alert': it is deliberately NOT active then. `active` shows the current situation; the
+    hold only delays the all-clear notification. Streets without a saved state row, and backfill rows, are not filtered by state."""
     a = t.alerts
     q = select(a).order_by(a.c.issued_at.desc(), a.c.alert_id)
     if street_id is not None:

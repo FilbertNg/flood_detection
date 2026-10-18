@@ -201,7 +201,9 @@ def test_watch_notice_issued_when_watch_is_an_alert_level_and_a_rise_re_alerts()
     assert same == []                                                   # cooldown
     rise = alerts.issue({"s": state(Level.WATCH, T("09:15"))}, [state(Level.WARNING, T("09:30"))], last, cfg)
     assert [(a.kind, a.level) for a in rise] == [("alert", Level.WARNING)]   # rising level re-alerts inside the cooldown
-    clear = alerts.issue({"s": state(Level.WATCH, T("09:15"))}, [state(Level.NORMAL, T("09:30"))], last, cfg)
+    held = alerts.issue({"s": state(Level.WATCH, T("09:15"))}, [state(Level.NORMAL, T("09:30"))], last, cfg)
+    assert held == []                                                   # all-clear held for the minimum alert duration
+    clear = alerts.issue({"s": state(Level.NORMAL, T("09:45"))}, [state(Level.NORMAL, T("10:00"))], last, cfg)
     assert [a.kind for a in clear] == ["all_clear"]
 
 

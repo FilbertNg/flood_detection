@@ -99,7 +99,8 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
     state = _states(snap).get(street_id)
     data_time = snap.step.time if snap.step else datetime.now()
     history = snap.alerts_for(street_id)
-    still_elevated = state is None or state.level.json != "normal"      # a missed all-clear must not stay active
+    # a missed or still-held all-clear (alerts.clear_after_min) must not stay active: `active` is the current situation
+    still_elevated = state is None or state.level.json != "normal"
     # latest row per horizon: a nowcast all-clear never hides an outlook and the reverse; nowcast wins when both are active
     latest = {}
     for a in history:

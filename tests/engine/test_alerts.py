@@ -64,3 +64,42 @@ def test_watch_does_not_alert_when_only_warning_and_danger_are_alert_levels(rule
     engine = Engine({**rules_cfg, "alerts": {**rules_cfg["alerts"], "alert_levels": ["warning", "danger"]}})
     assert engine.step(Level.WATCH, "08:45") == []
     assert engine.step(Level.NORMAL, "09:00") == []
+
+
+def _hold_cfg(rules_cfg, **alerts_over):
+    return {**rules_cfg, "alerts": {**rules_cfg["alerts"], **alerts_over}}
+
+
+def test_all_clear_is_held_until_the_minimum_alert_duration(rules_cfg):
+    engine = Engine(_hold_cfg(rules_cfg, cooldown_min=60, clear_after_min=60))
+    assert [a.kind for a in engine.step(Level.WATCH, "09:00")] == ["alert"]
+    assert engine.step(Level.NORMAL, "09:15") == []      # 15 min after the alert: stay silent
+    assert engine.step(Level.WATCH, "09:30") == []       # still active, not rising: no new alert
+    assert engine.step(Level.NORMAL, "09:45") == []
+    issued = engine.step(Level.NORMAL, "10:15")           # 75 min after the alert
+    assert [(a.kind, a.level) for a in issued] == [("all_clear", Level.NORMAL)]
+    assert engine.step(Level.NORMAL, "10:30") == []
+
+
+def test_continuous_normal_clears_at_the_first_tick_after_the_hold(rules_cfg):
+    engine = Engine(_hold_cfg(rules_cfg, cooldown_min=60, clear_after_min=60))
+    engine.step(Level.WATCH, "09:00")
+    for when in ("09:15", "09:30", "09:45"):
+        assert engine.step(Level.NORMAL, when) == []
+    assert [a.kind for a in engine.step(Level.NORMAL, "10:00")] == ["all_clear"]
+
+
+def test_rising_level_during_the_hold_still_alerts(rules_cfg):
+    engine = Engine(_hold_cfg(rules_cfg, cooldown_min=60, clear_after_min=60))
+    engine.step(Level.WATCH, "09:00")
+    assert engine.step(Level.NORMAL, "09:15") == []
+    issued = engine.step(Level.WARNING, "09:30")
+    assert [(a.kind, a.level) for a in issued] == [("alert", Level.WARNING)]
+
+
+def test_missing_clear_after_min_falls_back_to_the_cooldown(rules_cfg):
+    alerts_cfg = {k: v for k, v in rules_cfg["alerts"].items() if k != "clear_after_min"}
+    engine = Engine({**rules_cfg, "alerts": {**alerts_cfg, "cooldown_min": 45}})
+    engine.step(Level.WATCH, "09:00")
+    assert engine.step(Level.NORMAL, "09:30") == []
+    assert [a.kind for a in engine.step(Level.NORMAL, "09:45")] == ["all_clear"]
