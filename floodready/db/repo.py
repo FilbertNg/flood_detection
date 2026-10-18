@@ -268,7 +268,7 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
     Statistics must pass include_replay=False and count_simulated_sensor=False, and ignore answers with source='demo'.
 
     replay_only: only replay rows (the API's view while a replay is on).
-    active: per street and per mode (live / replay / backfill) the latest row, if it is an 'alert' (not an all-clear)
+    active: per street, mode (live / replay / backfill) and horizon (nowcast / outlook) the latest row, if it is an 'alert' (not an all-clear)
     AND the street's current state in that mode is not 'normal' (a missed all-clear, e.g. the API was down, must not
     leave an alert active for ever). Streets without a saved state row, and backfill rows, are not filtered by state."""
     a = t.alerts
@@ -286,16 +286,17 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
     if since is not None:
         q = q.where(a.c.issued_at >= _naive(since))
     if active:
-        latest = (select(a.c.street_id, a.c.is_replay, a.c.is_backfill, func.max(a.c.issued_at).label("m"))
-                  .group_by(a.c.street_id, a.c.is_replay, a.c.is_backfill).subquery())
+        latest = (select(a.c.street_id, a.c.is_replay, a.c.is_backfill, a.c.horizon, func.max(a.c.issued_at).label("m"))
+                  .group_by(a.c.street_id, a.c.is_replay, a.c.is_backfill, a.c.horizon).subquery())
         q = (q.join(latest, and_(a.c.street_id == latest.c.street_id, a.c.is_replay == latest.c.is_replay,
-                                 a.c.is_backfill == latest.c.is_backfill, a.c.issued_at == latest.c.m))
+                                 a.c.is_backfill == latest.c.is_backfill, a.c.horizon == latest.c.horizon,
+                                 a.c.issued_at == latest.c.m))
              .where(a.c.kind == "alert"))
         ss = t.street_state
         normal_now = (select(ss.c.street_id).where(
             ss.c.street_id == a.c.street_id, ss.c.level == "normal",
             ss.c.mode == case((a.c.is_replay.is_(True), "replay"), else_="live")).exists())
-        q = q.where(a.c.is_backfill.is_(True) | ~normal_now)
+        q = q.where(a.c.is_backfill.is_(True) | (a.c.horizon == "outlook") | ~normal_now)   # an outlook sits on streets that are Normal now
     pl = push_levels()
     rows = list(conn.execute(q))
     out = outcomes_for(conn, [{"alert_id": r.alert_id, "street_id": r.street_id, "kind": r.kind,

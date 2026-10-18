@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import Callable
 
@@ -18,10 +18,10 @@ import geopandas as gpd
 import pandas as pd
 from sqlalchemy import Engine
 
-from ..engine import replay
+from ..engine import outlook, replay
 from ..engine.replay import ReplayStep
 from ..db import repo
-from ..engine.types import Reason
+from ..engine.types import Alert, Level, Reason
 from ..ml import dataset
 from ..push import PushService
 
@@ -46,6 +46,8 @@ class EngineContext:
     street_stations: dict | None = None                                   # street_id -> {wl, rf, method, distance_m}; None = township-wide trigger
     # (readings, graph_id, at, live) -> RiverForecast dict | None; the station's level at +1 h / +2 h
     river_forecast: Callable[[pd.DataFrame, str, datetime, bool], dict | None] | None = None
+    # (now) -> (parsed MET warnings, hourly forecast DataFrame time_local/precip_mm) for the 6-24 h Outlook (live only)
+    outlook_inputs: Callable[[datetime], tuple[list[dict], pd.DataFrame]] | None = None
     tide_loader: Callable[[], pd.DataFrame | None] | None = None          # current tide table (reloads when the file changes); wins over `tide`
 
     def tide_table(self) -> pd.DataFrame | None:
@@ -88,6 +90,8 @@ class Runner:
     _thread: threading.Thread | None = None
     _generation: int = 0   # bumped on every replay start/stop; a slower live refresh from an older generation is dropped
     _db_lock: threading.RLock = field(default_factory=threading.RLock)
+    _outlook_last: Alert | None = None                           # the township's last outlook row (alert or all_clear)
+    _outlook_streets: list[str] = field(default_factory=list)    # streets that carry the active outlook
 
     def __post_init__(self):
         if self.db is None:
@@ -169,6 +173,36 @@ class Runner:
                 return  # a replay started (or stopped) while this refresh was computing
             self._readings = readings
         self._record(ReplayStep(time=last.time, trigger=last.trigger, states=last.states, alerts=last.alerts), is_replay=False)
+        self._refresh_outlook(now, last.states, generation)
+
+    def _refresh_outlook(self, now: datetime, states, generation: int) -> None:
+        """6-24 h Outlook (E8): one township alert, stored per street at Watch only where the nowcast level is Normal."""
+        if self.ctx.outlook_inputs is None:
+            return
+        try:
+            warnings, forecast = self.ctx.outlook_inputs(now)
+            cfg = {**self.ctx.rules_cfg, "township": self.ctx.township}
+            issued = outlook.issue_outlook(outlook.township_outlook(warnings, forecast, now, cfg), self._outlook_last, now, cfg)
+        except Exception:  # advisory: must never break the live nowcast
+            log.exception("outlook failed")
+            return
+        if issued is None:
+            return
+        streets = ([s.street_id for s in states if s.level == Level.NORMAL] if issued.kind == "alert"
+                   else list(self._outlook_streets))
+        alerts = [replace(issued, street_id=sid) for sid in streets]
+        if not alerts or self.mode != "live" or self._generation != generation:
+            return
+        with self._db_lock:
+            with self.db.begin() as conn:
+                new_ids = set(repo.insert_alerts(conn, alerts, is_replay=False, is_backfill=False, horizon="outlook"))
+                new = ([a for a in repo.list_alerts(conn, include_replay=False, since=now) if a["alert_id"] in new_ids]
+                       if new_ids else [])
+        self._outlook_last, self._outlook_streets = issued, (streets if issued.kind == "alert" else [])
+        if issued.reasons:
+            for a in new:
+                a["reason_text"] = {"en": issued.reasons[0].text_en, "ms": issued.reasons[0].text_ms}
+        self.push.enqueue([a for a in new if a["push"]], self._street_names)
 
     # ---------- replay ----------
     def start_replay(self, event: date, speed: float | None, start: str = "06:00", end: str = "14:00",

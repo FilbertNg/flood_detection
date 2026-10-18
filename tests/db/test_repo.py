@@ -224,3 +224,22 @@ def test_db_init_script(tmp_path):
     subprocess.run([sys.executable, "scripts/db_init.py", "--url", f"sqlite:///{db.as_posix()}"], check=True)
     names = {r[0] for r in sqlite3.connect(db).execute("select name from sqlite_master where type='table'")}
     assert set(schema.metadata.tables) <= names
+
+
+def test_active_groups_by_horizon(conn):
+    # a nowcast Warning and an outlook Watch on one street are both active; neither hides the other
+    repo.insert_alerts(conn, [alert("BBR-a", Level.WARNING)], is_replay=False, is_backfill=False)
+    repo.insert_alerts(conn, [alert("BBR-a", Level.WATCH, at=T0 + timedelta(hours=1), win=False)],
+                       is_replay=False, is_backfill=False, horizon="outlook")
+    act = repo.list_alerts(conn, active=True)
+    assert sorted((x["horizon"], x["level"]) for x in act) == [("nowcast", "warning"), ("outlook", "watch")]
+    assert any(x["alert_id"].endswith("~outlook") for x in act)
+    # a nowcast all-clear (newer than the outlook row) clears only the nowcast
+    repo.insert_alerts(conn, [alert("BBR-a", Level.NORMAL, "all_clear", at=T0 + timedelta(hours=2), win=False)],
+                       is_replay=False, is_backfill=False)
+    assert [(x["horizon"], x["level"]) for x in repo.list_alerts(conn, active=True)] == [("outlook", "watch")]
+    # and an outlook all-clear clears only the outlook
+    repo.insert_alerts(conn, [alert("BBR-a", Level.WARNING, at=T0 + timedelta(hours=3))], is_replay=False, is_backfill=False)
+    repo.insert_alerts(conn, [alert("BBR-a", Level.NORMAL, "all_clear", at=T0 + timedelta(hours=4), win=False)],
+                       is_replay=False, is_backfill=False, horizon="outlook")
+    assert [(x["horizon"], x["level"]) for x in repo.list_alerts(conn, active=True)] == [("nowcast", "warning")]
