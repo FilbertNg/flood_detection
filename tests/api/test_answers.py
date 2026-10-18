@@ -58,9 +58,9 @@ def api(runner, tmp_path, monkeypatch):
     monkeypatch.setenv("JWT_SECRET", "test-secret-that-is-at-least-32-bytes-long")
     monkeypatch.setattr(repo, "sensor_devices",
                         lambda: {"sensor-1": {STREET}, "sensor-2": {STREET}, "sim-1": {STREET}, "far-1": {"BBR-safe-street"}})
-    engine = repo.connect("sqlite://")
+    engine = runner.db
     calls = []
-    app = create_app(runner, start_live_loop=False, engine=engine, on_alert_confirmed=calls.append)
+    app = create_app(runner, start_live_loop=False, on_alert_confirmed=calls.append)
     with TestClient(app) as client:
         yield Api(client, engine, tmp_path / "uploads", calls)
 
@@ -251,11 +251,11 @@ def test_no_answers_never_trigger_the_hook(api):
 
 def test_failed_hook_does_not_fail_the_request(runner, tmp_path, monkeypatch):
     monkeypatch.setenv("UPLOADS_DIR", str(tmp_path))
-    engine = repo.connect("sqlite://")
+    engine = runner.db
 
     def boom(_alert):
         raise RuntimeError("push down")
-    with TestClient(create_app(runner, start_live_loop=False, engine=engine, on_alert_confirmed=boom)) as client:
+    with TestClient(create_app(runner, start_live_loop=False, on_alert_confirmed=boom)) as client:
         with engine.begin() as c:
             aid = repo.insert_alerts(c, [make_alert()], is_replay=False, is_backfill=False)[0]
             for d in ("a", "b"):
