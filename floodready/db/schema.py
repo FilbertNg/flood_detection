@@ -54,12 +54,14 @@ alerts = Table(
     Column("recipients", Integer, nullable=False, default=0),
     Column("is_replay", Boolean, nullable=False, default=False),
     Column("is_backfill", Boolean, nullable=False, default=False),
+    Index("ix_alerts_street_issued", "street_id", "issued_at"),
+    Index("ix_alerts_mode_issued", "is_backfill", "is_replay", "issued_at"),
 )
 
 answers = Table(
     "answers", metadata,
     Column("answer_id", String(40), primary_key=True),
-    Column("device_id", String(64), nullable=False, index=True), Column("alert_id", String(260)),
+    Column("device_id", String(64), nullable=False, index=True), Column("alert_id", String(260), index=True),
     Column("street_id", String(200), nullable=False, index=True),
     Column("answer", String(16), nullable=False), Column("depth", String(16)), Column("photo_path", String(500)),
     Column("lat3", Float), Column("lon3", Float), Column("distance_m", Float),

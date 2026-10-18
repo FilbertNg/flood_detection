@@ -1,7 +1,8 @@
 """Create every Flood-Ready table in a database (idempotent).
 
 Usage: python scripts/db_init.py --url sqlite:///data/floodready.db
-       python scripts/db_init.py --url "$DATABASE_URL"        # Postgres needs: pip install -e ".[postgres]"
+       python scripts/db_init.py --url "postgresql+psycopg://user:pw@host/db"   # needs: pip install -e ".[postgres]"
+       (postgres:// and postgresql:// URLs are rewritten to postgresql+psycopg://)
 """
 from __future__ import annotations
 
