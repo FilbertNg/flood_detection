@@ -19,6 +19,7 @@ from sqlalchemy.pool import StaticPool
 
 from ..engine.types import Alert, StreetState
 from ..jobs import now_myt
+from ..stats import outcomes
 from . import schema as t
 
 # Single-writer assumption: the API process is the only writer (build plan decision 2). The delete/select-then-insert
@@ -33,6 +34,22 @@ def _alerts_cfg() -> dict:
     """`alerts:` block of config/rules.yaml: the single source of truth for push levels."""
     with open(ROOT / "config" / "rules.yaml", encoding="utf-8") as f:
         return yaml.safe_load(f)["alerts"]
+
+
+def _sensor_cfg() -> dict:
+    with open(ROOT / "config" / "rules.yaml", encoding="utf-8") as f:
+        return yaml.safe_load(f)["sensor"]
+
+
+def sensor_threshold_cm() -> float:
+    """`sensor.threshold_cm` of config/rules.yaml: a reading above it confirms the alerts of the sensor's streets."""
+    return float(_sensor_cfg()["threshold_cm"])
+
+
+def sensor_devices() -> dict[str, set[str]]:
+    """`sensor.devices` of config/rules.yaml: device_id -> the street ids that sensor speaks for. Readings of a
+    device confirm only alerts on these streets; unknown devices are rejected by the API."""
+    return {d: set(v.get("street_ids", [])) for d, v in (_sensor_cfg().get("devices") or {}).items()}
 
 
 def push_levels() -> tuple[str, ...]:
@@ -115,11 +132,27 @@ def save_street_states(conn, states: list[StreetState], mode: str) -> None:
     conn.execute(insert(t.street_state), rows)
 
 
-def clear_replay(conn) -> None:
+def clear_replay(conn, *, uploads: Path | str | None = None) -> list[Path]:
     """Delete replay-mode alerts and street states so a new replay starts clean and re-issues (and re-pushes) its alerts.
-    Live and backfill rows are untouched."""
+    Also deletes the demo answers (source='demo': answers to replay alerts and reports sent during a replay, so the same
+    demo device can answer again) and the simulated sensor readings that score replay alerts.
+    Live and backfill rows, resident answers and real sensor readings are untouched.
+
+    Returns the demo photo files to remove (inside the uploads directory only); the caller unlinks them with
+    `remove_files` AFTER its transaction commits."""
+    root = Path(uploads or uploads_dir()).resolve()
+    photos = [p for (p,) in conn.execute(select(t.answers.c.photo_path).where(
+        t.answers.c.source == "demo", t.answers.c.photo_path.is_not(None)))]
+    conn.execute(delete(t.answers).where(t.answers.c.source == "demo"))
+    conn.execute(delete(t.sensor_readings).where(t.sensor_readings.c.simulated.is_(True)))
     conn.execute(delete(t.alerts).where(t.alerts.c.is_replay.is_(True), t.alerts.c.is_backfill.is_(False)))
     conn.execute(delete(t.street_state).where(t.street_state.c.mode == "replay"))
+    safe = []
+    for p in photos:
+        path = (root / p).resolve()
+        if path != root and path.is_relative_to(root):
+            safe.append(path)
+    return safe
 
 
 def get_street_states(conn, township_id: str, mode: str) -> list[dict]:
@@ -176,10 +209,63 @@ def replace_backfill(conn, township_id: str, start: datetime, end: datetime) -> 
     return res.rowcount
 
 
+def outcomes_for(conn, items: list[dict], *, count_simulated_sensor: bool = True) -> dict[str, str]:
+    """alert_id -> confirmed | not_confirmed | unverified for dicts with `alert_id`, `street_id`, `kind`, `issued_at`
+    (and optionally `is_replay`).
+
+    Answers are scored by stats.outcomes.alert_outcome. The sensor only counts from devices mapped to the alert's
+    street (`sensor_devices`):
+    - live alerts: REAL readings above the threshold in the 3 h after the alert. Simulated readings never affect a
+      live alert (nothing in the AlertSummary would label them).
+    - replay alerts (`is_replay`): scored on their demo answers, plus simulated readings of the mapped sensor above the
+      threshold with no time window (replay times are 2024); `count_simulated_sensor=False` drops those.
+
+    STATISTICS MUST call list_alerts(include_replay=False, count_simulated_sensor=False) and drop answers with
+    source='demo'."""
+    ids = [i["alert_id"] for i in items]
+    by_alert: dict[str, list[dict]] = {}
+    for part in _chunks(ids):
+        for r in conn.execute(select(t.answers).where(t.answers.c.alert_id.in_(part))):
+            by_alert.setdefault(r.alert_id, []).append({
+                "device_id": r.device_id, "answer": r.answer, "photo_path": r.photo_path, "distance_m": r.distance_m,
+                "answered_at": r.answered_at, "review_status": r.review_status})
+    devices = sensor_devices()
+    threshold = sensor_threshold_cm()
+    live = [i for i in items if i["kind"] == "alert" and not i.get("is_replay")]
+    real: list = []
+    if live and devices:
+        first = min(_naive(i["issued_at"]) for i in live)
+        real = list(conn.execute(select(t.sensor_readings).where(
+            t.sensor_readings.c.time_local >= first, t.sensor_readings.c.simulated.is_(False),
+            t.sensor_readings.c.level_cm > threshold)))
+    sim_high: set[str] = set()
+    if count_simulated_sensor and any(i.get("is_replay") for i in items) and devices:
+        sim_high = {r.device_id for r in conn.execute(select(t.sensor_readings.c.device_id).where(
+            t.sensor_readings.c.simulated.is_(True), t.sensor_readings.c.level_cm > threshold).distinct())}
+    out = {}
+    for i in items:
+        if i["kind"] != "alert":
+            out[i["alert_id"]] = "unverified"
+            continue
+        mine = {d for d, streets in devices.items() if i["street_id"] in streets}
+        answers = by_alert.get(i["alert_id"], [])
+        if i.get("is_replay"):
+            # replay alerts carry simulated 2024 times while their demo answers arrive now: no time window
+            out[i["alert_id"]] = outcomes.alert_outcome(answers, bool(mine & sim_high))
+            continue
+        issued = _naive(i["issued_at"])
+        hit = outcomes.sensor_above([{"time_local": r.time_local, "level_cm": r.level_cm} for r in real
+                                     if r.device_id in mine], issued, threshold)
+        out[i["alert_id"]] = outcomes.alert_outcome(answers, hit, issued_at=issued)
+    return out
+
+
 def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
                 include_replay: bool = True, since: datetime | None = None, include_backfill: bool = False,
-                replay_only: bool = False) -> list[dict]:
+                replay_only: bool = False, count_simulated_sensor: bool = True, alert_id: str | None = None) -> list[dict]:
     """AlertSummary dicts, newest first. Backfill rows are excluded unless `include_backfill`.
+    `outcome` is computed from answers and sensor readings (see `outcomes_for`).
+    Statistics must pass include_replay=False and count_simulated_sensor=False, and ignore answers with source='demo'.
 
     replay_only: only replay rows (the API's view while a replay is on).
     active: per street and per mode (live / replay / backfill) the latest row, if it is an 'alert' (not an all-clear)
@@ -189,6 +275,8 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
     q = select(a).order_by(a.c.issued_at.desc(), a.c.alert_id)
     if street_id is not None:
         q = q.where(a.c.street_id == street_id)
+    if alert_id is not None:
+        q = q.where(a.c.alert_id == alert_id)
     if replay_only:
         q = q.where(a.c.is_replay.is_(True))
     elif not include_replay:
@@ -209,12 +297,16 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
             ss.c.mode == case((a.c.is_replay.is_(True), "replay"), else_="live")).exists())
         q = q.where(a.c.is_backfill.is_(True) | ~normal_now)
     pl = push_levels()
+    rows = list(conn.execute(q))
+    out = outcomes_for(conn, [{"alert_id": r.alert_id, "street_id": r.street_id, "kind": r.kind,
+                               "issued_at": r.issued_at, "is_replay": bool(r.is_replay)} for r in rows],
+                       count_simulated_sensor=count_simulated_sensor)
     return [{
         "alert_id": r.alert_id, "street_id": r.street_id, "horizon": r.horizon, "kind": r.kind, "level": r.level,
         "issued_at": _iso(r.issued_at), "window": _window(r.window_start, r.window_end),
-        "outcome": "unverified",   # TODO(WP4): computed from answers and sensor readings (stats.outcomes.alert_outcome)
+        "outcome": out[r.alert_id],
         "is_replay": bool(r.is_replay), "push": r.kind == "alert" and r.level in pl,
-    } for r in conn.execute(q)]
+    } for r in rows]
 
 
 # ---------- subscriptions ----------
@@ -250,7 +342,7 @@ def delete_device(conn, device_id: str, *, uploads: Path | str | None = None) ->
     conn.execute(delete(t.subscriptions).where(t.subscriptions.c.device_id == device_id))
     safe = []
     for p in photos:
-        path = Path(p).resolve()
+        path = (root / p).resolve()     # photo_path is the bare uuid file name (an absolute path also works)
         if path != root and path.is_relative_to(root):
             safe.append(path)
     return safe

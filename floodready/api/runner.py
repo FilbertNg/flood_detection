@@ -180,7 +180,8 @@ class Runner:
         readings = self.ctx.load_readings(t0 - timedelta(days=5), datetime.fromisoformat(f"{event} {end}"))
         readings = readings[readings.graph_id.isin(ids)]
         with self._db_lock, self.db.begin() as conn:
-            repo.clear_replay(conn)       # a rehearsal re-issues (and re-pushes) every alert of the event
+            files = repo.clear_replay(conn)       # a rehearsal re-issues (and re-pushes) every alert of the event
+        repo.remove_files(files)                  # demo photos, only after the commit
         with self._lock:
             self._generation += 1
             self.mode = "replay"
@@ -215,7 +216,8 @@ class Runner:
                 self.mode, self._replay = "live", None
                 self._step = None
             with self._db_lock, self.db.begin() as conn:
-                repo.clear_replay(conn)
+                files = repo.clear_replay(conn)
+            repo.remove_files(files)
 
     def snapshot(self) -> Snapshot:
         with self._lock:

@@ -18,6 +18,14 @@ alerts:
   push_levels: [watch, warning, danger]   # only these are flagged push: true for a notifier (team decision 17 Oct 2026: push Watch too)
   window_from: warning                    # the "flooding expected" nowcast window is only set from this level up
 
+# Ground-truth sensors (WP4). A reading above threshold_cm confirms alerts on the streets that device speaks for.
+# Unknown device ids are rejected. sim-1 is the simulated sensor (scripts/sim_sensor.py); it is placed on a street from the
+# residents' memorandum, and its readings only ever confirm labelled replay alerts, never live ones.
+sensor:
+  threshold_cm: 15
+  devices:
+    sim-1: {street_ids: [BBR-jalan-makyong-1-ku5]}
+
 # Which stations decide a street (scripts/build_street_stations.py). Radii follow a redundancy rule: the smallest
 # rain radius that gives every street at least `min_rain_gauges` gauges, from the spacing of the gauge network
 # (BBR's 7 gauges are 2.6-9.2 km from their nearest neighbour; 8 km covers 888/943 streets, 10 km covers all).
