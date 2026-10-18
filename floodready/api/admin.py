@@ -7,12 +7,13 @@ Reads need any valid token; every write needs the `admin` role (see auth.py). In
 import logging
 import os
 import re
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Literal
 
 import pandas as pd
-from fastapi import Depends, FastAPI, HTTPException, Query, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -62,9 +63,10 @@ def load_events() -> pd.DataFrame | None:
         return None
 
 
-def answer_view(row: dict) -> dict:
+def answer_view(row: dict, key: str | None = None) -> dict:
+    """An `Answer`: `photo_path` becomes a signed, expiring `photo_url` (/uploads/<name>?exp=..&sig=..)."""
     out = {k: v for k, v in row.items() if k != "photo_path"}
-    out["photo_url"] = f"/uploads/{row['photo_path']}" if row.get("photo_path") else None
+    out["photo_url"] = auth.sign_upload(row["photo_path"], key) if row.get("photo_path") and key else None
     return out
 
 
@@ -80,9 +82,17 @@ def station_frame(ctx) -> pd.DataFrame:
 
 def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1") -> tuple:
     """Add the admin routes; returns the (read, write) auth dependencies for other admin routes (replay)."""
-    read, write = auth.make_dependencies(lambda: runner.db)
+    @contextmanager
+    def tx():
+        """The runner's database under its lock (one SQLite connection is shared across threads)."""
+        with runner._db_lock, runner.db.begin() as conn:
+            yield conn
+
+    read, write = auth.make_dependencies(tx)
     names = dict(zip(ctx.streets["street_id"], ctx.streets["name"]))
-    with runner.db.connect() as conn:
+    township = ctx.township.get("name")
+    limiter = auth.LoginLimiter()
+    with tx() as conn:
         auth.warn_if_dev(conn)
 
     def readings_for(date_from: date, date_to: date) -> pd.DataFrame:
@@ -101,14 +111,19 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1") -> tuple:
         return frame
 
     @app.post(f"{api}/admin/login")
-    def login(body: LoginRequest):
-        with runner.db.connect() as conn:
-            who = auth.authenticate(conn, body.email, body.password)
-            if who is None:
-                raise HTTPException(status_code=401, detail="Wrong email or password")
+    def login(body: LoginRequest, request: Request):
+        with tx() as conn:
             key = auth.secret(conn)
         if key is None:
-            raise HTTPException(status_code=503, detail="JWT_SECRET is not set on this server")
+            raise HTTPException(status_code=503, detail="admin login not configured")
+        if not limiter.allow(request.client.host if request.client else "?", body.email):
+            raise HTTPException(status_code=429, detail="Too many login attempts, try again later")
+        with tx() as conn:
+            who = auth.authenticate(conn, body.email, body.password)
+        if who is None:
+            limiter.failed(body.email)
+            raise HTTPException(status_code=401, detail="Wrong email or password")
+        limiter.succeeded(body.email)
         return {"token": auth.issue_token(who.email, who.role, key)}
 
     @app.get(f"{api}/admin/stats")
@@ -116,10 +131,11 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1") -> tuple:
                   date_to: Annotated[date, Query(alias="to")]):
         if date_from > date_to:
             raise HTTPException(status_code=422, detail="from must be on or before to")
-        with runner.db.connect() as conn:
+        readings = readings_for(date_from, date_to)             # slow (QC); outside the database lock
+        with tx() as conn:
             return statistics.stats(conn, date_from, date_to, street_names=names, events=load_events(),
-                                    readings=readings_for(date_from, date_to), stations=station_frame(ctx),
-                                    street_stations=ctx.street_stations)
+                                    readings=readings, stations=station_frame(ctx),
+                                    street_stations=ctx.street_stations, township_name=township)
 
     @app.get(f"{api}/admin/report")
     def get_report(_who: Annotated[auth.Principal, Depends(read)], month: str):
@@ -127,21 +143,22 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1") -> tuple:
             date_from, date_to = report_mod.month_range(month)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from None
-        with runner.db.connect() as conn:
+        readings = readings_for(date_from, date_to)
+        with tx() as conn:
             return report_mod.monthly_report(conn, month, street_names=names, events=load_events(),
-                                             readings=readings_for(date_from, date_to), stations=station_frame(ctx),
-                                             street_stations=ctx.street_stations)
+                                             readings=readings, stations=station_frame(ctx),
+                                             street_stations=ctx.street_stations, township_name=township)
 
     @app.get(f"{api}/admin/suggestions")
     def get_suggestions(_who: Annotated[auth.Principal, Depends(read)],
                         date_from: Annotated[date | None, Query(alias="from")] = None,
                         date_to: Annotated[date | None, Query(alias="to")] = None):
-        with runner.db.connect() as conn:
+        with tx() as conn:
             return [report_mod.suggestion_view(r, names) for r in repo.list_suggestions(conn, date_from, date_to)]
 
     @app.patch(f"{api}/admin/suggestions/{{suggestion_id}}")
     def patch_suggestion(suggestion_id: str, body: SuggestionUpdate, _who: Annotated[auth.Principal, Depends(write)]):
-        with runner.db.begin() as conn:
+        with tx() as conn:
             old = repo.get_suggestion(conn, suggestion_id)
             if old is None:
                 raise HTTPException(status_code=404, detail="Unknown suggestion")
@@ -152,30 +169,34 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1") -> tuple:
     @app.get(f"{api}/admin/answers")
     def get_answers(_who: Annotated[auth.Principal, Depends(read)],
                     review_status: Literal["pending", "valid", "spam"] | None = None):
-        with runner.db.connect() as conn:
-            return [answer_view(r) for r in repo.list_answers(conn, review_status=review_status)]
+        with tx() as conn:
+            key = auth.upload_key(conn)
+            return [answer_view(r, key) for r in repo.list_answers(conn, review_status=review_status)]
 
     @app.patch(f"{api}/admin/answers/{{answer_id}}")
     def patch_answer(answer_id: str, body: AnswerReview, _who: Annotated[auth.Principal, Depends(write)]):
-        with runner.db.begin() as conn:
+        with tx() as conn:
             if repo.get_answer(conn, answer_id) is None:
                 raise HTTPException(status_code=404, detail="Unknown answer")
             repo.set_answer_review(conn, answer_id, body.review_status)
-            return answer_view(repo.get_answer(conn, answer_id))
+            return answer_view(repo.get_answer(conn, answer_id), auth.upload_key(conn))
 
     @app.post(f"{api}/admin/notes", status_code=204)
     def post_note(body: OpsNoteRequest, who: Annotated[auth.Principal, Depends(write)]):
         if body.street_id not in names:
             raise HTTPException(status_code=404, detail=f"Unknown street {body.street_id}")
-        with runner.db.begin() as conn:
+        with tx() as conn:
             repo.insert_note(conn, body.street_id, body.text.strip(), who.email)
         return Response(status_code=204)
 
     @app.get("/uploads/{name}")
-    def get_upload(name: str):
-        """Resident photos, read-only. File names are random (uuid4), the pattern allows no path separators and the
-        resolved file must sit directly inside UPLOADS_DIR."""
-        if not re.fullmatch(PHOTO_NAME, name):
+    def get_upload(name: str, exp: str | None = None, sig: str | None = None):
+        """Resident photos, read-only, only with the signed, expiring link the review queue hands out (1 h). File
+        names are random (uuid4), the pattern allows no path separators and the resolved file must sit directly
+        inside UPLOADS_DIR."""
+        with tx() as conn:
+            key = auth.upload_key(conn)
+        if not re.fullmatch(PHOTO_NAME, name) or not auth.verify_upload(name, exp, sig, key):
             raise HTTPException(status_code=404, detail="Not found")
         base = repo.uploads_dir().resolve()
         path = (base / name).resolve()

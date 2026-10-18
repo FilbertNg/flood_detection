@@ -120,10 +120,10 @@ def test_reports_far_apart_in_time_make_separate_events():
 
 def test_news_outcomes_confirm_matching_alerts_only():
     events = pd.DataFrame([
-        {"event_id": "e1", "street_id": "BBR-a", "start_time_local": "2024-11-12 09:30", "date_precision": "hour", "flooded": 1},
-        {"event_id": "e2", "street_id": "BBR-b", "start_time_local": "2024-11-12 09:30", "date_precision": "hour", "flooded": 1},
-        {"event_id": "e3", "street_id": "BBR-c", "start_time_local": "2024-11-12 09:30", "date_precision": "day", "flooded": 1},
-        {"event_id": "e4", "street_id": "BBR-d", "start_time_local": "2024-11-12 09:30", "date_precision": "hour", "flooded": 0},
+        {"event_id": "e1", "street_id": "BBR-a", "start_time_local": "2024-11-12 09:30", "date_precision": "hour", "flooded": 1, "checked_by": "T"},
+        {"event_id": "e2", "street_id": "BBR-b", "start_time_local": "2024-11-12 09:30", "date_precision": "hour", "flooded": 1, "checked_by": "T"},
+        {"event_id": "e3", "street_id": "BBR-c", "start_time_local": "2024-11-12 09:30", "date_precision": "day", "flooded": 1, "checked_by": "T"},
+        {"event_id": "e4", "street_id": "BBR-d", "start_time_local": "2024-11-12 09:30", "date_precision": "hour", "flooded": 0, "checked_by": "T"},
     ])
     alerts = [alert("BBR-a", 0), alert("BBR-b", 600), alert("BBR-c", 0), alert("BBR-d", 0), alert("BBR-e", 0)]
     assert news_outcomes(events, alerts) == {alerts[0]["alert_id"]: "confirmed"}

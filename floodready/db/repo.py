@@ -267,7 +267,8 @@ def outcomes_for(conn, items: list[dict], *, count_simulated_sensor: bool = True
 def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
                 include_replay: bool = True, since: datetime | None = None, include_backfill: bool = False,
                 replay_only: bool = False, count_simulated_sensor: bool = True, alert_id: str | None = None,
-                exclude_demo: bool = False, now: datetime | None = None) -> list[dict]:
+                exclude_demo: bool = False, now: datetime | None = None,
+                until: datetime | None = None) -> list[dict]:
     """AlertSummary dicts, newest first. Backfill rows are excluded unless `include_backfill`.
     `outcome` is computed from answers and sensor readings (see `outcomes_for`).
     Statistics must pass include_replay=False, count_simulated_sensor=False and exclude_demo=True.
@@ -290,6 +291,8 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
         q = q.where(a.c.is_backfill.is_(False))
     if since is not None:
         q = q.where(a.c.issued_at >= _naive(since))
+    if until is not None:
+        q = q.where(a.c.issued_at < _naive(until))
     if active:
         latest = (select(a.c.street_id, a.c.is_replay, a.c.is_backfill, a.c.horizon, func.max(a.c.issued_at).label("m"))
                   .group_by(a.c.street_id, a.c.is_replay, a.c.is_backfill, a.c.horizon).subquery())

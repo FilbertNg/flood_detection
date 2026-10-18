@@ -36,7 +36,7 @@ npx pnpm@9.15.0 dev:resident                                                    
 .venv/Scripts/python.exe scripts/demo_replay.py --stop                               # back to live
 ```
 
-- **Admin accounts:** `python scripts/seed_admin.py --email you@example.org --role admin` (bcrypt, roles admin/viewer; viewers cannot write). Set `JWT_SECRET`. **Dev admin login** (only while `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `JWT_SECRET` are unset and no admin user exists): `admin@floodready.local` / `floodready-demo`. Set real values plus `JWT_SECRET` before deploying.
+- **Admin accounts:** `python scripts/seed_admin.py --email you@example.org --role admin` (bcrypt, roles admin/viewer; viewers cannot write). Set `JWT_SECRET`. **Dev admin login** (only with `FLOODREADY_DEV_LOGIN=1` while `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `JWT_SECRET` are unset and no admin user exists; otherwise login answers 503): `admin@floodready.local` / `floodready-demo`. Set real values plus `JWT_SECRET` before deploying.
 - **The API needs local data that is not in git** (§5). On a fresh clone the tests and the app build work, but the API has no archive, live logs or station lookup until §5 is done.
 
 ## 3. What is built, and where

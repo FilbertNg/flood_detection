@@ -7,6 +7,7 @@ import pytest
 
 from floodready.db import repo
 from floodready.engine.types import Alert, Level, Reason
+from floodready.stats import episodes as episodes_mod
 from floodready.stats import statistics
 
 FROM, TO = date(2024, 11, 1), date(2024, 11, 30)
@@ -53,7 +54,7 @@ def readings():
 def events():
     return pd.DataFrame([{
         "event_id": "BBR-2024-11-20-01", "street_id": "C", "start_time_local": "2024-11-20 09:30",
-        "date_precision": "hour", "flooded": 1, "place_name": "Jalan C", "source_type": "news",
+        "date_precision": "hour", "flooded": 1, "place_name": "Jalan C", "source_type": "news", "checked_by": "T", "status": "checked",
         "source_url": "https://example.org/c"}])
 
 
@@ -76,6 +77,11 @@ def seed(conn):
     return ids
 
 
+def extras(conn, readings, events):
+    return statistics.analyse(conn, FROM, TO, street_names=NAMES, events=events, readings=readings,
+                              street_stations=STREET_STATIONS)[2]
+
+
 def run(conn, readings, events, **kw):
     return statistics.stats(conn, FROM, TO, street_names=NAMES, events=events, readings=readings,
                             street_stations=STREET_STATIONS, **kw)
@@ -88,8 +94,11 @@ def test_kpis_match_hand_computed(conn, readings, events):
     k = s["kpis"]
     # a1+a2 (street A, no all-clear between them) are ONE episode; the raw rows are kept separately
     assert (k["alerts"], k["confirmed"], k["not_confirmed"], k["unverified"]) == (3, 2, 1, 0)
-    assert k["alert_rows"] == 4 and k["street_days_with_alert"] == 3
-    assert k["by_level"] == {"watch": 1, "warning": 1, "danger": 1}      # A reached danger, B watch, C warning
+    assert set(k) == {"alerts", "confirmed", "not_confirmed", "unverified", "confirmation_rate", "missed_floods",
+                      "median_lead_min"}                                  # the frozen contract shape
+    x = extras(conn, readings, events)
+    assert x["alert_rows"] == 4 and x["street_days_with_alert"] == 3
+    assert x["by_level"] == {"watch": 1, "warning": 1, "danger": 1}      # A reached danger, B watch, C warning
     assert k["confirmation_rate"] == pytest.approx(2 / 3)
     assert k["missed_floods"] == 1
     assert k["median_lead_min"] == 65.0          # (40 + 90) / 2
@@ -141,8 +150,7 @@ def test_real_sensor_reading_does_confirm(conn, readings, events, monkeypatch):
 def test_empty_period_is_zeroes_and_null_lead(conn):
     s = statistics.stats(conn, FROM, TO)
     assert s["kpis"] == {"alerts": 0, "confirmed": 0, "not_confirmed": 0, "unverified": 0, "confirmation_rate": 0,
-                         "missed_floods": 0, "median_lead_min": None, "alert_rows": 0,
-                         "by_level": {"watch": 0, "warning": 0, "danger": 0}, "street_days_with_alert": 0}
+                         "missed_floods": 0, "median_lead_min": None}
     assert s["by_week"] == s["by_street"] == s["rain_at_onset"] == s["station_health"] == []
     assert s["sources"] == {"outcomes_from_news": 0, "outcomes_from_residents": 0}
 
@@ -196,8 +204,9 @@ def test_flapping_inside_the_cooldown_is_one_episode(conn):
     flap(conn, "A", [("alert", 0), ("all_clear", 15), ("alert", 30), ("all_clear", 45), ("alert", 60),
                      ("all_clear", 75), ("alert", 105)])
     k = statistics.stats(conn, FROM, TO)["kpis"]
-    assert k["alert_rows"] == 4 and k["alerts"] == 1 and k["unverified"] == 1
-    assert k["street_days_with_alert"] == 1 and k["by_level"]["watch"] == 1
+    x = statistics.analyse(conn, FROM, TO)[2]
+    assert x["alert_rows"] == 4 and k["alerts"] == 1 and k["unverified"] == 1
+    assert x["street_days_with_alert"] == 1 and x["by_level"]["watch"] == 1
 
 
 def test_a_gap_longer_than_the_cooldown_starts_a_new_episode(conn):
@@ -209,8 +218,8 @@ def test_episode_level_is_the_highest_and_streets_are_separate(conn):
     add_alert(conn, "A", Level.WATCH, datetime(2024, 11, 5, 8, 0))
     add_alert(conn, "A", Level.DANGER, datetime(2024, 11, 5, 8, 30))
     add_alert(conn, "B", Level.WARNING, datetime(2024, 11, 5, 8, 10))
-    k = statistics.stats(conn, FROM, TO)["kpis"]
-    assert k["alerts"] == 2 and k["by_level"] == {"watch": 0, "warning": 1, "danger": 1}
+    assert statistics.stats(conn, FROM, TO)["kpis"]["alerts"] == 2
+    assert statistics.analyse(conn, FROM, TO)[2]["by_level"] == {"watch": 0, "warning": 1, "danger": 1}
 
 
 def test_an_episode_is_confirmed_if_any_row_is_and_counts_once(conn):
@@ -223,10 +232,80 @@ def test_an_episode_is_confirmed_if_any_row_is_and_counts_once(conn):
     assert (k["alerts"], k["confirmed"], k["unverified"], k["confirmation_rate"]) == (1, 1, 0, 1.0)
 
 
-def test_open_episode_runs_to_the_end_of_the_data(conn):
+def test_open_episode_continues_while_rows_keep_coming_but_splits_after_48h_of_silence(conn):
     add_alert(conn, "A", Level.WATCH, datetime(2024, 11, 5, 8, 0))
-    add_alert(conn, "A", Level.WARNING, datetime(2024, 11, 20, 8, 0))     # no all-clear in between: same episode
+    add_alert(conn, "A", Level.WARNING, datetime(2024, 11, 6, 20, 0))       # 36 h later, no all-clear: same episode
     assert statistics.stats(conn, FROM, TO)["kpis"]["alerts"] == 1
+    add_alert(conn, "A", Level.WARNING, datetime(2024, 11, 20, 8, 0))       # 13+ days of silence: a new one
+    assert statistics.stats(conn, FROM, TO)["kpis"]["alerts"] == 2
+
+
+def test_two_confirmed_floods_weeks_apart_are_two_episodes(conn):
+    a1 = add_alert(conn, "A", Level.WARNING, datetime(2024, 11, 5, 8, 0))
+    a2 = add_alert(conn, "A", Level.WARNING, datetime(2024, 11, 20, 8, 0))
+    for d in ("d1", "d2"):
+        ans(conn, d, a1, "A", at=datetime(2024, 11, 5, 8, 30))
+        ans(conn, d + "x", a2, "A", at=datetime(2024, 11, 20, 8, 30))
+    k = statistics.stats(conn, FROM, TO)["kpis"]
+    assert (k["alerts"], k["confirmed"]) == (2, 2)
+
+
+def test_episode_across_the_month_edge_keeps_its_level_and_outcome_and_counts_once(conn):
+    add_alert(conn, "A", Level.WATCH, datetime(2024, 10, 31, 23, 30))
+    a2 = add_alert(conn, "A", Level.DANGER, datetime(2024, 11, 1, 0, 30))
+    ans(conn, "d1", a2, "A", at=datetime(2024, 11, 1, 0, 45))
+    ans(conn, "d2", a2, "A", at=datetime(2024, 11, 1, 0, 50))
+    oct_, oct_f, oct_x = statistics.analyse(conn, date(2024, 10, 1), date(2024, 10, 31))
+    nov, nov_f, nov_x = statistics.analyse(conn, date(2024, 11, 1), date(2024, 11, 30))
+    assert (oct_["kpis"]["alerts"], oct_["kpis"]["confirmed"], oct_x["by_level"]["danger"]) == (1, 1, 1)
+    assert nov["kpis"]["alerts"] == 0                                      # started in October: not counted twice
+    assert [f["date"] for f in nov_f] == [date(2024, 11, 1)] and oct_f == []   # the confirmed row's own date
+
+
+def test_a_long_open_episode_is_not_split_by_the_lookback(conn):
+    # rows every 30 h for 6 days with no all-clear: one episode, even when the period starts in the middle
+    for h in range(0, 150, 30):
+        add_alert(conn, "A", Level.WATCH, datetime(2024, 11, 1, 6, 0) + timedelta(hours=h))
+    assert statistics.stats(conn, date(2024, 11, 1), date(2024, 11, 30))["kpis"]["alerts"] == 1
+    assert statistics.stats(conn, date(2024, 11, 4), date(2024, 11, 30))["kpis"]["alerts"] == 0
+
+
+# ---------- Outlook rows ----------
+
+def outlook(conn, streets, at, kind="alert"):
+    rows = [Alert(s, Level.WATCH if kind == "alert" else Level.NORMAL, kind, at, at + timedelta(hours=6),
+                  at + timedelta(hours=12), (Reason("forecast_rain", 45.0, "mm", None, "Forecast", "Ramalan"),), ("outlook",))
+            for s in streets]
+    repo.insert_alerts(conn, rows, is_replay=False, is_backfill=False, horizon="outlook")
+
+
+def test_outlook_rows_and_their_all_clears_change_nothing(conn, readings, events):
+    seed(conn)
+    before = run(conn, readings, events)
+    outlook(conn, ["A", "B", "C", "D"], datetime(2024, 11, 12, 4, 0))              # 5 h before A's nowcast Warning
+    outlook(conn, ["A", "B", "C", "D"], datetime(2024, 11, 12, 9, 5), kind="all_clear")   # would close A's episode
+    outlook(conn, [f"S{i}" for i in range(50)], datetime(2024, 11, 6, 15, 0))
+    assert run(conn, readings, events) == before
+    assert statistics.analyse(conn, FROM, TO, street_names=NAMES, events=events)[2]["alert_rows"] == 4
+
+
+# ---------- floods over midnight, news ----------
+
+def test_a_news_flood_just_after_midnight_and_its_confirmed_alert_are_one_flood(conn):
+    a = add_alert(conn, "C", Level.WARNING, datetime(2024, 11, 20, 23, 30))
+    ans(conn, "d1", a, "C", at=datetime(2024, 11, 20, 23, 50))
+    ans(conn, "d2", a, "C", at=datetime(2024, 11, 20, 23, 55))
+    ev = pd.DataFrame([{"event_id": "e", "street_id": "C", "start_time_local": "2024-11-21 00:10", "date_precision": "hour",
+                        "flooded": 1, "checked_by": "T", "status": "checked"}])
+    s, floods, _ = statistics.analyse(conn, FROM, TO, events=ev)
+    assert len(floods) == 1 and s["by_street"][0]["floods"] == 1
+
+
+def test_unchecked_draft_events_confirm_nothing(conn, events):
+    seed(conn)
+    drafts = events.assign(checked_by=None, status="draft")
+    k = statistics.stats(conn, FROM, TO, events=drafts)["kpis"]
+    assert k["confirmed"] == 1 and k["median_lead_min"] == 40.0            # C is no longer confirmed by news
 
 
 def test_episodes_function_merge_rule():
@@ -234,5 +313,5 @@ def test_episodes_function_merge_rule():
              "alert_id": f"{k}{m}", "outcome": "unverified"}
             for k, lv, m in (("alert", "watch", 0), ("all_clear", "normal", 10), ("alert", "watch", 70),
                              ("all_clear", "normal", 80), ("alert", "warning", 140))]
-    assert len(statistics.episodes(rows, timedelta(minutes=60))) == 1       # 60 min after the first all-clear: merged
-    assert len(statistics.episodes(rows, timedelta(minutes=59))) == 3
+    assert len(episodes_mod.episodes(rows, timedelta(minutes=60))) == 1       # 60 min after the first all-clear: merged
+    assert len(episodes_mod.episodes(rows, timedelta(minutes=59))) == 3

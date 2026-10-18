@@ -27,3 +27,11 @@ Parent: `2026-10-17-MVP2-remaining-mvp.md` §3.1, §3.3, WP8. Contract: `docs/ap
 4. `tests/api/test_admin.py`: stats/report/suggestions/answers/notes/uploads endpoints, validation, photo_url, author from the JWT, path traversal.
 5. Implement; `scripts/seed_admin.py` with a test; docs (`HANDOFF.md`, `.env.example`); full suite.
 6. Fix `2026-10-18-WP4-answers-outcomes.md` §3 and §7 to the merged rules.
+
+## Review round 1 changes (PR #51)
+
+- Statistics count only `horizon == "nowcast"` rows (Outlook rows are a different horizon). Episodes come from `floodready/stats/episodes.py` (shared with WP7: cooldown merge, 48 h open-gap split), built from rows 14 days before to 7 days after the period and selected by start date, so an episode on a period edge keeps its level and outcome and counts once. Floods are evidence clusters per street (12 h merge), so a flood over midnight counts once. `median_lead_min` is the lead to the first report ("lead to first report").
+- One events reader, `floodready/stats/events.py` (also used by `news_outcomes`): `street_ids` split on `;`, only checked non-draft rows, only this township, `event_date` when `start_time_local` is blank. Tested against a copy of the PR #43 file (`tests/fixtures/events_wp6_pr43.csv`).
+- Dev login is opt-in (`FLOODREADY_DEV_LOGIN=1`); unconfigured means 503 "admin login not configured" and every token rejected. `JWT_SECRET` under 32 bytes counts as unset. Login limits: 5 failures per e-mail per 15 min and 20 attempts per IP per minute, then 429. The dummy bcrypt hash has the real cost. Roles are read from `admin_users` on every request.
+- `photo_url` is `/uploads/<name>?exp=&sig=` (HMAC, 1 h; key `UPLOAD_URL_SECRET` or `JWT_SECRET`); `/uploads` refuses anything else. `/docs` and `/openapi.json` only in dev mode. Admin database work runs under the runner's lock.
+- Contract: the API response keeps the frozen `Kpis` shape (`alerts` = episodes). The extras (`alert_rows`, `by_level`, `street_days_with_alert`) stay internal (`statistics.analyse` third value) until a separate `contract` PR; a nullable `confirmation_rate` over resident-decided episodes belongs there too.

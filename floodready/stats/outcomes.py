@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
+from . import events as events_mod
+
 WINDOW = timedelta(hours=3)
 FAR_M = 1000.0
 FAR_WEIGHT = 0.5
@@ -116,19 +118,16 @@ def missed_floods(reports: list[dict], alerts: list[dict]) -> list[dict]:
 
 
 def news_outcomes(events: pd.DataFrame, alerts: list[dict]) -> dict[str, str]:
-    """alert_id -> "confirmed" for each alert on a street with a labelled flood (`flooded == 1`) that started between
-    3 h before and 6 h after the alert. Needs the columns `street_id`, `start_time_local`, `flooded`; events whose
-    time precision is coarser than an hour (`date_precision` day/month/season) never match."""
-    if events is None or events.empty or not {"street_id", "start_time_local", "flooded"} <= set(events.columns):
+    """alert_id -> "confirmed" for each alert on a street with a CHECKED labelled flood that started between 3 h before
+    and 6 h after the alert. `events` is the raw events.csv frame or the result of `stats.events.normalise` (one shared
+    reader: unchecked drafts, other townships and rows without a precise start time never match)."""
+    ev = events_mod.normalise(events)
+    if ev.empty:
         return {}
-    ev = events[events["flooded"].astype(str).isin(["1", "1.0", "True"])]
-    if "date_precision" in ev.columns:
-        ev = ev[ev["date_precision"].isin(["minute", "hour"])]
+    ev = ev[ev["street_id"].notna() & ev["onset"].notna()]
     times: dict[str, list[datetime]] = {}
-    for sid, ts in zip(ev["street_id"], ev["start_time_local"]):
-        t = _dt(ts)
-        if t is not None and isinstance(sid, str):
-            times.setdefault(sid, []).append(t)
+    for sid, ts in zip(ev["street_id"], ev["onset"]):
+        times.setdefault(sid, []).append(_dt(ts))
     out = {}
     for a in alerts:
         if a.get("kind") != "alert":

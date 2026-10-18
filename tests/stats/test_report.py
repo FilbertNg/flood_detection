@@ -16,11 +16,11 @@ def conn():
 
 EVENTS = pd.DataFrame([
     {"event_id": "BBR-2024-11-12-01", "street_id": "A", "start_time_local": "2024-11-12 09:00", "date_precision": "hour",
-     "flooded": 1, "place_name": "Persiaran Sungai Keramat, Klang", "source_type": "news", "source_url": "https://example.org/x"},
+     "flooded": 1, "place_name": "Persiaran Sungai Keramat, Klang", "source_type": "news", "checked_by": "T", "status": "checked", "source_url": "https://example.org/x"},
     {"event_id": "BBR-2024-10-01-01", "street_id": "A", "start_time_local": "2024-10-01 09:00", "date_precision": "hour",
-     "flooded": 1, "place_name": "Other month", "source_type": "news", "source_url": "https://example.org/y"},
+     "flooded": 1, "place_name": "Other month", "source_type": "news", "checked_by": "T", "status": "checked", "source_url": "https://example.org/y"},
     {"event_id": "BBR-2024-11-15-01", "street_id": "A", "start_time_local": "2024-11-15 09:00", "date_precision": "hour",
-     "flooded": 0, "place_name": "Not flooded", "source_type": "news", "source_url": "https://example.org/z"}])
+     "flooded": 0, "place_name": "Not flooded", "source_type": "news", "checked_by": "T", "status": "checked", "source_url": "https://example.org/z"}])
 
 
 def test_report_lists_the_12_nov_event(conn):
@@ -59,3 +59,20 @@ def test_month_must_be_valid(conn):
     for bad in ("2024-13", "202411", "2024-1", "x"):
         with pytest.raises(ValueError):
             report.monthly_report(conn, bad)
+
+
+FIXTURE = __import__("pathlib").Path(__file__).resolve().parents[1] / "fixtures" / "events_wp6_pr43.csv"
+
+
+def test_real_format_events_file_drafts_list_nothing_and_a_checked_row_lists_the_12_nov_event(conn):
+    raw = pd.read_csv(FIXTURE, dtype=str)
+    names = {"BBR-persiaran-sungai-keramat": "Persiaran Sungai Keramat", "BBR-persiaran-batu-belah": "Persiaran Batu Belah"}
+    kw = {"street_names": names, "township_name": "Bandar Bukit Raja"}
+    assert report.monthly_report(conn, "2024-11", events=raw, **kw)["events"] == []          # unchecked drafts
+    checked = raw.copy()                                                                        # test data only
+    checked.loc[checked.event_id == "BBR-2024-11-12-01", ["checked_by", "status"]] = ["TESTER", "checked"]
+    checked.loc[checked.event_id == "USJ-2025-04-23-01", ["checked_by", "status"]] = ["TESTER", "checked"]
+    [e] = report.monthly_report(conn, "2024-11", events=checked, **kw)["events"]
+    assert (e["event_id"], e["date"], e["source_type"]) == ("BBR-2024-11-12-01", "2024-11-12", "news")
+    assert e["street_ids"] == ["BBR-persiaran-batu-belah", "BBR-persiaran-sungai-keramat"]
+    assert report.monthly_report(conn, "2025-04", events=checked, **kw)["events"] == []     # Subang Jaya is not BBR

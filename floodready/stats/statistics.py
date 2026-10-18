@@ -1,27 +1,29 @@
 """Statistics for the Admin app (`GET /admin/stats`, WP8; contract `Stats` in packages/shared/src/api/types.ts).
 
-Only real evidence counts: backfill and live alerts (never replay), resident answers that are not `source='demo'`
-and not spam, real (not simulated) sensor readings, and labelled news events. Every function is pure over the
-database connection and plain inputs, so the numbers can be checked by hand.
+Only real evidence counts: NOWCAST alerts of backfill and live (never replay, never Outlook), resident answers that are
+not `source='demo'` and not spam, real (not simulated) sensor readings, and CHECKED labelled news events
+(`stats.events.normalise`, the one reader of events.csv). Pure functions over the database connection and plain inputs.
 
 Definitions
-- alert row: an `alerts` row with kind "alert" (all-clears are not alert rows). The engine flaps (alert, all-clear,
-  alert ... every 15-30 min), so rows are NOT events. Statistics count EPISODES.
-- episode (see `episodes`): per street, from an alert row to the street's next all-clear, or to the end of the data if
-  none comes. Later alert rows inside the open episode belong to it, and so does a new alert row that starts within
-  `alerts.cooldown_min` (config/rules.yaml) of the previous all-clear (the same event flapping). Its level is the
-  highest level reached, its start is its first alert row. An episode counts in the period its start falls in.
-  `kpis.alerts` is the number of episodes; `kpis.alert_rows` keeps the raw row count.
-- episode outcome: confirmed if any of its rows is confirmed (or a news event matches one), else not_confirmed if any
-  row is, else unverified. The confirmation rate is per episode.
-- outcome: confirmed / not_confirmed / unverified from `repo.list_alerts` (answers + sensor), or confirmed when a
-  labelled news event matches (`outcomes.news_outcomes`). Unverified is never a false alarm.
-- confirmation_rate = confirmed / (confirmed + not_confirmed); 0 when both are 0 (the type is not nullable, the UI
-  shows n/a from the counts).
-- flood: a distinct (street, date) with a confirmed alert or a labelled news flood. Its onset is the news
-  `start_time_local` (minute/hour precision), else the earliest real "yes" answer of the confirmed alert.
-- lead time: onset minus the first alert on that street in the 6 h before the onset; floods with no earlier alert
-  or no onset time are skipped.
+- alert row: an `alerts` row with kind "alert" and horizon "nowcast". The engine flaps (alert, all-clear, alert ...
+  every 15-30 min), so rows are NOT events. Statistics count EPISODES. Outlook rows (one township forecast stored as
+  one Watch row per street) are a different horizon and never enter these numbers.
+- episode (see `stats.episodes`, shared with the suggestions): per street, from an alert row to the street's next all-clear. Later alert rows inside the
+  open episode belong to it, and so does a new alert row that starts within `alerts.cooldown_min` (config/rules.yaml)
+  of the previous all-clear. An open episode (no all-clear) is split when 48 h pass with no row (missed all-clears:
+  API down, backfill/live boundary). Level = highest reached, start = first alert row. Episodes are built from rows
+  well outside the period (14 days back, 7 days ahead) and selected by their start date, so one that crosses a period
+  edge keeps all its rows (level and outcome) and is counted once, in the period it started.
+  `kpis.alerts` is the number of episodes. Raw row counts stay internal (`extras`).
+- episode outcome: confirmed if any of its rows is confirmed (or a checked news event matches one), else
+  not_confirmed if any row is, else unverified. The confirmation rate is per episode:
+  confirmed / (confirmed + not_confirmed), 0 when both are 0 (the type is not nullable, the UI shows n/a from counts).
+  News can only confirm, so on the backfill the rate is structurally high: do not quote it as accuracy.
+- flood: evidence of a flood on a street: a confirmed alert row, or a checked news event. Evidence on one street
+  less than 12 h apart is ONE flood (so a flood over midnight counts once). Its date is the first evidence's date.
+  Onset: the news `start_time_local` (minute/hour precision), else the earliest real "yes" answer.
+- lead time ("lead to first report"): onset minus the first nowcast alert on that street in the 6 h before the onset;
+  floods with no earlier alert or no onset time are skipped.
 - rain at onset: the largest 2 h / 3 h / 4 h rain sum ending at the onset (15-min floor), maximum over the street's
   rain gauges. Only floods with an onset time have one.
 - station health: share of the 15-min slots of the period (up to now) with no value, worst of the station's series.
@@ -34,13 +36,17 @@ from statistics import median
 import pandas as pd
 
 from ..db import repo
-from ..db.repo import _alerts_cfg
 from ..jobs import now_myt
+from . import episodes as episodes_mod
+from . import events as events_mod
 from . import outcomes
 
 LEAD_LOOKBACK = timedelta(hours=6)
 PRECISE = ("minute", "hour")
 SLOT = timedelta(minutes=15)
+FLOOD_MERGE = timedelta(hours=12)    # evidence this close on one street is one flood
+LOOKBACK = timedelta(days=14)        # rows fetched before the period (open episodes) and after it (their continuation)
+LOOKAHEAD = timedelta(days=7)
 
 
 def naive(value) -> datetime | None:
@@ -57,54 +63,27 @@ LEVEL_RANK = {"watch": 1, "warning": 2, "danger": 3}
 OUTCOME_RANK = {"confirmed": 2, "not_confirmed": 1, "unverified": 0}
 
 
-def cooldown() -> timedelta:
-    return timedelta(minutes=float(_alerts_cfg().get("cooldown_min", 60)))
-
-
-def episodes(rows: list[dict], merge_within: timedelta | None = None) -> list[dict]:
-    """Group alert/all-clear rows (AlertSummary dicts, any streets, any order) into episodes per street.
-
-    Rule: an alert row opens an episode when the street has none open. It stays open until an all-clear row. An alert
-    row that comes after an all-clear starts a NEW episode, unless it is issued within `merge_within` (default
-    `alerts.cooldown_min`) of that all-clear, in which case the episode is reopened (flapping is one event).
-    Returns [{street_id, start, end (None while open), level, rows: [alert rows]}] sorted by start."""
-    merge_within = cooldown() if merge_within is None else merge_within
-    by_street: dict[str, list[dict]] = {}
-    for r in rows:
-        by_street.setdefault(r["street_id"], []).append(r)
-    out = []
-    for street, items in by_street.items():
+def flood_clusters(evidence: list[dict]) -> list[dict]:
+    """Merge flood evidence per street: items {street_id, start, end, onset (or None)}, merged when the next starts
+    within FLOOD_MERGE of the running end. Returns [{street_id, date, onset, news_ids}] (date of the first evidence)."""
+    out: list[dict] = []
+    for street in sorted({e["street_id"] for e in evidence}):
         cur = None
-        for r in sorted(items, key=lambda x: (naive(x["issued_at"]), x["kind"] == "alert")):
-            at = naive(r["issued_at"])
-            if r["kind"] == "alert":
-                if cur is not None and (cur["end"] is None or at - cur["end"] <= merge_within):
-                    cur["end"] = None
+        for e in sorted((x for x in evidence if x["street_id"] == street), key=lambda x: x["start"]):
+            if cur is not None and e["start"] <= cur["end"] + FLOOD_MERGE:
+                cur["end"] = max(cur["end"], e["end"])
+            else:
+                cur = {"street_id": street, "date": e["start"].date(), "start": e["start"], "end": e["end"],
+                       "onset": None, "precise": None, "news_ids": set()}
+                out.append(cur)
+            cur["news_ids"] |= e.get("news_ids", set())
+            if e["onset"] is not None:
+                if e.get("precise"):
+                    cur["precise"] = e["onset"] if cur["precise"] is None else min(cur["precise"], e["onset"])
                 else:
-                    cur = {"street_id": street, "start": at, "end": None, "level": r["level"], "rows": []}
-                    out.append(cur)
-                cur["rows"].append(r)
-                if LEVEL_RANK.get(r["level"], 0) > LEVEL_RANK.get(cur["level"], 0):
-                    cur["level"] = r["level"]
-            elif cur is not None and cur["end"] is None:
-                cur["end"] = at
-    return sorted(out, key=lambda e: (e["start"], e["street_id"]))
-
-
-def news_floods(events: pd.DataFrame | None, date_from: date, date_to: date) -> dict[tuple[str, date], datetime | None]:
-    """(street_id, date) -> onset (None when the time is not precise) for labelled floods (`flooded == 1`) in the period."""
-    if events is None or events.empty or not {"street_id", "start_time_local", "flooded"} <= set(events.columns):
-        return {}
-    out: dict[tuple[str, date], datetime | None] = {}
-    for _, row in events.iterrows():
-        if str(row["flooded"]) not in ("1", "1.0", "True") or not isinstance(row["street_id"], str):
-            continue
-        start = naive(row["start_time_local"])
-        if start is None or not date_from <= start.date() <= date_to:
-            continue
-        precise = row.get("date_precision") in PRECISE if "date_precision" in events.columns else True
-        key = (row["street_id"], start.date())
-        out[key] = start if precise else out.get(key)
+                    cur["onset"] = e["onset"] if cur["onset"] is None else min(cur["onset"], e["onset"])
+    for c in out:
+        c["onset"] = c["precise"] or c["onset"]
     return out
 
 
@@ -155,37 +134,41 @@ def stats(conn, date_from: date, date_to: date, **kw) -> dict:
 
 
 def analyse(conn, date_from: date, date_to: date, *, street_names: dict[str, str] | None = None,
-          events: pd.DataFrame | None = None, readings: pd.DataFrame | None = None,
-          stations: pd.DataFrame | None = None, street_stations: dict | None = None,
-          now: datetime | None = None) -> tuple[dict, dict[tuple[str, date], datetime | None]]:
-    """(`Stats`, floods) for [date_from, date_to] inclusive (see the module docstring for every definition);
-    floods maps (street_id, date) -> onset or None.
+            events: pd.DataFrame | None = None, readings: pd.DataFrame | None = None,
+            stations: pd.DataFrame | None = None, street_stations: dict | None = None,
+            township_name: str | None = None, now: datetime | None = None) -> tuple[dict, list[dict], dict]:
+    """(`Stats`, floods, extras) for [date_from, date_to] inclusive (see the module docstring for every definition).
 
-    `events`: labelled events (columns street_id, start_time_local, flooded, date_precision); `readings`
-    (graph_id, kind, time_local, rain_15min_mm, wl_m) feed rain at onset and, with `stations` (graph_id, kind, name),
-    station health; `street_stations` maps street_id -> {"rf": [gauge ids]}. Missing inputs give empty sections."""
+    `events`: the raw events.csv frame (or `events.normalise` output); `street_names` also limits everything to the
+    township's streets; `readings` (graph_id, kind, time_local, rain_15min_mm, wl_m) feed rain at onset and, with
+    `stations` (graph_id, kind, name), station health; `street_stations` maps street_id -> {"rf": [gauge ids]}.
+    Missing inputs give empty sections. floods: [{street_id, date, onset, news_ids}]. extras: raw alert row count,
+    episodes by level and street-days with an alert (not part of the API contract)."""
     if date_from > date_to:
         raise ValueError("from must be on or before to")
     names = street_names or {}
     start = datetime.combine(date_from, datetime.min.time())
     end = datetime.combine(date_to, datetime.min.time()) + timedelta(days=1)
 
-    everything = repo.list_alerts(conn, include_backfill=True, include_replay=False, count_simulated_sensor=False,
-                                  exclude_demo=True, since=start - timedelta(days=2))
-    everything = [a for a in everything if naive(a["issued_at"]) < end]
-    mine = [a for a in everything if a["kind"] == "alert" and naive(a["issued_at"]) >= start]    # raw alert rows
-    eps = [e for e in episodes(everything) if start <= e["start"] < end]
-    ep_rows = [r for e in eps for r in e["rows"]]
-    news_ids = outcomes.news_outcomes(events, ep_rows) if events is not None else {}
-    final = {r["alert_id"]: ("confirmed" if news_ids.get(r["alert_id"]) else r["outcome"]) for r in ep_rows}
+    fetched = repo.list_alerts(conn, include_backfill=True, include_replay=False, count_simulated_sensor=False,
+                               exclude_demo=True, since=start - LOOKBACK, until=end + LOOKAHEAD)
+    rows = [a for a in fetched if a["horizon"] == "nowcast" and (not names or a["street_id"] in names)]
+    ev = events_mod.normalise(events, street_ids=set(names) if names else None, township_name=township_name)
+    alert_rows = [a for a in rows if a["kind"] == "alert"]
+    news_ids = outcomes.news_outcomes(ev, alert_rows)
+    final = {a["alert_id"]: ("confirmed" if news_ids.get(a["alert_id"]) else a["outcome"]) for a in alert_rows}
+    mine = [a for a in alert_rows if start <= naive(a["issued_at"]) < end]
 
-    def best(rows, key):
-        return max((key(r) for r in rows), key=OUTCOME_RANK.get)
+    def best(rs, key):
+        return max((key(r) for r in rs), key=OUTCOME_RANK.get)
 
+    by_id = {a["alert_id"]: a for a in alert_rows}
+    eps = [e for e in episodes_mod.episodes(rows) if start <= e["start"] < end]
     for e in eps:
-        e["outcome"] = best(e["rows"], lambda r: final[r["alert_id"]])
-        e["resident"] = best(e["rows"], lambda r: r["outcome"])
-        e["news_only"] = e["resident"] == "unverified" and any(r["alert_id"] in news_ids for r in e["rows"])
+        members = [by_id[i] for i in e["alert_ids"]]
+        e["outcome"] = best(members, lambda r: final[r["alert_id"]])
+        e["resident"] = best(members, lambda r: r["outcome"])
+        e["news_only"] = e["resident"] == "unverified" and any(r["alert_id"] in news_ids for r in members)
     resident_checked = sum(1 for e in eps if e["resident"] != "unverified")
     from_news = sum(1 for e in eps if e["news_only"])
 
@@ -197,29 +180,35 @@ def analyse(conn, date_from: date, date_to: date, *, street_names: dict[str, str
             if a["alert_id"] not in first_yes or at < first_yes[a["alert_id"]]:
                 first_yes[a["alert_id"]] = at
 
-    floods: dict[tuple[str, date], datetime | None] = {}
-    for a in ep_rows:
+    evidence = []
+    for a in mine:                                      # confirmed rows count on their own date, whichever episode owns them
         if final[a["alert_id"]] == "confirmed":
-            key = (a["street_id"], naive(a["issued_at"]).date())
-            floods.setdefault(key, None)
-            onset = first_yes.get(a["alert_id"])
-            if onset is not None and (floods[key] is None or onset < floods[key]):
-                floods[key] = onset
-    for key, onset in news_floods(events, date_from, date_to).items():
-        floods[key] = onset if onset is not None else floods.get(key)
+            at = naive(a["issued_at"])
+            evidence.append({"street_id": a["street_id"], "start": at, "end": at, "onset": first_yes.get(a["alert_id"])})
+    for _, r in ev.iterrows():
+        if r["street_id"] is None or not date_from <= r["date"] <= date_to:
+            continue
+        if pd.notna(r["onset"]):
+            t = naive(r["onset"])
+            evidence.append({"street_id": r["street_id"], "start": t, "end": t, "onset": t, "precise": True,
+                             "news_ids": {r["event_id"]}})
+        else:
+            day = datetime.combine(r["date"], datetime.min.time())
+            evidence.append({"street_id": r["street_id"], "start": day, "end": day + timedelta(hours=23, minutes=59),
+                             "onset": None, "news_ids": {r["event_id"]}})
+    floods = flood_clusters(evidence)
 
     leads = []
-    for (street, _), onset in floods.items():
-        if onset is None:
+    for f in floods:
+        if f["onset"] is None:
             continue
-        before = [naive(a["issued_at"]) for a in everything
-                  if a["street_id"] == street and a["kind"] == "alert" and onset - LEAD_LOOKBACK <= naive(a["issued_at"]) <= onset]
+        before = [naive(a["issued_at"]) for a in alert_rows
+                  if a["street_id"] == f["street_id"] and f["onset"] - LEAD_LOOKBACK <= naive(a["issued_at"]) <= f["onset"]]
         if before:
-            leads.append((onset - min(before)).total_seconds() / 60)
+            leads.append((f["onset"] - min(before)).total_seconds() / 60)
 
     reports = [a for a in answers if a["answer"] == "report"]
-    missed = [m for m in outcomes.missed_floods(reports, everything)
-              if start <= naive(m["first_reported_at"]) < end]
+    missed = [m for m in outcomes.missed_floods(reports, rows) if start <= naive(m["first_reported_at"]) < end]
 
     counts = {k: sum(1 for e in eps if e["outcome"] == k) for k in ("confirmed", "not_confirmed", "unverified")}
     decided = counts["confirmed"] + counts["not_confirmed"]
@@ -235,25 +224,22 @@ def analyse(conn, date_from: date, date_to: date, *, street_names: dict[str, str
         if e["outcome"] == "confirmed":
             w["confirmed"] += 1
             st["confirmed"] += 1
-    for street, _ in floods:
-        by_street.setdefault(street, {"alerts": 0, "confirmed": 0, "floods": 0})["floods"] += 1
+    for f in floods:
+        by_street.setdefault(f["street_id"], {"alerts": 0, "confirmed": 0, "floods": 0})["floods"] += 1
 
     onsets = []
     if readings is not None:
-        for (street, day), onset in sorted(floods.items(), key=lambda kv: (kv[0][1], kv[0][0])):
-            if onset is None:
+        for f in sorted(floods, key=lambda f: (f["date"], f["street_id"])):
+            if f["onset"] is None:
                 continue
-            gauges = (street_stations or {}).get(street, {}).get("rf") or None
-            mm = rain_at_onset(readings, gauges, onset)
+            gauges = (street_stations or {}).get(f["street_id"], {}).get("rf") or None
+            mm = rain_at_onset(readings, gauges, f["onset"])
             if mm is not None:
-                onsets.append({"street_id": street, "event_date": day.isoformat(), "rain_2to4h_mm": mm})
+                onsets.append({"street_id": f["street_id"], "event_date": f["date"].isoformat(), "rain_2to4h_mm": mm})
 
     result = {
         "period": {"from": date_from.isoformat(), "to": date_to.isoformat()},
         "kpis": {"alerts": len(eps), **counts,
-                 "alert_rows": len(mine),
-                 "by_level": {lv: sum(1 for e in eps if e["level"] == lv) for lv in LEVEL_RANK},
-                 "street_days_with_alert": len({(r["street_id"], naive(r["issued_at"]).date()) for r in mine}),
                  "confirmation_rate": counts["confirmed"] / decided if decided else 0,
                  "missed_floods": len(missed),
                  "median_lead_min": float(median(leads)) if leads else None},
@@ -265,4 +251,7 @@ def analyse(conn, date_from: date, date_to: date, *, street_names: dict[str, str
         if readings is not None and stations is not None else [],
         "sources": {"outcomes_from_news": from_news, "outcomes_from_residents": resident_checked},
     }
-    return result, floods
+    extras = {"alert_rows": len(mine),
+              "by_level": {lv: sum(1 for e in eps if e["level"] == lv) for lv in LEVEL_RANK},
+              "street_days_with_alert": len({(r["street_id"], naive(r["issued_at"]).date()) for r in mine})}
+    return result, floods, extras

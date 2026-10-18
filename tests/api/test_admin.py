@@ -110,10 +110,35 @@ def test_viewer_reads_but_cannot_write(adm):
     assert adm.client.delete(f"{API}/admin/replay", headers=h).status_code == 403
 
 
-def test_token_without_role_is_a_viewer(adm):
-    tok = jwt.encode({"sub": "boss@test", "exp": datetime.now(timezone.utc) + timedelta(hours=1)}, SECRET, algorithm="HS256")
-    r = adm.client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": "x"}, headers={"Authorization": f"Bearer {tok}"})
-    assert r.status_code == 403
+def bearer(adm, claims_role=None, sub="view@test"):
+    claims = {"sub": sub, "exp": datetime.now(timezone.utc) + timedelta(hours=1)}
+    if claims_role:
+        claims["role"] = claims_role
+    return {"Authorization": "Bearer " + jwt.encode(claims, SECRET, algorithm="HS256")}
+
+
+def test_the_role_comes_from_the_database_not_from_the_token(adm):
+    note = {"street_id": STREET, "text": "x"}
+    assert adm.client.post(f"{API}/admin/notes", json=note, headers=bearer(adm, "admin")).status_code == 403   # viewer in DB
+    assert adm.client.post(f"{API}/admin/notes", json=note, headers=bearer(adm, None, "boss@test")).status_code == 204
+
+
+def test_a_downgraded_user_loses_write_access_at_once(adm):
+    h = adm.token()
+    assert adm.client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": "x"}, headers=h).status_code == 204
+    with adm.engine.begin() as c:
+        auth.create_user(c, "boss@test", "pw-boss-12345", "viewer")
+    assert adm.client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": "x"}, headers=h).status_code == 403
+    assert adm.client.get(f"{API}/admin/answers", headers=h).status_code == 200
+
+
+def test_a_deleted_user_is_rejected(adm):
+    h = adm.token()
+    with adm.engine.begin() as c:
+        from sqlalchemy import delete
+        from floodready.db import schema
+        c.execute(delete(schema.admin_users).where(schema.admin_users.c.email == "boss@test"))
+    assert adm.client.get(f"{API}/admin/answers", headers=h).status_code == 401
 
 
 def test_passwords_are_stored_as_bcrypt_hashes(adm):
@@ -133,34 +158,108 @@ def test_env_admin_still_works_and_is_admin(runner, monkeypatch):
         assert client.post(f"{API}/admin/login", json={"email": "env@test", "password": "x"}).status_code == 401
 
 
-def test_dev_login_only_when_nothing_is_configured_and_warns(runner, monkeypatch, caplog):
-    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD", "JWT_SECRET"):
-        monkeypatch.delenv(var, raising=False)
+def clean_env(monkeypatch, *keep):
+    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD", "JWT_SECRET", "FLOODREADY_DEV_LOGIN", "UPLOAD_URL_SECRET"):
+        if var not in keep:
+            monkeypatch.delenv(var, raising=False)
+
+
+def forged(secret, role="admin"):
+    return jwt.encode({"sub": "attacker", "role": role, "exp": datetime.now(timezone.utc) + timedelta(hours=1)}, secret,
+                      algorithm="HS256")
+
+
+def test_unconfigured_server_is_closed_even_to_the_published_dev_password_and_secret(runner, monkeypatch):
+    clean_env(monkeypatch)
+    with TestClient(create_app(runner, start_live_loop=False)) as client:
+        body = {"email": auth.DEV_ADMIN[0], "password": auth.DEV_ADMIN[1]}
+        r = client.post(f"{API}/admin/login", json=body)
+        assert r.status_code == 503 and r.json()["detail"] == "admin login not configured"
+        h = {"Authorization": f"Bearer {forged(auth.DEV_SECRET)}"}
+        assert client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": "pwned"}, headers=h).status_code == 401
+        assert client.get(f"{API}/admin/answers", headers=h).status_code == 401
+
+
+def test_dev_login_needs_the_explicit_flag_and_warns(runner, monkeypatch, caplog):
+    clean_env(monkeypatch)
+    monkeypatch.setenv("FLOODREADY_DEV_LOGIN", "1")
     body = {"email": auth.DEV_ADMIN[0], "password": auth.DEV_ADMIN[1]}
     with caplog.at_level(logging.WARNING):
         with TestClient(create_app(runner, start_live_loop=False)) as client:
-            assert client.post(f"{API}/admin/login", json=body).status_code == 200
+            r = client.post(f"{API}/admin/login", json=body)
+            assert r.status_code == 200
+            h = {"Authorization": f"Bearer {r.json()['token']}"}
+            assert client.get(f"{API}/admin/answers", headers=h).status_code == 200
     assert any("DEVELOPMENT" in m for m in caplog.messages)
 
 
-def test_dev_login_is_off_once_an_admin_user_exists(runner, monkeypatch):
-    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD", "JWT_SECRET"):
-        monkeypatch.delenv(var, raising=False)
+def test_dev_login_is_off_once_an_admin_user_exists_even_with_the_flag(runner, monkeypatch):
+    clean_env(monkeypatch)
+    monkeypatch.setenv("FLOODREADY_DEV_LOGIN", "1")
     with runner.db.begin() as c:
         auth.create_user(c, "boss@test", "pw-boss-12345", "admin")
     with TestClient(create_app(runner, start_live_loop=False)) as client:
         body = {"email": auth.DEV_ADMIN[0], "password": auth.DEV_ADMIN[1]}
-        assert client.post(f"{API}/admin/login", json=body).status_code in (401, 503)
-        assert client.post(f"{API}/admin/login", json={"email": "boss@test", "password": "pw-boss-12345"}).status_code == 503
+        assert client.post(f"{API}/admin/login", json=body).status_code == 503
 
 
-def test_dev_login_is_off_when_jwt_secret_is_set(runner, monkeypatch):
-    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD"):
-        monkeypatch.delenv(var, raising=False)
+def test_dev_login_is_off_when_jwt_secret_is_set_even_with_the_flag(runner, monkeypatch):
+    clean_env(monkeypatch)
+    monkeypatch.setenv("FLOODREADY_DEV_LOGIN", "1")
     monkeypatch.setenv("JWT_SECRET", SECRET)
     with TestClient(create_app(runner, start_live_loop=False)) as client:
         body = {"email": auth.DEV_ADMIN[0], "password": auth.DEV_ADMIN[1]}
         assert client.post(f"{API}/admin/login", json=body).status_code == 401
+
+
+def test_a_short_jwt_secret_is_treated_as_unset(runner, monkeypatch):
+    clean_env(monkeypatch)
+    monkeypatch.setenv("JWT_SECRET", "x")
+    with runner.db.begin() as c:
+        auth.create_user(c, "boss@test", "pw-boss-12345", "admin")
+    with TestClient(create_app(runner, start_live_loop=False)) as client:
+        assert client.post(f"{API}/admin/login", json={"email": "boss@test", "password": "pw-boss-12345"}).status_code == 503
+        assert client.get(f"{API}/admin/answers", headers={"Authorization": f"Bearer {forged('x')}"}).status_code == 401
+
+
+def test_api_docs_are_off_unless_dev_mode(runner, monkeypatch):
+    clean_env(monkeypatch)
+    with TestClient(create_app(runner, start_live_loop=False)) as client:
+        assert [client.get(p).status_code for p in ("/docs", "/redoc", "/openapi.json")] == [404, 404, 404]
+    monkeypatch.setenv("FLOODREADY_DEV_LOGIN", "1")
+    with TestClient(create_app(runner, start_live_loop=False)) as client:
+        assert client.get("/openapi.json").status_code == 200
+
+
+# ---------- brute force and timing ----------
+
+def test_failed_logins_per_email_are_limited_then_429(adm):
+    body = {"email": "boss@test", "password": "wrong"}
+    codes = [adm.client.post(f"{API}/admin/login", json=body).status_code for _ in range(7)]
+    assert codes == [401] * 5 + [429] * 2
+    good = adm.client.post(f"{API}/admin/login", json={"email": "boss@test", "password": "pw-boss-12345"})
+    assert good.status_code == 429                                  # locked out for the window, even with the right password
+    assert adm.client.post(f"{API}/admin/login", json={"email": "view@test", "password": "pw-view-12345"}).status_code == 200
+
+
+def test_limiter_window_ip_limit_and_success_reset():
+    clock = [0.0]
+    lim = auth.LoginLimiter(email_limit=2, email_window=100, ip_limit=3, ip_window=10, clock=lambda: clock[0])
+    assert lim.allow("ip1", "A@x") and (lim.failed("a@x") or True)
+    assert lim.allow("ip1", "a@x") and (lim.failed("a@x") or True)
+    clock[0] = 11                                                   # the IP window passed
+    assert not lim.allow("ip1", "a@x")                              # but the e-mail has 2 failures
+    clock[0] = 101
+    assert lim.allow("ip1", "a@x")                                  # e-mail window passed
+    lim.failed("a@x"), lim.succeeded("a@x")
+    assert lim.failures.get("a@x") is None
+    clock[0] = 102
+    assert lim.allow("ip2", "b@x") and lim.allow("ip2", "c@x") and lim.allow("ip2", "d@x") and not lim.allow("ip2", "e@x")
+
+
+def test_unknown_email_costs_a_bcrypt_check_of_the_same_cost_as_a_real_hash():
+    rounds = lambda h: h.split("$")[2]                              # noqa: E731  ($2b$12$...)
+    assert rounds(auth._DUMMY_HASH.decode()) == rounds(auth.hash_password("x"))
 
 
 def test_long_passwords_are_rejected_not_truncated(adm):
@@ -205,8 +304,10 @@ def test_stats_station_health_lists_26558_as_stale_when_blanked(adm, runner):
 
 def test_report_lists_the_12_nov_event(adm, tmp_path):
     (tmp_path / "events.csv").write_text(
-        "event_id,street_id,start_time_local,date_precision,flooded,place_name,source_type,source_url\n"
-        f"BBR-2024-11-12-01,{STREET},2024-11-12 09:00,hour,1,Persiaran Sungai Keramat,news,https://example.org/n\n",
+        "event_id,street_ids,event_date,start_time_local,date_precision,flooded,place_name,source_type,source_url,"
+        "checked_by,status\n"
+        f"BBR-2024-11-12-01,{STREET},2024-11-12,2024-11-12 09:00,hour,1,Persiaran Sungai Keramat,news,https://example.org/n,"
+        "TESTER,checked\n",
         encoding="utf-8")
     adm.seed_alert()
     r = adm.client.get(f"{API}/admin/report", params={"month": "2024-11"}, headers=adm.token())
@@ -264,7 +365,8 @@ def test_answers_filter_review_and_photo_url(adm):
     h = adm.token()
     rows = adm.client.get(f"{API}/admin/answers", params={"review_status": "pending"}, headers=h).json()
     assert [r["answer_id"] for r in rows] == [pending]
-    assert rows[0]["photo_url"] == "/uploads/abc123.jpg" and "photo_path" not in rows[0]
+    assert rows[0]["photo_url"].startswith("/uploads/abc123.jpg?exp=") and "&sig=" in rows[0]["photo_url"]
+    assert "photo_path" not in rows[0]
     assert set(rows[0]) == {"answer_id", "device_id", "alert_id", "street_id", "answer", "depth", "photo_url", "lat3", "lon3",
                             "distance_m", "answered_at", "review_status", "source"}
     assert len(adm.client.get(f"{API}/admin/answers", headers=h).json()) == 2
@@ -310,20 +412,40 @@ def test_note_validation(adm):
 
 # ---------- uploads ----------
 
-def test_uploads_are_served_read_only(adm):
+def signed(name, ttl=3600, key=SECRET, now=None):
+    return auth.sign_upload(name, key, now=now, ttl=ttl)
+
+
+def test_uploads_are_served_read_only_with_a_valid_signature(adm):
     (adm.uploads / "abc123.jpg").write_bytes(b"\xff\xd8jpegdata")
-    r = adm.client.get("/uploads/abc123.jpg")
+    r = adm.client.get(signed("abc123.jpg"))
     assert r.status_code == 200 and r.content == b"\xff\xd8jpegdata"
     assert r.headers["content-type"] == "image/jpeg" and r.headers["x-content-type-options"] == "nosniff"
-    assert adm.client.get("/uploads/missing.jpg").status_code == 404
-    assert adm.client.put("/uploads/abc123.jpg", content=b"x").status_code == 405
-    assert adm.client.delete("/uploads/abc123.jpg").status_code == 405
+    assert adm.client.get(signed("missing.jpg")).status_code == 404
+    assert adm.client.put(signed("abc123.jpg"), content=b"x").status_code == 405
+    assert adm.client.delete(signed("abc123.jpg")).status_code == 405
+
+
+def test_the_review_queue_link_works_and_a_bad_or_expired_signature_does_not(adm):
+    (adm.uploads / "abc123.jpg").write_bytes(b"jpegdata")
+    adm.seed_answer(photo_path="abc123.jpg")
+    [row] = adm.client.get(f"{API}/admin/answers", headers=adm.token()).json()
+    assert adm.client.get(row["photo_url"]).status_code == 200
+    assert adm.client.get("/uploads/abc123.jpg").status_code == 404                          # no signature
+    assert adm.client.get("/uploads/abc123.jpg?exp=9999999999&sig=" + "0" * 32).status_code == 404   # bad signature
+    assert adm.client.get(signed("abc123.jpg", ttl=-10)).status_code == 404                  # expired
+    assert adm.client.get(signed("abc123.jpg", key="k" * 40)).status_code == 404            # wrong key
+    other = signed("other.jpg").replace("other.jpg", "abc123.jpg")                          # signature of another file
+    assert adm.client.get(other).status_code == 404
 
 
 @pytest.mark.parametrize("name", ["..%2Fsecret.txt", "..%5Csecret.txt", "%2e%2e%2fsecret.txt", "a.txt", ".hidden.jpg",
                                   "abc.jpg%00.png", "sub%2Fabc.jpg", "C%3A%5Cwindows%5Cwin.ini", "abc"])
-def test_upload_paths_are_confined(adm, name):
+def test_upload_paths_are_confined_even_with_a_valid_signature(adm, name):
     (adm.uploads.parent / "secret.txt").write_text("secret")
     (adm.uploads / "a.txt").write_text("not an image")
-    r = adm.client.get(f"/uploads/{name}")
-    assert r.status_code in (404, 422) and b"secret" not in r.content and b"not an image" not in r.content
+    for raw in (name, name.replace("%2F", "/").replace("%5C", "\\")):
+        exp = int(__import__("time").time()) + 600
+        sig = auth._upload_sig(raw, exp, SECRET)
+        r = adm.client.get(f"/uploads/{name}?exp={exp}&sig={sig}")
+        assert r.status_code == 404 and b"secret" not in r.content and b"not an image" not in r.content
