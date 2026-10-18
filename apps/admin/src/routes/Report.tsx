@@ -5,7 +5,7 @@ import { EvidenceList } from '../components/SuggestionCard';
 import { KpiTiles } from '../components/KpiTiles';
 import { StationHealthTable } from '../components/StationHealthTable';
 import { api } from '../lib/api';
-import { dateLabel, ensureSuffix, todayIso } from '../lib/format';
+import { dateLabel, monthLabel, ensureSuffix, todayIso } from '../lib/format';
 
 export function ReportPage() {
   const [month, setMonth] = useState(todayIso().slice(0, 7));
@@ -18,7 +18,7 @@ export function ReportPage() {
         <label>Month <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></label>
         <button type="button" className="primary fit" onClick={() => window.print()}>Print / Save as PDF</button>
       </div>
-      <h1>Flood-Ready Township report, {month}</h1>
+      <h1>Flood-Ready Township report, {monthLabel(month)}</h1>
       {q.isLoading && <p className="muted">Loading…</p>}
       {q.isError && <p role="alert" className="error">Could not load the report.</p>}
       {r && (

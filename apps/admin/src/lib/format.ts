@@ -26,3 +26,11 @@ export function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
 }
+
+const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** "2024-11" -> "November 2024". */
+export function monthLabel(month: string): string {
+  const [y, m] = month.split('-');
+  return FULL_MONTHS[Number(m) - 1] ? `${FULL_MONTHS[Number(m) - 1]} ${y}` : month;
+}

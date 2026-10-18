@@ -7,6 +7,7 @@ import { RainAtOnsetChart } from '../components/RainAtOnsetChart';
 import { StationHealthTable } from '../components/StationHealthTable';
 import { api } from '../lib/api';
 import { todayIso } from '../lib/format';
+import { useStreetNames } from '../lib/useStreetNames';
 
 /** Start of the backfilled JPS history. */
 const DEFAULT_FROM = '2024-01-01';
@@ -17,6 +18,8 @@ export function StatisticsPage() {
   const valid = from !== '' && to !== '' && from <= to;
   const q = useQuery({ queryKey: ['stats', from, to], queryFn: () => api.stats(from, to), enabled: valid });
   const s = q.data;
+  const streetName = useStreetNames();
+  const nameOf = (id: string) => s?.by_street.find((b) => b.street_id === id)?.name ?? streetName(id);
 
   return (
     <main className="page">
@@ -37,7 +40,7 @@ export function StatisticsPage() {
           </p>
           <section className="card"><h2>Alerts by week</h2><ByWeekChart weeks={s.by_week} /></section>
           <section className="card"><h2>By street</h2><ByStreetTable rows={s.by_street} /></section>
-          <section className="card"><h2>Rain at flood onset</h2><RainAtOnsetChart rows={s.rain_at_onset} /></section>
+          <section className="card"><h2>Rain at flood onset</h2><RainAtOnsetChart rows={s.rain_at_onset} nameOf={nameOf} /></section>
           <section className="card"><h2>Station health</h2><StationHealthTable rows={s.station_health} /></section>
         </>
       )}

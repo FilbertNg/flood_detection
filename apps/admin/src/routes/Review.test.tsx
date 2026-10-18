@@ -46,6 +46,21 @@ describe('ReviewPage', () => {
     renderApp(<ReviewPage />);
     fireEvent.click(await screen.findByRole('button', { name: 'Valid' }));
     await waitFor(() => expect(fn.mock.calls.some((c) => (c[1] as RequestInit | undefined)?.method === 'PATCH')).toBe(true));
+    const patch = fn.mock.calls.find((c) => (c[1] as RequestInit | undefined)?.method === 'PATCH')!;
+    expect(JSON.parse((patch[1] as RequestInit).body as string)).toEqual({ review_status: 'valid' });
+  });
+
+  it('shows street names, resolves relative photos against the API and labels replay answers', async () => {
+    const rel: Answer = { ...resident, answer_id: 'ans_rel', photo_url: '/photos/1.jpg', alert_id: 'a_replay', source: 'resident' };
+    stubApi({
+      'GET /admin/answers': [rel],
+      'GET /streets': { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: { street_id: 'BBR-jalan-makyong', name: 'Jalan Makyong' } }] },
+      'GET /alerts': [{ alert_id: 'a_replay', is_replay: true }],
+    });
+    renderApp(<ReviewPage />);
+    expect(await screen.findByText('Jalan Makyong')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /photo/i }).getAttribute('src')).toMatch(/^https?:\/\/[^/]+\/photos\/1\.jpg$/);
+    expect(await screen.findByText('Replay')).toBeInTheDocument();
   });
 
   it('shows an empty state', async () => {

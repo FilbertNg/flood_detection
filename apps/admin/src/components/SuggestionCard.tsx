@@ -38,6 +38,7 @@ export function SuggestionCard({ s, busy, onStatus }: { s: Suggestion; busy: boo
         <span className="small">Note (optional)</span>
         <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
+      <button type="button" className="secondary fit" disabled={busy} onClick={() => onStatus(s.status, note.trim())}>Save note</button>
       <div className="seg" role="group" aria-label={`Status for ${s.street_name}`}>
         {STATUSES.map((o) => (
           <button key={o.value} type="button" aria-pressed={s.status === o.value} disabled={busy} onClick={() => onStatus(o.value, note.trim())}>

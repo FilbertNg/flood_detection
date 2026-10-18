@@ -14,7 +14,7 @@ export function SuggestionsPage() {
   const q = useQuery({ queryKey: key, queryFn: () => api.suggestions(FROM, to) });
   const save = useMutation({
     mutationFn: ({ id, status, note }: { id: string; status: Suggestion['status']; note: string }) =>
-      api.updateSuggestion(id, note ? { status, note } : { status }),
+      api.updateSuggestion(id, { status, note }),
     onSuccess: (updated) =>
       qc.setQueryData<Suggestion[]>(key, (old) => old?.map((s) => (s.id === updated.id ? updated : s))),
   });

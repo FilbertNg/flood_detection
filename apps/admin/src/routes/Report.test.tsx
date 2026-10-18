@@ -22,6 +22,13 @@ describe('ReportPage', () => {
     expect(screen.getByText(/site survey needed\.$/)).toBeInTheDocument();
   });
 
+  it('writes the heading with the month name', async () => {
+    stubApi({ 'GET /admin/report': report });
+    renderApp(<ReportPage />);
+    fireEvent.change(screen.getByLabelText('Month'), { target: { value: '2024-11' } });
+    expect(await screen.findByRole('heading', { level: 1, name: /November 2024/ })).toBeInTheDocument();
+  });
+
   it('refetches for the chosen month', async () => {
     const fn = stubApi({ 'GET /admin/report': report });
     renderApp(<ReportPage />);

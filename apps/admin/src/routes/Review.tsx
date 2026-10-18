@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Answer, AnswerReview } from '@floodready/shared';
-import { api } from '../lib/api';
+import { API_URL, api } from '../lib/api';
+import { useStreetNames } from '../lib/useStreetNames';
 import { dayTime } from '../lib/chart';
 
 const KEY = ['answers', 'pending'];
@@ -8,6 +9,10 @@ const KEY = ['answers', 'pending'];
 export function ReviewPage() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: KEY, queryFn: () => api.pendingAnswers() });
+  const streetName = useStreetNames();
+  const alerts = useQuery({ queryKey: ['alerts', 'all'], queryFn: () => api.alerts(), retry: false });
+  const replayAlerts = new Set((alerts.data ?? []).filter((x) => x.is_replay).map((x) => x.alert_id));
+  const photo = (u: string) => (u.startsWith('/') ? `${API_URL}${u}` : u);
   const review = useMutation({
     mutationFn: ({ id, body }: { id: string; body: AnswerReview }) => api.reviewAnswer(id, body),
     onSuccess: (done) => qc.setQueryData<Answer[]>(KEY, (old) => old?.filter((a) => a.answer_id !== done.answer_id)),
@@ -23,9 +28,9 @@ export function ReviewPage() {
       {q.data && q.data.length === 0 && <p className="muted">No answers waiting for review.</p>}
       {q.data?.map((a) => (
         <article key={a.answer_id} className="card review">
-          {a.photo_url && <img className="thumb" src={a.photo_url} alt="Photo from resident report" loading="lazy" />}
+          {a.photo_url && <img className="thumb" src={photo(a.photo_url)} alt="Photo from resident report" loading="lazy" />}
           <div className="review-body">
-            <h2>{a.street_id}</h2>
+            <h2>{streetName(a.street_id)}</h2>
             <p>
               <span>Answer: {a.answer.replace('_', ' ')}</span>
               {a.depth && <span> · Depth: {a.depth.replace('_', ' ')}</span>}
@@ -34,6 +39,7 @@ export function ReviewPage() {
             <p className="muted small">
               {dayTime(a.answered_at)}
               {a.source === 'demo' && <> <span className="tag demo">Demo</span></>}
+              {a.alert_id !== null && replayAlerts.has(a.alert_id) && <> <span className="tag demo">Replay</span></>}
             </p>
             <div className="seg">
               <button type="button" disabled={review.isPending} onClick={() => review.mutate({ id: a.answer_id, body: { review_status: 'valid' } })}>Valid</button>

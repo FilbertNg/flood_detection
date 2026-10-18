@@ -38,6 +38,39 @@ describe('StatisticsPage', () => {
     expect(screen.getByText(/replay and demo data are excluded/i)).toBeInTheDocument();
   });
 
+  it('shows n/a for the rate when no alert has an answer, and labels it', async () => {
+    stubApi({ 'GET /admin/stats': { ...data, kpis: { ...data.kpis, confirmed: 0, not_confirmed: 0, confirmation_rate: 0 } } });
+    renderApp(<StatisticsPage />);
+    const tiles = await screen.findByLabelText('Key figures');
+    const tile = within(tiles).getByText('Confirmation rate').parentElement!;
+    expect(tile).toHaveTextContent('n/a');
+    expect(tile).toHaveTextContent('no answered alerts yet');
+    expect(tile).not.toHaveTextContent('0%');
+  });
+
+  it('labels the rate "of answered alerts" when there are answers', async () => {
+    stubApi({ 'GET /admin/stats': data });
+    renderApp(<StatisticsPage />);
+    const tiles = await screen.findByLabelText('Key figures');
+    expect(within(tiles).getByText('Confirmation rate').parentElement).toHaveTextContent('of answered alerts');
+  });
+
+  it('names streets in the rain chart table and keeps x labels unique', async () => {
+    const two: Stats = {
+      ...data,
+      rain_at_onset: [
+        { street_id: 'a', event_date: '2024-11-12', rain_2to4h_mm: 61.5 },
+        { street_id: 'b', event_date: '2024-11-12', rain_2to4h_mm: 40 },
+      ],
+    };
+    stubApi({ 'GET /admin/stats': two });
+    renderApp(<StatisticsPage />);
+    const chart = await screen.findByRole('img', { name: /rain at flood onset/i });
+    const labels = Array.from(chart.querySelectorAll('text[data-xlabel]')).map((t) => t.textContent);
+    expect(new Set(labels).size).toBe(2);
+    expect(await screen.findAllByText('Alpha')).not.toHaveLength(0);
+  });
+
   it('refetches when the period changes', async () => {
     const fn = stubApi({ 'GET /admin/stats': data });
     renderApp(<StatisticsPage />);

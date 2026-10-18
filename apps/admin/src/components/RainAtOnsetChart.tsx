@@ -3,12 +3,12 @@ import { linearScale } from '../lib/chart';
 import { dateLabel } from '../lib/format';
 
 const W = 620;
-const H = 200;
-const PAD = { l: 40, r: 150, t: 16, b: 40 };
+const H = 230;
+const PAD = { l: 40, r: 150, t: 16, b: 70 };
 const GUIDE_MM = 60;
 
 /** Station rain over 2 to 4 h at each confirmed flood's onset, against the JPS 60 mm guide. */
-export function RainAtOnsetChart({ rows }: { rows: Stats['rain_at_onset'] }) {
+export function RainAtOnsetChart({ rows, nameOf = (id) => id }: { rows: Stats['rain_at_onset']; nameOf?: (id: string) => string }) {
   if (rows.length === 0) return <p className="muted">No floods with rain readings in this period.</p>;
   const max = Math.max(GUIDE_MM, ...rows.map((r) => r.rain_2to4h_mm)) + 5;
   const y = linearScale([0, max], [H - PAD.b, PAD.t]);
@@ -30,7 +30,7 @@ export function RainAtOnsetChart({ rows }: { rows: Stats['rain_at_onset'] }) {
           return (
             <g key={`${r.street_id}-${r.event_date}`}>
               <rect data-bar x={cx - bar / 2} y={y(r.rain_2to4h_mm)} width={bar} height={y(0) - y(r.rain_2to4h_mm)} fill="#0b3d91" opacity={0.75} />
-              <text x={cx} y={H - 24} textAnchor="middle" className="axis">{r.event_date.slice(5)}</text>
+              <text data-xlabel x={cx} y={H - PAD.b + 12} textAnchor="end" transform={`rotate(-30 ${cx} ${H - PAD.b + 12})`} className="axis">{`${r.event_date.slice(5)} ${nameOf(r.street_id)}`}</text>
             </g>
           );
         })}
@@ -40,7 +40,7 @@ export function RainAtOnsetChart({ rows }: { rows: Stats['rain_at_onset'] }) {
         <table className="data">
           <caption className="sr-only">Rain at flood onset</caption>
           <thead><tr><th>Date</th><th>Street</th><th>Rain 2–4 h (mm)</th></tr></thead>
-          <tbody>{rows.map((r) => <tr key={`${r.street_id}-${r.event_date}`}><td>{dateLabel(r.event_date)}</td><td>{r.street_id}</td><td>{r.rain_2to4h_mm.toFixed(1)}</td></tr>)}</tbody>
+          <tbody>{rows.map((r) => <tr key={`${r.street_id}-${r.event_date}`}><td>{dateLabel(r.event_date)}</td><td>{nameOf(r.street_id)}</td><td>{r.rain_2to4h_mm.toFixed(1)}</td></tr>)}</tbody>
         </table>
       </details>
     </figure>

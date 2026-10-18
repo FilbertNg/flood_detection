@@ -1,4 +1,5 @@
 import type {
+  AlertSummary,
   Answer,
   AnswerReview,
   Report,
@@ -54,6 +55,7 @@ export const api = {
   status: () => request<Status>('/status'),
   streets: (township = 'BBR') => request<StreetCollection>(`/streets?township=${township}`),
   street: (id: string) => request<StreetDetail>(`/streets/${encodeURIComponent(id)}`),
+  alerts: () => request<AlertSummary[]>('/alerts'),
   stations: (township = 'BBR') => request<Station[]>(`/stations?township=${township}`),
   series: (graphId: string, from?: string, to?: string) => {
     const q = new URLSearchParams();

@@ -42,6 +42,21 @@ describe('SuggestionsPage', () => {
     expect(JSON.parse((patch[1] as RequestInit).body as string)).toEqual({ status: 'accepted', note: 'crew booked' });
   });
 
+  it('saves a note without changing the status, and can clear it', async () => {
+    const base = { ...mk('s_high', 'high', 'High St'), status: 'accepted' as const, note: 'crew booked' };
+    const fn = stubApi({
+      'GET /admin/suggestions': [base],
+      'PATCH /admin/suggestions/s_high': (init: RequestInit | undefined) => ({ body: { ...base, ...JSON.parse(init!.body as string) } }),
+    });
+    renderApp(<SuggestionsPage />);
+    const card = await screen.findByRole('article');
+    fireEvent.change(within(card).getByLabelText('Note (optional)'), { target: { value: '' } });
+    fireEvent.click(within(card).getByRole('button', { name: 'Save note' }));
+    await waitFor(() => expect(fn.mock.calls.some((c) => (c[1] as RequestInit | undefined)?.method === 'PATCH')).toBe(true));
+    const patch = fn.mock.calls.find((c) => (c[1] as RequestInit | undefined)?.method === 'PATCH')!;
+    expect(JSON.parse((patch[1] as RequestInit).body as string)).toEqual({ status: 'accepted', note: '' });
+  });
+
   it('shows an empty state', async () => {
     stubApi({ 'GET /admin/suggestions': [] });
     renderApp(<SuggestionsPage />);
