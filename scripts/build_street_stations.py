@@ -28,19 +28,24 @@ sys.path.insert(0, str(ROOT))
 from floodready.engine import street_stations as ss  # noqa: E402
 from floodready.gis import flow, terrain  # noqa: E402
 
-DEM = ROOT / "data" / "raw" / "dem" / "Copernicus_DSM_COG_10_N03_00_E101_00_DEM.tif"
+DEM_NAME = "Copernicus_DSM_COG_10_N03_00_E101_00_DEM.tif"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--township", default="BBR")
     parser.add_argument("--buffer", type=int, default=15_000, help="DEM clip half-width around the township centre (m)")
+    parser.add_argument("--data-dir", type=Path, default=ROOT / "data",
+                        help="folder holding raw/dem and interim/stations.parquet (default <repo>/data)")
+    parser.add_argument("--clip-dir", type=Path, default=None, help="where the clipped DEM is cached (default <data-dir>/interim)")
     args = parser.parse_args()
+    data = args.data_dir
+    args.clip_dir = args.clip_dir or data / "interim"
 
     town = next(t for t in yaml.safe_load((ROOT / "config" / "townships.yaml").read_text(encoding="utf-8"))["townships"]
                 if t["id"] == args.township)
     cfg = ss.DEFAULTS | yaml.safe_load((ROOT / "config" / "rules.yaml").read_text(encoding="utf-8")).get("street_stations", {})
-    lookup = pd.read_parquet(ROOT / "data" / "interim" / "stations.parquet")
+    lookup = pd.read_parquet(data / "interim" / "stations.parquet")
     ids = {s["graph_id"]: s.get("types", []) for s in town["stations"]}
 
     def located(kind: str) -> list[tuple[str, float, float]]:
@@ -50,7 +55,7 @@ def main() -> None:
     wl, rf = located("wl"), located("rf")
     print(f"{args.township}: {len(wl)} river stations {[g for g, *_ in wl]}, {len(rf)} rain gauges")
 
-    clip = terrain.clip_dem(DEM, ROOT / "data" / "interim" / f"dem_{args.township.lower()}_flow.tif",
+    clip = terrain.clip_dem(data / "raw" / "dem" / DEM_NAME, args.clip_dir / f"dem_{args.township.lower()}_flow.tif",
                             town["centre"]["lat"], town["centre"]["lon"], args.buffer)
     grid = flow.flow_grid(clip)
 
@@ -62,14 +67,17 @@ def main() -> None:
         for km in spread:
             spread[km][sum(ss.distance_m(lat, lon, glat, glon) <= km * 1000 for _, glat, glon in rf)] += 1
         hits = flow.stations_downstream(grid, lat, lon, wl) if wl else []
-        wl_id, method, dist = ss.pick_wl(hits, wl, lat, lon, cfg)
-        out[street.street_id] = {"wl": wl_id, "rf": ss.rain_gauges(lat, lon, rf, cfg), "method": method, "distance_m": dist}
+        candidates = ss.pick_wl_candidates(hits, wl, lat, lon, cfg)
+        wl_id, method, dist = candidates[0] if candidates else (None, None, None)
+        out[street.street_id] = {"wl": wl_id, "wl_candidates": [c[0] for c in candidates],
+                                 "rf": ss.rain_gauges(lat, lon, rf, cfg), "method": method, "distance_m": dist}
 
     path = ROOT / "assets" / "geo" / f"{args.township.lower()}_street_stations.json"
     path.write_text(json.dumps(out, indent=0, sort_keys=True), encoding="utf-8")
 
     print(f"{len(out)} streets -> {path.relative_to(ROOT)}")
     print("streets per river station:", dict(Counter(v["wl"] for v in out.values())))
+    print("river candidates per street:", dict(sorted(Counter(len(v["wl_candidates"]) for v in out.values()).items())))
     print("streets per method:", dict(Counter(v["method"] for v in out.values())))
     print("streets with no river station:", sum(v["wl"] is None for v in out.values()))
     print("rain gauges per street (count: streets) by radius:", {f"{km} km": dict(sorted(c.items())) for km, c in spread.items()})

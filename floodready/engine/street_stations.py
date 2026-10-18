@@ -1,7 +1,10 @@
 """Street -> stations mapping: which river station and rain gauges decide each street's trigger.
 
 File format (assets/geo/<township>_street_stations.json, built by scripts/build_street_stations.py):
-  {street_id: {"wl": graph_id | null, "rf": [graph_id, ...], "method": "flow" | "nearest" | null, "distance_m": float | null}}
+  {street_id: {"wl": graph_id | null, "wl_candidates": [graph_id, ...], "rf": [graph_id, ...],
+               "method": "flow" | "nearest" | null, "distance_m": float | null}}
+`wl` is the first of `wl_candidates` (kept for readers of the old format); the rest are fallbacks used when the
+street's own river station is dead or stale (see `wl_for`).
 """
 from __future__ import annotations
 
@@ -31,19 +34,29 @@ def rain_gauges(lat: float, lon: float, gauges: list[tuple[str, float, float]], 
     return near if len(near) >= cfg["min_rain_gauges"] else [gid for _, gid in ranked[:cfg["min_rain_gauges"]]]
 
 
+def pick_wl_candidates(flow_hits: list[tuple[str, float]], wl_stations: list[tuple[str, float, float]],
+                       lat: float, lon: float, cfg: dict | None = None) -> list[tuple[str, str, float]]:
+    """Ordered river-station candidates for a street, as (station, method, metres): the stations on its flow path
+    within 15 km ("flow", along-path order), then the other river stations within `river_radius_km` straight-line
+    ("nearest", nearest first). The first is the street's own station; the rest are fallbacks when it is dead or stale."""
+    allowed = {gid for gid, _, _ in wl_stations}
+    out: list[tuple[str, str, float]] = []
+    for gid, along in flow_hits:
+        if gid in allowed and along <= FLOW_MAX_M and gid not in {c[0] for c in out}:
+            out.append((gid, "flow", float(along)))
+    radius = (DEFAULTS | (cfg or {}))["river_radius_km"] * 1000
+    for d, gid in sorted((distance_m(lat, lon, wlat, wlon), g) for g, wlat, wlon in wl_stations):
+        if d <= radius and gid not in {c[0] for c in out}:
+            out.append((gid, "nearest", round(d, 1)))
+    return out
+
+
 def pick_wl(flow_hits: list[tuple[str, float]], wl_stations: list[tuple[str, float, float]],
             lat: float, lon: float, cfg: dict | None = None) -> tuple[str | None, str | None, float | None]:
-    """River station for a street: first one on its flow path within 15 km ("flow"); else the nearest river
-    station within `river_radius_km` straight-line ("nearest"); else none. `flow_hits`: (station, metres along the path), nearest first."""
-    allowed = {gid for gid, _, _ in wl_stations}
-    for gid, along in flow_hits:
-        if gid in allowed and along <= FLOW_MAX_M:
-            return gid, "flow", float(along)
-    if wl_stations:
-        d, gid = min((distance_m(lat, lon, wlat, wlon), g) for g, wlat, wlon in wl_stations)
-        if d <= (DEFAULTS | (cfg or {}))["river_radius_km"] * 1000:
-            return gid, "nearest", round(d, 1)
-    return None, None, None
+    """The street's own river station (the first candidate): on its flow path within 15 km ("flow"), else the
+    nearest within `river_radius_km` ("nearest"), else none. `flow_hits`: (station, metres along the path), nearest first."""
+    candidates = pick_wl_candidates(flow_hits, wl_stations, lat, lon, cfg)
+    return candidates[0] if candidates else (None, None, None)
 
 
 def load(path: Path) -> dict | None:
@@ -64,6 +77,29 @@ def stations_for(mapping: dict | None, street_id: str) -> tuple[str, ...] | None
     return tuple(dict.fromkeys(([entry["wl"]] if entry.get("wl") else []) + list(entry.get("rf", []))))
 
 
-def wl_for(mapping: dict | None, street_id: str) -> str | None:
+def candidates_for(mapping: dict | None, street_id: str) -> tuple[str, ...]:
+    """The street's river stations in order of preference (own station first); empty when it has none.
+    Files written before `wl_candidates` existed are read as `[wl]`."""
     entry = (mapping or {}).get(street_id)
-    return entry.get("wl") if entry else None
+    if not entry:
+        return ()
+    listed = entry.get("wl_candidates")
+    if listed is None:
+        listed = [entry["wl"]] if entry.get("wl") else []
+    return tuple(dict.fromkeys(listed))
+
+
+def wl_for(mapping: dict | None, street_id: str, dead_or_stale: set[str] | None = None) -> str | None:
+    """The street's river station at a moment: its first candidate that is not in `dead_or_stale`; None when
+    it has no candidate or every one is dead or stale."""
+    dead = dead_or_stale or set()
+    return next((gid for gid in candidates_for(mapping, street_id) if gid not in dead), None)
+
+
+def dead_wl(features_at_t, ids) -> set[str]:
+    """Which of the river stations `ids` are dead or stale at t: no river row in `features_at_t` (the engine's
+    features for t, built only from QC-cleaned readings at or before t) or a row flagged `is_stale`, i.e. no valid
+    reading in the last `stale_after_min`. Causal: it never looks past t."""
+    rows = features_at_t[features_at_t.kind == "wl"] if len(features_at_t) else features_at_t
+    live = set(rows.graph_id[~rows.is_stale.astype(bool)]) if len(rows) else set()
+    return {gid for gid in ids if gid not in live}
