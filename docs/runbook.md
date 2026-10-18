@@ -35,14 +35,14 @@ Prefer one window? This starts the first three in the background and writes logs
 
 ```powershell
 $env:PYTHONUNBUFFERED = "1"
-Start-Process .venv\Scripts\python.exe -ArgumentList "-u","-X","utf8","scripts\run_loggers.py" -RedirectStandardOutput logs\loggers.log -RedirectStandardError logs\loggers.err -WindowStyle Hidden
+Start-Process .venv\Scripts\python.exe -ArgumentList "-u","-X","utf8","scripts\run_loggers.py" -RedirectStandardOutput logs\loggers.stdout.log -RedirectStandardError logs\loggers.err -WindowStyle Hidden
 Start-Process .venv\Scripts\python.exe -ArgumentList "-u","-X","utf8","scripts\serve_api.py" -RedirectStandardOutput logs\api.log -RedirectStandardError logs\api.err -WindowStyle Hidden
 Start-Process cmd.exe -ArgumentList "/c","npx pnpm@9.15.0 dev:resident > logs\resident.log 2>&1" -WindowStyle Hidden
 ```
 
-## 2. Refill the JPS gap (optional, about 20 minutes)
+## 2. Refill the JPS gap (optional)
 
-Only if the laptop was off for a while and you want the live period complete (statistics, charts). The archive is cached per month, so this re-downloads only the current month for each station, politely (≥ 3 s between requests):
+Only if the laptop was off for a while and you want the live period complete (statistics, charts). The archive is cached in monthly chunks; a chunk that ended before today is re-downloaded (the current month on a new day, and last month's chunk if the gap crosses a month boundary), the rest comes from the cache. Requests are polite (≥ 3 s apart), so expect roughly 3 s per station-month fetched (about 310 series): tens of minutes, not hours:
 
 ```powershell
 .venv\Scripts\python.exe -X utf8 scripts\archive_jps_history.py
@@ -54,7 +54,7 @@ Restart the API afterwards (Ctrl+C in window 2, run it again) so it reads the re
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/status          # mode "live", data_time within the last ~30 min
-Get-Content logs\loggers.err -Tail 3                           # "jps_live ... 'ok': True" (window 1 shows the same)
+Get-Content logs\loggers.log -Tail 3                           # "jps_live ... 'ok': True" (the loggers always write this file)
 ```
 
 Then open http://localhost:5173 and check the map shows coloured streets.
@@ -88,7 +88,7 @@ Get-NetTCPConnection -State Listen -LocalPort 5173,5174 -ErrorAction SilentlyCon
 | --- | --- |
 | `address already in use` on 8000 / 5173 | An old copy is still running: run the Stop commands in §6, then start again |
 | Map loads but streets are grey or empty | The API isn't running or is still starting (first start takes ~30 s); check §3 |
-| `data_time` is hours old | Loggers aren't running or JPS was unreachable: check window 1 / `logs\loggers.err` |
+| `data_time` is hours old | Loggers aren't running or JPS was unreachable: check window 1 / `logs\loggers.log` |
 | Streets show no river level | That station's gauge is stale or dead (QC blanks it); see `docs/findings.md` A3c |
 | `ModuleNotFoundError` | Run from the repo root with `.venv\Scripts\python.exe`, not a global Python |
 | Laptop went to sleep mid-demo | Everything stops; start again from §1. Settings → System → Power: set "sleep when plugged in" to Never before a demo |
