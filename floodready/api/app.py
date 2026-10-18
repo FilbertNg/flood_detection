@@ -1,7 +1,8 @@
 """Production wiring: build the engine context from the repo's data and expose `app`.
 
 uvicorn floodready.api.app:app --port 8000
-Environment: TOWNSHIP (default BBR), ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET, CORS_ORIGINS.
+Environment (also read from <repo>/.env): TOWNSHIP (default BBR), DATABASE_URL, UPLOADS_DIR, VAPID_PUBLIC_KEY,
+VAPID_PRIVATE_KEY, VAPID_SUBJECT, ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET, CORS_ORIGINS.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ import yaml
 
 from .. import live, radar
 from .. import tide as tide_mod
+from ..db import repo
 from ..engine import street_stations
 from ..engine.replay import load_archive_readings
 from ..ml import dataset, forecast as river, predict
@@ -97,4 +99,26 @@ def build_context(township_id: str = "BBR") -> EngineContext:
     )
 
 
-app = create_app(Runner(build_context(os.environ.get("TOWNSHIP", "BBR"))))
+def load_env_file(path: Path) -> None:
+    """Read KEY=VALUE lines of a .env file into os.environ (existing variables win; no extra dependency)."""
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+def build_runner() -> Runner:
+    load_env_file(ROOT / ".env")
+    db_url = os.environ.get("DATABASE_URL", "sqlite:///data/floodready.db")
+    if db_url.startswith("sqlite:///") and not db_url.startswith("sqlite:////") and ":memory:" not in db_url:
+        db_path = ROOT / db_url.removeprefix("sqlite:///")        # relative sqlite paths are relative to the repo
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        db_url = f"sqlite:///{db_path.as_posix()}"
+    engine = repo.connect(db_url)
+    return Runner(build_context(os.environ.get("TOWNSHIP", "BBR")), db=engine)
+
+
+app = create_app(build_runner())

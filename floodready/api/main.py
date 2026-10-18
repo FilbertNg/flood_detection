@@ -11,14 +11,15 @@ import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 
 import jwt
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from ..db import repo
 from . import serialize
 from .runner import Runner
 
@@ -38,6 +39,19 @@ class ReplayRequest(BaseModel):
     start: str = "06:00"
     end: str = "14:00"
     stop_at: str | None = None
+
+
+class WebPushSubscriptionBody(BaseModel):
+    endpoint: str = Field(min_length=1, max_length=2048)
+    expirationTime: float | None = None
+    keys: dict[str, str]
+
+
+class SubscriptionBody(BaseModel):
+    device_id: str = Field(min_length=1, max_length=64)
+    subscription: WebPushSubscriptionBody
+    street_ids: list[str] = Field(max_length=200)
+    lang: Literal["en", "ms"]
 
 
 def _secret() -> str:
@@ -86,6 +100,7 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
         yield
         stop.set()
         runner.stop_replay(keep_mode=True)
+        runner.push.shutdown()
 
     app = FastAPI(title="Flood-Ready Township API", version="0.1.0", lifespan=lifespan)
     origins = [o for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174").split(",") if o]
@@ -121,16 +136,37 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
 
     @app.get(f"{api}/alerts")
     def get_alerts(street_id: str | None = None, active: bool = False):
-        alerts = runner.snapshot().alerts
-        if street_id:
-            alerts = [a for a in alerts if a["street_id"] == street_id]
-        if active:
-            latest = {}
-            for a in alerts:
-                latest.setdefault(a["street_id"], a)
-            alerts = [a for a in latest.values() if a["kind"] == "alert"]
-        return alerts
+        return runner.alerts(street_id=street_id, active=active)    # read from the database
 
+    # ---------- WP3: Web Push ----------
+    @app.get(f"{api}/push/public-key")
+    def get_push_public_key():
+        if not runner.push.enabled or not runner.push.public_key:
+            raise HTTPException(status_code=503, detail="Push is not configured on this server")
+        return {"key": runner.push.public_key}
+
+    @app.post(f"{api}/subscriptions", status_code=204)
+    def subscribe(body: SubscriptionBody):
+        keys = body.subscription.keys
+        if not keys.get("p256dh") or not keys.get("auth"):
+            raise HTTPException(status_code=422, detail="subscription.keys needs p256dh and auth")
+        known = set(ctx.streets.street_id)
+        unknown = [s for s in body.street_ids if s not in known]
+        if unknown:
+            raise HTTPException(status_code=400, detail=f"Unknown street {unknown[0]}")
+        with runner.db.begin() as conn:
+            repo.upsert_subscription(conn, body.device_id, {"endpoint": body.subscription.endpoint, "keys": keys},
+                                     body.street_ids, body.lang)
+        return Response(status_code=204)
+
+    @app.delete(f"{api}/subscriptions/{{device_id}}", status_code=204)
+    def delete_subscription(device_id: str):
+        with runner.db.begin() as conn:
+            files = repo.delete_device(conn, device_id)
+        repo.remove_files(files)          # only after the transaction committed
+        return Response(status_code=204)
+
+    # ---------- admin ----------
     @app.post(f"{api}/admin/login")
     def login(body: LoginRequest):
         email, password = _admin_credentials()

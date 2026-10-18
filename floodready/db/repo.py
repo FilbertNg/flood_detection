@@ -115,6 +115,13 @@ def save_street_states(conn, states: list[StreetState], mode: str) -> None:
     conn.execute(insert(t.street_state), rows)
 
 
+def clear_replay(conn) -> None:
+    """Delete replay-mode alerts and street states so a new replay starts clean and re-issues (and re-pushes) its alerts.
+    Live and backfill rows are untouched."""
+    conn.execute(delete(t.alerts).where(t.alerts.c.is_replay.is_(True), t.alerts.c.is_backfill.is_(False)))
+    conn.execute(delete(t.street_state).where(t.street_state.c.mode == "replay"))
+
+
 def get_street_states(conn, township_id: str, mode: str) -> list[dict]:
     """States of one township; street ids are `<TOWNSHIP>-<slug>`, so the prefix selects the township."""
     q = select(t.street_state).where(t.street_state.c.mode == mode,
@@ -212,6 +219,12 @@ def upsert_subscription(conn, device_id: str, sub: dict, street_ids: list[str], 
                                                 auth=keys["auth"], lang=lang, created_at=created or now_myt()))
     if street_ids:
         conn.execute(insert(t.subscription_streets), [{"device_id": device_id, "street_id": s} for s in dict.fromkeys(street_ids)])
+
+
+def delete_subscription(conn, device_id: str) -> None:
+    """Drop only the push subscription and its street links (e.g. the push service said 410 Gone); answers stay."""
+    conn.execute(delete(t.subscription_streets).where(t.subscription_streets.c.device_id == device_id))
+    conn.execute(delete(t.subscriptions).where(t.subscriptions.c.device_id == device_id))
 
 
 def delete_device(conn, device_id: str, *, uploads: Path | str | None = None) -> list[Path]:
