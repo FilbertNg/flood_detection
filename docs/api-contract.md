@@ -55,6 +55,8 @@ The contract between the engine/API (Python) and the two apps (TypeScript). It i
 | `POST /admin/replay` | JWT | `ReplayRequest` | `Status` |
 | `DELETE /admin/replay` | JWT | — | `Status` (back to live) |
 
+**Subscription validation** (`POST /subscriptions` and `DELETE /subscriptions/{device_id}`, 422 otherwise; added with WP3, PR #46): `device_id` matches `^[A-Za-z0-9_-]{16,64}$` (the Resident app generates it with `crypto.randomUUID()`, falling back to `crypto.getRandomValues`; ids from earlier app versions, `dev_` + base36, already match); `subscription.endpoint` is an `https` URL on a push-service host (`fcm.googleapis.com`, `updates.push.services.mozilla.com`, `*.notify.windows.com`, `web.push.apple.com`, `*.push.apple.com`); `keys` has only `p256dh` (≤ 128 chars) and `auth` (≤ 64), base64url; unknown street ids give 400. With no VAPID keys on the server, `GET /push/public-key` returns 503. No response shape changes.
+
 **Web Push payload** (every notification): `PushPayload` = `{title, body, url, alert_id, level}`; `url` is the app path to open, e.g. `/street/BBR-jalan-makyong`. Replay alerts start the title with `[Replay]`.
 
 **Tide** (`StreetDetail.tide`): hourly points `{time, height_m, filled}` from the issue time to +12 h. `filled` (boolean, additive) is `true` when that hour was gap-filled by the harmonic fit (`tide_filled` in the tide table, see `floodready/tide.py`) and is not Open-Meteo data; `false` for source data, and for a tide table that has no `tide_filled` column. Clients may ignore it; to be honest on screen, mark or dash-style filled hours.
