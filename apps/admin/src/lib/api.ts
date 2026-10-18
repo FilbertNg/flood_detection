@@ -1,4 +1,10 @@
 import type {
+  Answer,
+  AnswerReview,
+  Report,
+  Stats,
+  Suggestion,
+  SuggestionUpdate,
   LoginResponse,
   SeriesPoint,
   Station,
@@ -58,5 +64,13 @@ export const api = {
   },
   startReplay: (event: string = REPLAY_EVENT, speed = 60) =>
     request<Status>('/admin/replay', json({ event, speed }, 'POST')),
+  stats: (from: string, to: string) => request<Stats>(`/admin/stats?${new URLSearchParams({ from, to })}`),
+  report: (month: string) => request<Report>(`/admin/report?${new URLSearchParams({ month })}`),
+  suggestions: (from: string, to: string) => request<Suggestion[]>(`/admin/suggestions?${new URLSearchParams({ from, to })}`),
+  updateSuggestion: (id: string, body: SuggestionUpdate) =>
+    request<Suggestion>(`/admin/suggestions/${encodeURIComponent(id)}`, json(body, 'PATCH')),
+  pendingAnswers: () => request<Answer[]>('/admin/answers?review_status=pending'),
+  reviewAnswer: (id: string, body: AnswerReview) =>
+    request<Answer>(`/admin/answers/${encodeURIComponent(id)}`, json(body, 'PATCH')),
   stopReplay: () => request<Status>('/admin/replay', { method: 'DELETE' }),
 };

@@ -30,11 +30,12 @@ describe('App shell', () => {
     }
   });
 
-  it('placeholder routes say Coming in WP13', () => {
+  it('routes the four admin pages and returns to login on a 401 from them', async () => {
     auth.login('t');
-    stubApi({ 'GET /status': status });
+    stubApi({ 'GET /admin/stats': unauthorized });
     renderApp(<App />, '/statistics');
-    expect(screen.getByText(/Coming in WP13/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Statistics' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument());
   });
 
   it('returns to login when the API answers 401', async () => {
