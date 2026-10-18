@@ -142,3 +142,36 @@ def test_loaders_read_the_latest_saved_files(tmp_path):
     pd.DataFrame(rows).to_parquet(tmp_path / "om" / "2026-10-16.parquet")
     assert outlook.load_forecast(tmp_path / "om", "BBR").precip_mm.tolist() == [9.0]
     assert outlook.load_forecast(tmp_path / "nope", "BBR").empty
+
+
+def test_township_built_from_config_fires_on_a_real_fixture():
+    import yaml
+    towns = yaml.safe_load((FIX.parent.parent / "config" / "townships.yaml").read_text(encoding="utf-8"))["townships"]
+    bbr = next(t for t in towns if t["id"] == "BBR")
+    assert bbr["state"] == "SEL"                                # the config uses codes, MET uses names
+    rules = yaml.safe_load((FIX.parent.parent / "config" / "rules.yaml").read_text(encoding="utf-8"))
+    cfg = {**rules, "township": bbr}
+    a = outlook.township_outlook(warnings("met_thunderstorm_klang_listed.json"), hourly(NOW, QUIET), NOW, cfg)
+    assert a is not None and a.reasons[0].code == "met_warning"
+    assert outlook.township_outlook(warnings("met_thunderstorm_selangor_other_districts.json"), hourly(NOW, {}),
+                                    datetime(2026, 10, 16, 21, 30), cfg) is None
+
+
+def test_met_reason_value_is_hours_until_the_warning_starts(cfg):
+    ws = warnings("met_thunderstorm_klang_listed.json")          # valid 15:00-20:00
+    assert outlook.township_outlook(ws, hourly(NOW, QUIET), NOW, cfg).reasons[0].value == 0.0     # already in force
+    early = datetime(2026, 10, 16, 9, 0)
+    r = outlook.township_outlook(ws, hourly(early, QUIET), early, cfg).reasons[0]
+    assert (r.value, r.unit) == (6.0, "h")
+
+
+def test_pushes_only_when_genuinely_ahead(cfg):
+    ws = warnings("met_thunderstorm_klang_listed.json")
+    in_force = outlook.township_outlook(ws, hourly(NOW, QUIET), NOW, cfg)
+    assert not outlook.pushes(in_force.reasons)
+    early = datetime(2026, 10, 16, 9, 0)                           # warning starts in 6 h
+    assert outlook.pushes(outlook.township_outlook(ws, hourly(early, QUIET), early, cfg).reasons)
+    soon = datetime(2026, 10, 16, 10, 0)                           # starts in 5 h
+    assert not outlook.pushes(outlook.township_outlook(ws, hourly(soon, QUIET), soon, cfg).reasons)
+    assert outlook.pushes(outlook.township_outlook([], hourly(NOW, {8: 50.0}), NOW, cfg).reasons)   # forecast rule
+    assert outlook.pushes([{"code": "forecast_rain", "value": 50.0}, {"code": "met_warning", "value": 0.0}])   # dict rows too

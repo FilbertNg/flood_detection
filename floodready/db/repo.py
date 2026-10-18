@@ -17,7 +17,8 @@ from sqlalchemy import Engine, and_, bindparam, case, create_engine, delete, fun
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
-from ..engine.types import Alert, StreetState
+from ..engine.outlook import pushes as outlook_pushes
+from ..engine.types import Alert, Level, Reason, StreetState
 from ..jobs import now_myt
 from ..stats import outcomes
 from . import schema as t
@@ -262,7 +263,8 @@ def outcomes_for(conn, items: list[dict], *, count_simulated_sensor: bool = True
 
 def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
                 include_replay: bool = True, since: datetime | None = None, include_backfill: bool = False,
-                replay_only: bool = False, count_simulated_sensor: bool = True, alert_id: str | None = None) -> list[dict]:
+                replay_only: bool = False, count_simulated_sensor: bool = True, alert_id: str | None = None,
+                now: datetime | None = None) -> list[dict]:
     """AlertSummary dicts, newest first. Backfill rows are excluded unless `include_backfill`.
     `outcome` is computed from answers and sensor readings (see `outcomes_for`).
     Statistics must pass include_replay=False and count_simulated_sensor=False, and ignore answers with source='demo'.
@@ -297,6 +299,8 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
             ss.c.street_id == a.c.street_id, ss.c.level == "normal",
             ss.c.mode == case((a.c.is_replay.is_(True), "replay"), else_="live")).exists())
         q = q.where(a.c.is_backfill.is_(True) | (a.c.horizon == "outlook") | ~normal_now)   # an outlook sits on streets that are Normal now
+        # an outlook is active only until its window ends (it has no nowcast state to fall back on)
+        q = q.where((a.c.horizon != "outlook") | a.c.window_end.is_(None) | (a.c.window_end > _naive(now or now_myt())))
     pl = push_levels()
     rows = list(conn.execute(q))
     out = outcomes_for(conn, [{"alert_id": r.alert_id, "street_id": r.street_id, "kind": r.kind,
@@ -306,8 +310,33 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
         "alert_id": r.alert_id, "street_id": r.street_id, "horizon": r.horizon, "kind": r.kind, "level": r.level,
         "issued_at": _iso(r.issued_at), "window": _window(r.window_start, r.window_end),
         "outcome": out[r.alert_id],
-        "is_replay": bool(r.is_replay), "push": r.kind == "alert" and r.level in pl,
+        "is_replay": bool(r.is_replay), "push": _push(r, pl),
     } for r in rows]
+
+
+def _push(r, pl) -> bool:
+    if r.kind != "alert" or r.level not in pl:
+        return False
+    if r.horizon == "outlook":      # only an outlook that is genuinely ahead is pushed (engine.outlook.pushes)
+        return outlook_pushes(json.loads(r.reasons_json or "[]"))
+    return True
+
+
+def latest_outlook(conn, township_id: str) -> tuple[Alert | None, list[str]]:
+    """The township's most recent live outlook (all rows issued at that moment) and its streets; (None, []) when none.
+    The runner reseeds its cooldown / active state from this on startup."""
+    a = t.alerts
+    base = [a.c.township_id == township_id, a.c.horizon == "outlook", a.c.is_replay.is_(False), a.c.is_backfill.is_(False)]
+    last_at = conn.execute(select(func.max(a.c.issued_at)).where(*base)).scalar()
+    if last_at is None:
+        return None, []
+    rows = conn.execute(select(a).where(*base, a.c.issued_at == _naive(last_at)).order_by(a.c.alert_id)).fetchall()
+    r0 = rows[0]
+    reasons = tuple(Reason(d["code"], d["value"], d["unit"], d.get("station"), d["text"]["en"], d["text"]["ms"])
+                    for d in json.loads(r0.reasons_json or "[]"))
+    last = Alert(township_id, Level.parse(r0.level), r0.kind, r0.issued_at, r0.window_start, r0.window_end, reasons,
+                 tuple(json.loads(r0.fired_by_json or "[]")))
+    return last, ([r.street_id for r in rows] if r0.kind == "alert" else [])
 
 
 # ---------- subscriptions ----------

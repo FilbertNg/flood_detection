@@ -18,6 +18,12 @@ from .types import Alert, Level, Reason
 
 FROM_H, TO_H = 6, 24
 PEAK_FRACTION = 0.5          # window = the run of hours around the peak with at least this share of the peak hour's rain
+# townships.yaml uses state codes; MET names the states in words
+STATE_NAMES = {"JHR": "Johor", "KDH": "Kedah", "KTN": "Kelantan", "MLK": "Melaka", "NSN": "Negeri Sembilan", "PHG": "Pahang",
+               "PNG": "Penang", "PRK": "Perak", "PLS": "Perlis", "SBH": "Sabah", "SWK": "Sarawak", "SEL": "Selangor",
+               "TRG": "Terengganu", "KUL": "W.P. Kuala Lumpur", "WPKL": "W.P. Kuala Lumpur", "LBN": "W.P. Labuan",
+               "WPLB": "W.P. Labuan", "PJY": "W.P. Putrajaya", "WPPJ": "W.P. Putrajaya"}
+PUSH_AHEAD_H = 6        # a MET warning that starts at least this far ahead is worth a push; one already in force is not
 CAVEAT_EN = "Forecasts often miss tropical storms, so keep watching the live alerts."
 CAVEAT_MS = "Ramalan sering terlepas pandang ribut tropika, jadi terus pantau amaran semasa."
 
@@ -52,7 +58,8 @@ def township_outlook(met_warnings: list[dict], forecast: pd.DataFrame, now: date
     """`met_warnings`: `met_parse.parse_warnings` output; `forecast`: hourly `time_local, precip_mm`;
     `cfg`: the rules config plus `township` {id, district, state}."""
     town = cfg["township"]
-    state, district = town.get("state", "Selangor"), town.get("district")
+    code = str(town.get("state", "SEL"))
+    state, district = STATE_NAMES.get(code.upper(), code), town.get("district")
     horizon_end = now + timedelta(hours=TO_H)
     named = [w for w in met_warnings
              if met_parse.overlaps(w, now, horizon_end) and met_parse.names_area(w, state, district)]
@@ -67,7 +74,7 @@ def township_outlook(met_warnings: list[dict], forecast: pd.DataFrame, now: date
     if named:
         w = named[0]
         until = w["valid_to"]
-        hours = round((until - now).total_seconds() / 3600, 1) if until else 0.0
+        hours = round((w["valid_from"] - now).total_seconds() / 3600, 1) if w["valid_from"] else 0.0   # until it STARTS
         reasons.append(Reason(
             "met_warning", max(hours, 0.0), "h", None,
             f"MET Malaysia has an active '{w['title_en']}' naming {state if not w['areas'].get(state) else district}. {CAVEAT_EN}",
@@ -82,6 +89,16 @@ def township_outlook(met_warnings: list[dict], forecast: pd.DataFrame, now: date
         window = (start, end)
     return Alert(street_id=town["id"], level=Level.WATCH, kind="alert", issued_at=now,
                  window_start=window[0], window_end=window[1], reasons=tuple(reasons), fired_by=("outlook",))
+
+
+def pushes(reasons) -> bool:
+    """Push an outlook only when it is genuinely ahead: the forecast rule fired, or a MET warning starts >= 6 h from now.
+    A warning already in force (or starting within 6 h) is stored and shown in the app only. `reasons`: Reason objects or dicts."""
+    for r in reasons:
+        code, value = (r["code"], r["value"]) if isinstance(r, dict) else (r.code, r.value)
+        if code == "forecast_rain" or (code == "met_warning" and value >= PUSH_AHEAD_H):
+            return True
+    return False
 
 
 def issue_outlook(candidate: Alert | None, last: Alert | None, now: datetime, cfg: dict) -> Alert | None:

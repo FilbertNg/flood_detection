@@ -243,3 +243,31 @@ def test_active_groups_by_horizon(conn):
     repo.insert_alerts(conn, [alert("BBR-a", Level.NORMAL, "all_clear", at=T0 + timedelta(hours=4), win=False)],
                        is_replay=False, is_backfill=False, horizon="outlook")
     assert [(x["horizon"], x["level"]) for x in repo.list_alerts(conn, active=True)] == [("nowcast", "warning")]
+
+
+def _outlook(sid="BBR-a", at=T0, kind="alert", rs=None, end_h=3):
+    a = Alert(sid, Level.WATCH if kind == "alert" else Level.NORMAL, kind, at, at, at + timedelta(hours=end_h),
+              tuple(rs if rs is not None else [Reason("met_warning", 0.0, "h", None, "MET", "MET")]), ("outlook",))
+    return a
+
+
+def test_outlook_expires_by_window_end_and_push_follows_reasons(conn):
+    repo.insert_alerts(conn, [_outlook("BBR-a"), _outlook("BBR-b", rs=[Reason("forecast_rain", 50.0, "mm", None, "x", "x")])],
+                       is_replay=False, is_backfill=False, horizon="outlook")
+    act = {x["street_id"]: x for x in repo.list_alerts(conn, active=True, now=T0 + timedelta(hours=1))}
+    assert set(act) == {"BBR-a", "BBR-b"}
+    assert act["BBR-a"]["push"] is False and act["BBR-b"]["push"] is True      # in-force MET warning: stored, not pushed
+    assert repo.list_alerts(conn, active=True, now=T0 + timedelta(hours=4)) == []      # window_end passed
+    assert len(repo.list_alerts(conn)) == 2                                            # history keeps them
+
+
+def test_latest_outlook_reseeds_the_runner(conn):
+    assert repo.latest_outlook(conn, "BBR") == (None, [])
+    repo.insert_alerts(conn, [_outlook("BBR-a"), _outlook("BBR-b")], is_replay=False, is_backfill=False, horizon="outlook")
+    last, streets = repo.latest_outlook(conn, "BBR")
+    assert last.kind == "alert" and last.issued_at == T0 and sorted(streets) == ["BBR-a", "BBR-b"]
+    assert last.reasons[0].code == "met_warning" and last.window_end == T0 + timedelta(hours=3)
+    repo.insert_alerts(conn, [_outlook("BBR-a", T0 + timedelta(hours=1), "all_clear", rs=[])],
+                       is_replay=False, is_backfill=False, horizon="outlook")
+    last, streets = repo.latest_outlook(conn, "BBR")
+    assert last.kind == "all_clear" and streets == []

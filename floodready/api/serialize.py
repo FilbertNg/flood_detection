@@ -86,6 +86,11 @@ def _street_river_forecast(ctx: EngineContext, snap: Snapshot, at: datetime, str
     return river_forecast_for(ctx, snap, at, chosen) if chosen else None
 
 
+def _expired(row: dict) -> bool:
+    end = (row.get("window") or {}).get("end")
+    return bool(end) and pd.Timestamp(end).tz_localize(None) <= pd.Timestamp(now_myt())
+
+
 def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | None:
     match = ctx.streets[ctx.streets.street_id == street_id]
     if match.empty:
@@ -101,7 +106,7 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
         latest.setdefault(a.get("horizon", "nowcast"), a)
     now_row, out_row = latest.get("nowcast"), latest.get("outlook")
     pick = (now_row if now_row and now_row["kind"] == "alert" and still_elevated
-            else out_row if out_row and out_row["kind"] == "alert" else None)
+            else out_row if out_row and out_row["kind"] == "alert" and not _expired(out_row) else None)
     active = {"alert_id": pick["alert_id"], "level": pick["level"], "issued_at": pick["issued_at"]} if pick else None
     rain_next = ctx.forecast(data_time) if (ctx.forecast is not None and snap.mode == "live") else []
     reasons = [reason(r) for r in state.reasons] if state else []

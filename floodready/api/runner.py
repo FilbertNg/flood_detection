@@ -100,6 +100,11 @@ class Runner:
             self.push = PushService(self.db)
         self.push.warn_if_disabled()
         self._street_names = dict(zip(self.ctx.streets.street_id, self.ctx.streets.name))
+        try:   # restart mid-outlook: keep the active outlook and its cooldown instead of re-issuing it
+            with self._db_lock, self.db.begin() as conn:
+                self._outlook_last, self._outlook_streets = repo.latest_outlook(conn, self.ctx.township["id"])
+        except Exception:
+            log.exception("could not reseed the outlook state")
 
     # ---------- stations ----------
     @property
@@ -199,9 +204,10 @@ class Runner:
                 new = ([a for a in repo.list_alerts(conn, include_replay=False, since=now) if a["alert_id"] in new_ids]
                        if new_ids else [])
         self._outlook_last, self._outlook_streets = issued, (streets if issued.kind == "alert" else [])
-        if issued.reasons:
+        if issued.reasons:   # one push text that names every trigger (MET warning and forecast)
+            text = {"en": " ".join(r.text_en for r in issued.reasons), "ms": " ".join(r.text_ms for r in issued.reasons)}
             for a in new:
-                a["reason_text"] = {"en": issued.reasons[0].text_en, "ms": issued.reasons[0].text_ms}
+                a["reason_text"] = text
         self.push.enqueue([a for a in new if a["push"]], self._street_names)
 
     # ---------- replay ----------
