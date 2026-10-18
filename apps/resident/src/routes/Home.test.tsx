@@ -66,3 +66,17 @@ describe('HomePage watch and credits', () => {
     expect(document.querySelector('details.credits-full summary')!.textContent).toBe('Sumber');
   });
 });
+
+describe('HomePage report link', () => {
+  it('links to Report a flood when none of my streets has an alert', async () => {
+    renderHome('en', ['BBR-persiaran-batu-belah']);
+    expect(await screen.findByRole('link', { name: 'Report a flood' })).toHaveAttribute('href', '/report');
+  });
+  it('hides it while a followed street is at Warning or Danger', async () => {
+    const followed = streets.features.find((f) => f.properties.street_id === 'BBR-jalan-makyong');
+    expect(['warning', 'danger']).toContain(followed?.properties.level);
+    renderHome('en', ['BBR-jalan-makyong']);
+    await screen.findByText('Jalan Makyong', { selector: 'span' });
+    expect(screen.queryByRole('link', { name: 'Report a flood' })).not.toBeInTheDocument();
+  });
+});

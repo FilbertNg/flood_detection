@@ -51,6 +51,7 @@ export function HomePage({ lang, mine }: { lang: Lang; mine: string[] }) {
             </li>
           ))}
         </ul>
+        {alerting.length === 0 && <Link to="/report" className="secondary report-link">{t(lang, 'reportLink')}</Link>}
         <Credits lang={lang} />
       </section>
     </div>

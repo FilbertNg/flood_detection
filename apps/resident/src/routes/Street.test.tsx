@@ -12,7 +12,7 @@ function renderStreet(lang: 'en' | 'ms', detail: unknown = streetDetail) {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={['/street/BBR-jalan-makyong']}>
         <Routes>
-          <Route path="/street/:id" element={<StreetPage lang={lang} />} />
+          <Route path="/street/:id" element={<StreetPage lang={lang} deviceId="dev_1" />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -28,7 +28,7 @@ describe('StreetPage', () => {
   it('shows level, time window, ML probability and reasons in Malay', async () => {
     renderStreet('ms');
     expect(await screen.findByText('Jalan Makyong')).toBeInTheDocument();
-    expect(screen.getByText('Amaran')).toBeInTheDocument();
+    expect(screen.getAllByText('Amaran').length).toBeGreaterThan(0);
     expect(screen.getByText(/antara 09:30 dan 10:30/)).toBeInTheDocument();
     expect(screen.getByText('62%')).toBeInTheDocument();
     expect(screen.getByText('Hujan 61.5 mm dalam 1 jam di Kg. Perepat, Kapar')).toBeInTheDocument();
@@ -53,5 +53,32 @@ describe('StreetPage', () => {
     renderStreet('en', { ...streetDetail, river_forecast: null });
     expect(await screen.findByText('Jalan Makyong')).toBeInTheDocument();
     expect(screen.queryByText('River forecast')).not.toBeInTheDocument();
+  });
+
+  it('asks "Is it flooding here?" during an active Warning alert', async () => {
+    renderStreet('en');
+    expect(await screen.findByRole('heading', { name: 'Is it flooding here?' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Report a flood' })).not.toBeInTheDocument();
+  });
+
+  it('offers the Report a flood link instead when no alert is active', async () => {
+    renderStreet('en', { ...streetDetail, level: 'normal', active_alert: null });
+    const link = await screen.findByRole('link', { name: 'Report a flood' });
+    expect(link).toHaveAttribute('href', '/report?street=BBR-jalan-makyong');
+    expect(screen.queryByRole('heading', { name: 'Is it flooding here?' })).not.toBeInTheDocument();
+  });
+
+  it('does not ask for verification during a Watch alert', async () => {
+    renderStreet('en', { ...streetDetail, level: 'watch', active_alert: { alert_id: 'a_09', level: 'watch', issued_at: '2024-11-12T09:00:00+08:00' } });
+    await screen.findByRole('link', { name: 'Report a flood' });
+    expect(screen.queryByRole('heading', { name: 'Is it flooding here?' })).not.toBeInTheDocument();
+  });
+
+  it('lists the alert history with outcome and keeps the footer', async () => {
+    renderStreet('ms');
+    expect(await screen.findByRole('heading', { name: 'Amaran lepas di jalan ini' })).toBeInTheDocument();
+    expect(screen.getByText('Belum disahkan')).toBeInTheDocument();
+    expect(screen.getByText('Main semula')).toBeInTheDocument();
+    expect(screen.getByText(/JPS, MET dan NADMA ialah sumber rasmi/)).toBeInTheDocument();
   });
 });

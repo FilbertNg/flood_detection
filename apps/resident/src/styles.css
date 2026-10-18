@@ -78,3 +78,26 @@ h2 { font-size: 1rem; margin: 0.6rem 0 0.4rem; }
 .offer button:focus-visible, .secondary:focus-visible, .primary:focus-visible { outline: 3px solid #f2a900; outline-offset: 2px; }
 .install-steps { padding-left: 1.2rem; }
 .install-steps li { margin: 6px 0; }
+
+.sheet h2 { margin-top: 0; }
+.sheet h2:focus { outline: none; }
+.choices { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 12px; }
+.choice { flex: 1 1 6rem; min-height: 44px; padding: 10px 14px; border: 2px solid var(--brand); border-radius: 10px; background: transparent; color: var(--brand); font-size: 1rem; font-weight: 700; }
+.choice[aria-pressed="true"] { background: var(--brand); color: #fff; }
+.choice:focus-visible, .consent input:focus-visible, .file-input:focus-visible, .search:focus-visible { outline: 3px solid #f2a900; outline-offset: 2px; }
+.field-label { display: block; font-weight: 600; margin: 12px 0 4px; }
+.file-input { display: block; width: 100%; min-height: 44px; padding: 8px 0; font-size: 1rem; }
+.photo-preview { display: flex; gap: 12px; align-items: center; margin: 8px 0; }
+.photo-preview img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; }
+.consent { display: flex; gap: 10px; align-items: center; min-height: 44px; margin: 8px 0; }
+.consent input { width: 24px; height: 24px; flex: none; }
+.form-error { color: #8a1c1c; font-weight: 600; margin: 8px 0; }
+.report-link { display: block; box-sizing: border-box; min-height: 44px; margin: 12px 0; text-align: center; text-decoration: none; }
+.history { list-style: none; padding: 0; margin: 0; }
+.history li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 44px; border-bottom: 1px solid var(--line); padding: 6px 0; }
+.history-time { flex: 1 1 8rem; }
+.outcome { font-weight: 700; font-size: 0.85rem; padding: 2px 10px; border-radius: 999px; border: 1px solid currentColor; }
+.outcome-confirmed { color: #1b5e20; }
+.outcome-not_confirmed { color: #37474f; }
+.outcome-unverified { color: #5d4037; }
+.tag-replay { background: #4a148c; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
