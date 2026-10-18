@@ -24,8 +24,10 @@ interface Props {
   alertId?: string;
 }
 
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
 type Status = 'form' | 'sending' | 'done';
-type ErrorKey = 'alreadyAnswered' | 'sendFailed' | 'locationDenied';
+type ErrorKey = 'alreadyAnswered' | 'sendFailed' | 'locationDenied' | 'photoType' | 'photoTooBig';
 
 /** "Is it flooding here?" sheet (RES-4) and the "Report a flood" form (RES-5). */
 export function VerifySheet({ lang, deviceId, streetId, mode, alertId }: Props) {
@@ -56,8 +58,15 @@ export function VerifySheet({ lang, deviceId, streetId, mode, alertId }: Props) 
 
   function pick(file: File | undefined) {
     dropPhotoUrl();
+    setError(null);
     if (!file) {
       setPhoto(null);
+      return;
+    }
+    if (!file.type.startsWith('image/') || file.size > MAX_PHOTO_BYTES) {
+      setPhoto(null);
+      setFileKey((k) => k + 1);
+      setError(file.type.startsWith('image/') ? 'photoTooBig' : 'photoType');
       return;
     }
     const url = URL.createObjectURL(file);

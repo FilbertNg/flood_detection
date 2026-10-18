@@ -136,6 +136,54 @@ describe('VerifySheet (verify)', () => {
   });
 });
 
+describe('VerifySheet (photo guard and wording)', () => {
+  async function yes(lang: 'en' | 'ms') {
+    respond(201);
+    render(<VerifySheet lang={lang} mode="verify" alertId="a_01" {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: lang === 'en' ? 'Yes' : 'Ya' }));
+    return screen.getByLabelText(lang === 'en' ? 'Add a photo (optional)' : 'Tambah gambar (pilihan)');
+  }
+
+  it('rejects a non-image file with a role=alert and keeps no preview', async () => {
+    const input = await yes('en');
+    fireEvent.change(input, { target: { files: [new File(['x'], 'a.pdf', { type: 'application/pdf' })] } });
+    expect(screen.getByRole('alert')).toHaveTextContent('Please choose an image file.');
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('rejects an image over 10 MB (EN and MS)', async () => {
+    const big = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'big.jpg', { type: 'image/jpeg' });
+    let input = await yes('en');
+    fireEvent.change(input, { target: { files: [big] } });
+    expect(screen.getByRole('alert')).toHaveTextContent('That photo is larger than 10 MB. Please choose a smaller one.');
+    cleanup();
+    input = await yes('ms');
+    fireEvent.change(input, { target: { files: [big] } });
+    expect(screen.getByRole('alert')).toHaveTextContent('Gambar itu melebihi 10 MB. Sila pilih yang lebih kecil.');
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('accepts a 10 MB image and clears an earlier error', async () => {
+    const input = await yes('en');
+    fireEvent.change(input, { target: { files: [new File(['x'], 'a.pdf', { type: 'application/pdf' })] } });
+    fireEvent.change(screen.getByLabelText('Add a photo (optional)'), { target: { files: [new File([new Uint8Array(10 * 1024 * 1024)], 'ok.jpg', { type: 'image/jpeg' })] } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('img')).toBeInTheDocument();
+  });
+
+  it('does not claim the answer is anonymous', () => {
+    respond(201);
+    render(<VerifySheet lang="en" mode="verify" alertId="a_01" {...props} />);
+    expect(document.body.textContent).not.toMatch(/anonymous/i);
+    expect(screen.getByText(/No account or name needed\. We store a random device code/)).toBeInTheDocument();
+    cleanup();
+    render(<VerifySheet lang="ms" mode="verify" alertId="a_01" {...props} />);
+    expect(document.body.textContent).not.toMatch(/tanpa nama/i);
+    expect(screen.getByText(/Tiada akaun atau nama diperlukan\. Kami menyimpan kod peranti rawak/)).toBeInTheDocument();
+  });
+});
+
 describe('VerifySheet (report)', () => {
   it('posts answer=report without alert_id and offers no Yes/No', async () => {
     respond(201);
