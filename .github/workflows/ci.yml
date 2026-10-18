@@ -35,3 +35,6 @@ jobs:
           pnpm -C apps/resident typecheck
           pnpm -C apps/resident test
           pnpm -C apps/resident build
+          pnpm -C apps/admin typecheck
+          pnpm -C apps/admin test
+          pnpm -C apps/admin build
