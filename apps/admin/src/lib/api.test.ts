@@ -50,4 +50,26 @@ describe('api', () => {
     expect(JSON.parse(calls[0][1].body as string)).toEqual({ event: '2024-11-12', speed: 60 });
     expect(calls[1][1].method).toBe('DELETE');
   });
+
+  it('admin data endpoints use the contract paths, methods and bodies', async () => {
+    auth.login('abc');
+    const fn = stub(200, {});
+    await api.stats('2024-01-01', '2024-12-31');
+    await api.report('2024-11');
+    await api.suggestions('2024-01-01', '2024-12-31');
+    await api.updateSuggestion('s_01', { status: 'done', note: 'cleared' });
+    await api.pendingAnswers();
+    await api.reviewAnswer('ans_01', { review_status: 'spam' });
+    const c = fn.mock.calls as unknown as [string, RequestInit][];
+    expect(c[0][0]).toMatch(/\/admin\/stats\?from=2024-01-01&to=2024-12-31$/);
+    expect(c[1][0]).toMatch(/\/admin\/report\?month=2024-11$/);
+    expect(c[2][0]).toMatch(/\/admin\/suggestions\?from=2024-01-01&to=2024-12-31$/);
+    expect(c[3][0]).toMatch(/\/admin\/suggestions\/s_01$/);
+    expect(c[3][1].method).toBe('PATCH');
+    expect(JSON.parse(c[3][1].body as string)).toEqual({ status: 'done', note: 'cleared' });
+    expect(c[4][0]).toMatch(/\/admin\/answers\?review_status=pending$/);
+    expect(c[5][0]).toMatch(/\/admin\/answers\/ans_01$/);
+    expect(c[5][1].method).toBe('PATCH');
+    expect(JSON.parse(c[5][1].body as string)).toEqual({ review_status: 'spam' });
+  });
 });

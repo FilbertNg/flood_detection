@@ -3,8 +3,11 @@ import { NavLink, Navigate, Route, Routes } from 'react-router';
 import { auth } from './auth';
 import { LoginPage } from './routes/Login';
 import { OpsMapPage } from './routes/OpsMap';
-import { PlaceholderPage } from './routes/Placeholder';
+import { ReportPage } from './routes/Report';
+import { ReviewPage } from './routes/Review';
+import { StatisticsPage } from './routes/Statistics';
 import { StreetDetailPage } from './routes/StreetDetail';
+import { SuggestionsPage } from './routes/Suggestions';
 
 const NAV = [
   { to: '/', label: 'Map', end: true },
@@ -34,10 +37,10 @@ export function App() {
       <Routes>
         <Route path="/" element={<OpsMapPage />} />
         <Route path="/street/:id" element={<StreetDetailPage />} />
-        <Route path="/statistics" element={<PlaceholderPage title="Statistics" />} />
-        <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
-        <Route path="/suggestions" element={<PlaceholderPage title="Suggestions" />} />
-        <Route path="/review" element={<PlaceholderPage title="Review" />} />
+        <Route path="/statistics" element={<StatisticsPage />} />
+        <Route path="/reports" element={<ReportPage />} />
+        <Route path="/suggestions" element={<SuggestionsPage />} />
+        <Route path="/review" element={<ReviewPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
