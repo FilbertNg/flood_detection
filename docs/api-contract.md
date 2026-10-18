@@ -55,6 +55,8 @@ The contract between the engine/API (Python) and the two apps (TypeScript). It i
 | `POST /admin/replay` | JWT | `ReplayRequest` | `Status` |
 | `DELETE /admin/replay` | JWT | — | `Status` (back to live) |
 
+**Subscription validation** (`POST /subscriptions`, 422 otherwise): `device_id` matches `^[A-Za-z0-9_-]{16,64}$` (the client uses `crypto.randomUUID()`); `subscription.endpoint` is an `https` URL on a push-service host (`fcm.googleapis.com`, `updates.push.services.mozilla.com`, `*.notify.windows.com`, `web.push.apple.com`, `*.push.apple.com`); `keys` has only `p256dh` (≤ 128) and `auth` (≤ 64), base64url; unknown street ids give 400. No VAPID keys on the server: `GET /push/public-key` returns 503.
+
 **Web Push payload** (every notification): `PushPayload` = `{title, body, url, alert_id, level}`; `url` is the app path to open, e.g. `/street/BBR-jalan-makyong`. Replay alerts start the title with `[Replay]`.
 
 **River forecast** (`StreetDetail.river_forecast`, `RiverForecast`): the level of one river station at +1 h and +2 h, or `null` when there is no model, the model cannot be applied, or the station has no level at most 30 min old. Fields: `graph_id`, `name` (station name), `wl_now_m` (latest observed level, m), `wl_now_time` (when it was read; at most 30 min before `data_time`), `warning_m` (the station's own JPS warning level, for reference; may be `null`), and `points[]` = `{time, wl_m (median), wl_m_p10, wl_m_p90}` in metres with `wl_m_p10 <= wl_m <= wl_m_p90`. Until per-street stations exist the station is the township river station with a fresh level closest to its warning level. In replay it comes from the fold model that never trained on that period.

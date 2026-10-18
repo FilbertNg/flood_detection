@@ -99,3 +99,55 @@ def test_an_all_clear_is_stored_but_not_pushed(context):
     r._record(ReplayStep(time=t, trigger=None, states=[], alerts=[clear]), is_replay=False)
     svc.flush()
     assert [a["kind"] for a in r.snapshot().alerts] == ["all_clear"] and sent == []
+
+
+def live_warning(r, level=None):
+    from floodready.engine.replay import ReplayStep
+    from floodready.engine.types import Alert, Level
+    from tests.db.test_repo import state
+    t = datetime(2026, 10, 18, 9, 0)
+    level = level or Level.WARNING
+    a = Alert("BBR-prone-street", level, "alert", t, None, None, (), ("rule_rain",))
+    r._record(ReplayStep(time=t, trigger=None, states=[state("BBR-prone-street", level)], alerts=[a]), is_replay=False)
+
+
+def test_replay_mode_shows_replay_rows_only_even_with_a_live_alert(context):
+    r, sent, svc = make(context)
+    with TestClient(create_app(r, start_live_loop=False)) as client:
+        live_warning(r)
+        r.start_replay(D, speed=None, start="06:00", end="14:00", stop_at="09:00")
+        alerts = client.get("/api/v1/alerts").json()
+        assert alerts and all(a["is_replay"] for a in alerts)
+        active = client.get("/api/v1/alerts", params={"active": "true"}).json()
+        assert len({a["street_id"] for a in active}) == len(active)
+        detail = client.get("/api/v1/streets/BBR-prone-street").json()
+        assert detail["history"] and all(h["is_replay"] for h in detail["history"])
+        assert detail["active_alert"]["alert_id"].endswith("~replay")
+        r.stop_replay()          # back to live: the live alert is visible again, no replay rows
+        detail = client.get("/api/v1/streets/BBR-prone-street").json()
+        assert [h["is_replay"] for h in detail["history"]] == [False]
+
+
+def test_a_live_alert_without_an_all_clear_is_not_active_once_the_street_is_normal(context):
+    from floodready.engine.types import Level
+    r, sent, svc = make(context)
+    with TestClient(create_app(r, start_live_loop=False)) as client:
+        live_warning(r)
+        assert len(client.get("/api/v1/alerts", params={"active": "true"}).json()) == 1
+        with r.db.begin() as c:                       # the street recovered while the all-clear was never issued
+            from tests.db.test_repo import state
+            repo.save_street_states(c, [state("BBR-prone-street", Level.NORMAL)], "live")
+        assert client.get("/api/v1/alerts", params={"active": "true"}).json() == []
+
+
+def test_snapshot_does_not_query_alerts_until_they_are_read(context, monkeypatch):
+    r, sent, svc = make(context)
+    calls = []
+    real = repo.list_alerts
+    monkeypatch.setattr(repo, "list_alerts", lambda *a, **k: calls.append(1) or real(*a, **k))
+    snap = r.snapshot()
+    with TestClient(create_app(r, start_live_loop=False)) as client:
+        client.get("/api/v1/status")
+        client.get("/api/v1/streets")
+    assert calls == []
+    assert snap.alerts == [] and calls == [1]

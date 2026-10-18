@@ -56,10 +56,17 @@ class EngineContext:
 class Snapshot:
     mode: str
     step: ReplayStep | None
-    alerts: list[dict]
     replay: dict | None
     readings: pd.DataFrame
     updated_at: datetime | None = None
+    alerts_loader: Callable[..., list[dict]] | None = None     # reads the database only when alerts are asked for
+
+    @property
+    def alerts(self) -> list[dict]:
+        return self.alerts_loader() if self.alerts_loader else []
+
+    def alerts_for(self, street_id: str) -> list[dict]:
+        return self.alerts_loader(street_id=street_id) if self.alerts_loader else []
 
 
 def iso(dt: datetime) -> str:
@@ -132,9 +139,10 @@ class Runner:
         self.push.enqueue([a for a in new if a["push"]], self._street_names)
 
     def alerts(self, street_id: str | None = None, active: bool = False) -> list[dict]:
-        """AlertSummary list from the database: live alerts, plus replay alerts while a replay is on."""
+        """AlertSummary list from the database: live rows in live mode, replay rows only while a replay is on."""
+        replaying = self.mode == "replay"
         with self._db_lock, self.db.begin() as conn:
-            return repo.list_alerts(conn, street_id=street_id, active=active, include_replay=self.mode == "replay")
+            return repo.list_alerts(conn, street_id=street_id, active=active, include_replay=replaying, replay_only=replaying)
 
     # ---------- live ----------
     def refresh_live(self, now: datetime | None = None) -> None:
@@ -212,4 +220,4 @@ class Runner:
         with self._lock:
             snap = dict(mode=self.mode, step=self._step, replay=self._replay, readings=self._readings,
                         updated_at=self._updated_at)
-        return Snapshot(alerts=self.alerts(), **snap)
+        return Snapshot(alerts_loader=self.alerts, **snap)

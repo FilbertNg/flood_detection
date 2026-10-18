@@ -9,8 +9,15 @@ export interface Prefs {
   deviceId: string;
 }
 
+/** The API accepts device ids matching this (docs/api-contract.md); the id authorises deleting the device's data. */
+const DEVICE_ID = /^[A-Za-z0-9_-]{16,64}$/;
+
 function newDeviceId(): string {
-  return `dev_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  return crypto.randomUUID();
+}
+
+function validDeviceId(id: unknown): id is string {
+  return typeof id === 'string' && DEVICE_ID.test(id);
 }
 
 export function loadPrefs(): Prefs {
@@ -18,7 +25,7 @@ export function loadPrefs(): Prefs {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as Partial<Prefs>;
-      return { lang: p.lang === 'ms' ? 'ms' : 'en', streets: Array.isArray(p.streets) ? p.streets : [], deviceId: p.deviceId ?? newDeviceId() };
+      return { lang: p.lang === 'ms' ? 'ms' : 'en', streets: Array.isArray(p.streets) ? p.streets : [], deviceId: validDeviceId(p.deviceId) ? p.deviceId : newDeviceId() };
     }
   } catch {
     // storage unavailable (private mode): fall through to defaults

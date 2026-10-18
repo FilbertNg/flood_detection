@@ -107,7 +107,10 @@ def load_env_file(path: Path) -> None:
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             key, _, value = line.partition("=")
-            os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+            value = value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":      # strip a matching quote pair only
+                value = value[1:-1]
+            os.environ.setdefault(key.strip(), value)
 
 
 def build_runner() -> Runner:

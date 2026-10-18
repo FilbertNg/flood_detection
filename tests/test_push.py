@@ -122,3 +122,30 @@ def test_make_sender_calls_pywebpush_with_vapid(monkeypatch):
     kw = calls[0]
     assert kw["subscription_info"] == {"endpoint": "https://e", "keys": {"p256dh": "P", "auth": "A"}}
     assert kw["vapid_private_key"] == "PRIV" and kw["vapid_claims"] == {"sub": "mailto:a@b.co"} and kw["timeout"] > 0
+
+
+def test_logs_never_contain_the_raw_device_id(conn, caplog):
+    def send(sub, data):
+        raise Failed(500 if sub["device_id"] == "en1" else 410)
+    with caplog.at_level(logging.INFO):
+        push.notify(conn, summary(), "A", send=send)
+    assert "en1" not in caplog.text and "ms1" not in caplog.text and push.device_tag("en1") in caplog.text
+
+
+def test_no_database_connection_is_held_while_sending(tmp_path):
+    eng = repo.connect(f"sqlite:///{(tmp_path / 'p.db').as_posix()}")
+    with eng.begin() as c:
+        repo.upsert_subscription(c, "d1", SUB("d1"), ["BBR-a"], "en")
+        repo.upsert_subscription(c, "d2", SUB("d2"), ["BBR-a"], "en")
+    held = []
+
+    def send(sub, data):
+        held.append(eng.pool.checkedout())
+        if sub["device_id"] == "d1":
+            raise Failed(410)
+    svc = push.PushService(eng, send=send, public_key="k")
+    svc.enqueue([summary()], {})
+    svc.flush()
+    assert held == [0, 0]
+    with eng.begin() as c:
+        assert [s["device_id"] for s in repo.list_subscribers(c, "BBR-a")] == ["d2"]

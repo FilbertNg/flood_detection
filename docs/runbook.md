@@ -69,6 +69,8 @@ Then open http://localhost:5173 and check the map shows coloured streets.
 
 What to show: at 08:45 Watch from rain at Kg. Perepat; at 09:00 Warning; at 09:30 the river at Sg. Binjai passes its warning level; at 10:00 Danger. A memorandum street: http://localhost:5173/street/BBR-jalan-makyong-1-ku5
 
+**Warning:** every replay (also each rehearsal) re-sends its alerts as push notifications titled "[Replay] ..." to the real subscribers of the affected streets once VAPID keys are set (`scripts/gen_vapid.py`). Rehearse with test devices only, or before anyone else has subscribed.
+
 ## 5. Phone and public link
 
 Not set up yet: hosting (Cloudflare Pages for the apps, Tailscale Funnel for the API) comes with work package WP14 of [the remaining-MVP plan](plans/2026-10-17-MVP2-remaining-mvp.md), and its steps will be added here. Until then the apps run on this laptop only.

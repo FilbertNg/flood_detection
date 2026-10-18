@@ -12,12 +12,13 @@ import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 import jwt
-from fastapi import Depends, FastAPI, HTTPException, Query, Response
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..db import repo
 from . import serialize
@@ -41,14 +42,43 @@ class ReplayRequest(BaseModel):
     stop_at: str | None = None
 
 
+# Push services a browser can hand out. Anything else would let a client make the API host POST to arbitrary URLs.
+PUSH_HOSTS = ("fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com")
+PUSH_HOST_SUFFIXES = (".notify.windows.com", ".push.apple.com")
+DEVICE_ID_RE = r"^[A-Za-z0-9_-]{16,64}$"
+_B64URL = r"^[A-Za-z0-9_-]+={0,2}$"
+
+
+class WebPushKeys(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    p256dh: str = Field(min_length=1, max_length=128, pattern=_B64URL)
+    auth: str = Field(min_length=1, max_length=64, pattern=_B64URL)
+
+
 class WebPushSubscriptionBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     endpoint: str = Field(min_length=1, max_length=2048)
     expirationTime: float | None = None
-    keys: dict[str, str]
+    keys: WebPushKeys
+
+    @field_validator("endpoint")
+    @classmethod
+    def _push_service_endpoint(cls, v: str) -> str:
+        try:
+            u = urlsplit(v)
+            host, port = (u.hostname or "").lower(), u.port
+        except ValueError:
+            raise ValueError("invalid endpoint") from None
+        if u.scheme != "https" or u.username or u.password or port not in (None, 443):
+            raise ValueError("endpoint must be an https URL of a push service")
+        if host not in PUSH_HOSTS and not host.endswith(PUSH_HOST_SUFFIXES):
+            raise ValueError("endpoint is not a known push service")
+        return v
 
 
 class SubscriptionBody(BaseModel):
-    device_id: str = Field(min_length=1, max_length=64)
+    model_config = ConfigDict(extra="forbid")
+    device_id: str = Field(pattern=DEVICE_ID_RE)
     subscription: WebPushSubscriptionBody
     street_ids: list[str] = Field(max_length=200)
     lang: Literal["en", "ms"]
@@ -147,9 +177,7 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
 
     @app.post(f"{api}/subscriptions", status_code=204)
     def subscribe(body: SubscriptionBody):
-        keys = body.subscription.keys
-        if not keys.get("p256dh") or not keys.get("auth"):
-            raise HTTPException(status_code=422, detail="subscription.keys needs p256dh and auth")
+        keys = body.subscription.keys.model_dump()
         known = set(ctx.streets.street_id)
         unknown = [s for s in body.street_ids if s not in known]
         if unknown:
@@ -160,7 +188,7 @@ def create_app(runner: Runner, start_live_loop: bool = True) -> FastAPI:
         return Response(status_code=204)
 
     @app.delete(f"{api}/subscriptions/{{device_id}}", status_code=204)
-    def delete_subscription(device_id: str):
+    def delete_subscription(device_id: Annotated[str, Path(pattern=DEVICE_ID_RE)]):
         with runner.db.begin() as conn:
             files = repo.delete_device(conn, device_id)
         repo.remove_files(files)          # only after the transaction committed

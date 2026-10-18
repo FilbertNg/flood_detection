@@ -6,6 +6,7 @@ request waits on a push service.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -60,26 +61,44 @@ def _status(exc: Exception) -> int | None:
     return getattr(getattr(exc, "response", None), "status_code", None)
 
 
-def notify(conn, alert: dict, street_name: str, send: Callable[[dict, str], None]) -> int:
-    """Send `alert` to every subscriber of its street, in their language. Returns the number sent.
+def device_tag(device_id: str) -> str:
+    """Short hash for logs: the device id is a bearer secret (it authorises DELETE), never log it raw."""
+    return hashlib.sha256(device_id.encode()).hexdigest()[:8]
 
-    Nothing is sent unless `alert["push"]` is true (alert kind and a level in `alerts.push_levels`).
-    404/410 from the push service deletes that subscription; any other error is logged and the loop continues.
-    `send(subscriber, json_text)` raises on failure."""
-    if not alert.get("push") or alert.get("kind", "alert") != "alert":
-        return 0
-    sent = 0
-    for sub in repo.list_subscribers(conn, alert["street_id"]):
+
+def _pushable(alert: dict) -> bool:
+    return bool(alert.get("push")) and alert.get("kind", "alert") == "alert"
+
+
+def _deliver(subs: list[dict], alert: dict, street_name: str, send: Callable[[dict, str], None]) -> tuple[int, list[str]]:
+    """Send to each subscriber (no database access). Returns (sent count, device ids the push service reported gone)."""
+    sent, gone = 0, []
+    for sub in subs:
         data = json.dumps(payload(alert, street_name, sub["lang"]), ensure_ascii=False)
         try:
             send(sub, data)
             sent += 1
         except Exception as exc:  # noqa: BLE001 - one bad endpoint must never stop the others or the tick
             if _status(exc) in GONE:
-                repo.delete_subscription(conn, sub["device_id"])
-                log.info("push subscription %s is gone (%s); deleted", sub["device_id"], _status(exc))
+                gone.append(sub["device_id"])
+                log.info("push subscription %s is gone (%s); deleting", device_tag(sub["device_id"]), _status(exc))
             else:
-                log.warning("push failed for device %s: %s", sub["device_id"], exc.__class__.__name__)
+                log.warning("push failed for device %s: %s", device_tag(sub["device_id"]), exc.__class__.__name__)
+    return sent, gone
+
+
+def notify(conn, alert: dict, street_name: str, send: Callable[[dict, str], None]) -> int:
+    """Send `alert` to every subscriber of its street, in their language. Returns the number sent.
+
+    Nothing is sent unless `alert["push"]` is true (alert kind and a level in `alerts.push_levels`).
+    404/410 from the push service deletes that subscription; any other error is logged and the loop continues.
+    `send(subscriber, json_text)` raises on failure. (The background worker uses `PushService`, which does not
+    keep a transaction open while sending.)"""
+    if not _pushable(alert):
+        return 0
+    sent, gone = _deliver(repo.list_subscribers(conn, alert["street_id"]), alert, street_name, send)
+    for device_id in gone:
+        repo.delete_subscription(conn, device_id)
     return sent
 
 
@@ -136,8 +155,15 @@ class PushService:
     def _run(self, alerts: list[dict], names: dict[str, str]) -> None:
         for alert in alerts:
             try:
-                with self.engine.begin() as conn:
-                    notify(conn, alert, names.get(alert["street_id"], alert["street_id"]), self._send)
+                if not _pushable(alert):
+                    continue
+                with self.engine.begin() as conn:                 # short read; closed before any network I/O
+                    subs = repo.list_subscribers(conn, alert["street_id"])
+                _, gone = _deliver(subs, alert, names.get(alert["street_id"], alert["street_id"]), self._send)
+                if gone:
+                    with self.engine.begin() as conn:             # short write of its own
+                        for device_id in gone:
+                            repo.delete_subscription(conn, device_id)
             except Exception:  # noqa: BLE001
                 log.exception("push job failed for %s", alert.get("alert_id"))
 
@@ -150,4 +176,8 @@ class PushService:
 
     def shutdown(self) -> None:
         if self._pool is not None:
+            try:
+                self.flush(timeout=5)          # let queued alerts go out before the process exits
+            except Exception:  # noqa: BLE001
+                log.warning("push queue not drained at shutdown")
             self._pool.shutdown(wait=False, cancel_futures=True)
