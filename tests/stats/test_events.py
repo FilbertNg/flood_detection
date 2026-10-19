@@ -76,3 +76,11 @@ def test_news_outcomes_uses_the_same_rules(raw):
     alert = {"alert_id": "x", "street_id": "BBR-a", "kind": "alert", "issued_at": "2025-04-11T16:00:00+08:00"}
     assert news_outcomes(ev, [alert]) == {"x": "confirmed"}
     assert news_outcomes(raw, [alert]) == {}                      # unchecked draft: nothing
+
+
+def test_street_id_stays_an_object_column_with_real_none_for_area_rows(raw):
+    raw = check(check(raw, "BBR-2017-11-07-01"), "BBR-2024-11-12-01")
+    out = events.normalise(raw, street_ids={KERAMAT}, township_name="Bandar Bukit Raja")
+    assert out.street_id.dtype == object
+    assert out.street_id.isna().sum() == 1 and any(v is None for v in out.street_id)       # not NaN
+    assert all(isinstance(v, str) for v in out.street_id if v is not None)

@@ -77,5 +77,7 @@ def normalise(events: pd.DataFrame | None, *, street_ids: set[str] | None = None
                          "place_name": _text(r.get("place_name")), "source_type": _text(r.get("source_type")) or "news",
                          "source_url": _text(r.get("source_url")) or None})
     out = pd.DataFrame(rows, columns=COLUMNS)
+    # keep street_id an object column: pandas 3 would turn None into NaN in a mixed str/None column
+    out["street_id"] = pd.Series([r["street_id"] for r in rows], dtype=object, index=out.index)
     out.attrs["normalised"] = True
     return out
