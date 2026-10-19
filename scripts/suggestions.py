@@ -29,30 +29,6 @@ from floodready.engine import replay, street_stations  # noqa: E402
 from floodready.ml import dataset  # noqa: E402
 from floodready.stats import suggestions as sug  # noqa: E402
 
-RAIN_WINDOW = timedelta(hours=3)
-
-
-def make_onset_rain(readings: pd.DataFrame, mapping: dict | None):
-    """onset_rain(street, t): the highest 3 h rain total (ending at t) among the street's rain gauges, from QC-cleaned
-    archive readings; None when the street has no gauge mapping or no valid reading in that window."""
-    rf = readings[readings["kind"] == "rf"]
-    series = {g: s.set_index("time_local")["rain_15min_mm"].sort_index() for g, s in rf.groupby("graph_id")}
-
-    def onset_rain(street_id: str, t: datetime) -> float | None:
-        entry = (mapping or {}).get(street_id)
-        totals = []
-        for g in (entry or {}).get("rf", []):
-            s = series.get(g)
-            if s is None:
-                continue
-            w = s.loc[pd.Timestamp(t) - RAIN_WINDOW + pd.Timedelta(seconds=1):pd.Timestamp(t)].dropna()
-            if len(w):
-                totals.append(float(w.sum()))
-        return max(totals) if totals else None
-
-    return onset_rain
-
-
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--from", dest="start", required=True, type=date.fromisoformat)
@@ -80,17 +56,20 @@ def main() -> None:
 
     own = [s["graph_id"] for s in town["stations"]]
     names = {s["graph_id"]: s["name"] for s in town["stations"]}
-    health = sug.station_health(readings[readings["graph_id"].isin(own)], args.start, args.end, names=names)
+    missing = [g for g in own if g not in archived]
+    if missing:
+        logging.warning("township stations with no archive file (no health row, not judged): %s", ", ".join(missing))
+    health = sug.station_health(readings, args.start, args.end, names=names, only=own, detail=True)
     stat_names = dict(zip(stations['graph_id'], stations['name'])) | names
     mapping = street_stations.load(ROOT / "assets" / "geo" / f"{args.township.lower()}_street_stations.json")
-    events = pd.read_csv(args.events) if args.events else None
+    events = pd.read_csv(args.events, dtype=str) if args.events else None
 
     engine = repo.connect(args.db)
     with engine.begin() as conn:
-        out = sug.suggestions(conn, args.start, args.end, tide, health, onset_rain=make_onset_rain(readings, mapping),
+        out = sug.suggestions(conn, args.start, args.end, tide, health, onset_rain=sug.onset_rain_from_archive(readings, mapping),
                               events=events, street_stations=mapping, station_names=stat_names)
         if not args.dry_run:
-            sug.save(conn, out, args.start, args.end)
+            sug.save(conn, out, args.start, args.end, township=args.township, station_ids=own)
 
     print(f"{args.township} {args.start}..{args.end}: {len(out)} suggestions"
           f"{' (dry run, nothing written)' if args.dry_run else ' upserted'}")

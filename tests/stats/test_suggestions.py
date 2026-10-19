@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -26,8 +27,8 @@ def alert(street, at, level=Level.WARNING, kind="alert"):
                  (Reason("rain_1h", 60.0, "mm", "1", "Heavy rain", "Hujan lebat"),), ("rule_rain",))
 
 
-def add(conn, street, at, level=Level.WARNING, *, replay=False, backfill=True):
-    return repo.insert_alerts(conn, [alert(street, at, level)], is_replay=replay, is_backfill=backfill)[0]
+def add(conn, street, at, level=Level.WARNING, *, replay=False, backfill=True, horizon="nowcast"):
+    return repo.insert_alerts(conn, [alert(street, at, level)], is_replay=replay, is_backfill=backfill, horizon=horizon)[0]
 
 
 def episode(conn, street, at, level=Level.WARNING, hours=1):
@@ -36,10 +37,10 @@ def episode(conn, street, at, level=Level.WARNING, hours=1):
     repo.insert_alerts(conn, [alert(street, at + timedelta(hours=hours), Level.NORMAL, "all_clear")], is_replay=False, is_backfill=True)
 
 
-def confirm(conn, aid, street, at, source="resident", n=2):
+def confirm(conn, aid, street, at, source="resident", n=2, depth=None):
     for i in range(n):
         repo.insert_answer(conn, {"device_id": f"{aid[-12:]}-{i}", "alert_id": aid, "street_id": street, "answer": "yes",
-                                  "answered_at": at + timedelta(minutes=10 + i), "source": source})
+                                  "answered_at": at + timedelta(minutes=10 + i), "source": source, "depth": depth})
 
 
 def flood(conn, street, at, **kw):
@@ -88,15 +89,37 @@ def test_empty_database_fires_nothing(conn):
 def test_sug1_drainage_capacity(conn):
     for d in (3, 10, 17):
         flood(conn, "BBR-a", datetime(2024, 11, d, 6, 0))
-    rain = {datetime(2024, 11, 3, 6): 35.0, datetime(2024, 11, 10, 6): 42.0, datetime(2024, 11, 17, 6): 48.0}
+    # onset = the first resident observation (yes at +10 min), not the alert time
+    rain = {datetime(2024, 11, 3, 6, 10): 35.0, datetime(2024, 11, 10, 6, 10): 42.0, datetime(2024, 11, 17, 6, 10): 48.0}
     out = run(conn, onset_rain=lambda s, at: rain[at])
     assert rules(out) == ["SUG-1"]
     s = out[0]
-    assert s["priority"] == "high" and s["street_id"] == "BBR-a" and s["street_name"] == "Jalan A"
+    assert s["priority"] == "medium" and s["street_id"] == "BBR-a" and s["street_name"] == "Jalan A"     # no knee depth reported
+    assert s["evidence"]["max_depth"] is None
     assert s["evidence"]["rain_at_onset_mm"] == [35.0, 42.0, 48.0]
     assert s["evidence"]["flood_dates"] == ["2024-11-03", "2024-11-10", "2024-11-17"]
     assert "drainage capacity review" in s["text"] and "Jalan A" in s["text"] and s["text"].endswith(END)
     assert s["status"] == "open" and s["note"] is None
+
+
+def test_sug1_priority_high_when_a_confirming_answer_is_knee_deep(conn):
+    for d, depth in ((3, "ankle"), (10, "knee"), (17, None)):
+        aid = add(conn, "BBR-a", datetime(2024, 11, d, 6, 0), backfill=False)
+        confirm(conn, aid, "BBR-a", datetime(2024, 11, d, 6, 0), depth=depth)
+    [s] = run(conn, onset_rain=lambda st, at: 40.0)
+    assert s["rule"] == "SUG-1" and s["priority"] == "high" and s["evidence"]["max_depth"] == "knee"
+
+
+def test_sug1_flood_onset_is_the_first_observation_and_a_sensor_counts(conn):
+    dev, thr = next(iter(repo.sensor_devices())), repo.sensor_threshold_cm()
+    street = sorted(repo.sensor_devices()[dev])[0]
+    for d in (3, 10, 17):
+        add(conn, street, datetime(2024, 11, d, 6, 0), backfill=False)
+        repo.insert_sensor_reading(conn, dev, datetime(2024, 11, d, 6, 40), thr + 5, simulated=False)
+    seen = []
+    sug.suggestions(conn, FROM, TO, tide_table(), [], streets=streets([(street, "S", 5, 0)]),
+                    onset_rain=lambda st, at: seen.append(at) or 30.0)
+    assert seen == [datetime(2024, 11, d, 6, 40) for d in (3, 10, 17)]
 
 
 def test_sug1_near_misses(conn):
@@ -118,9 +141,24 @@ def test_sug2_tidal_backflow(conn):
         flood(conn, "BBR-a", datetime(2024, 11, d, 12, 30))     # 0.5 h after high water
     out = run(conn)
     assert rules(out) == ["SUG-2"]
-    assert out[0]["priority"] == "high" and "flap gates" in out[0]["text"] and out[0]["text"].endswith(END)
+    assert out[0]["priority"] == "medium" and "flap gates" in out[0]["text"] and out[0]["text"].endswith(END)
     assert out[0]["evidence"]["share_near_high_tide"] == 1.0
     assert out[0]["evidence"]["flood_dates"] == ["2024-11-03", "2024-11-10", "2024-11-17"]
+
+
+def news_frame(homes):
+    return pd.DataFrame({"event_id": [f"E{d}" for d in (3, 10, 17)], "street_ids": ["BBR-a"] * 3, "flooded": ["1"] * 3,
+                         "date_precision": ["hour"] * 3, "status": ["checked"] * 3, "checked_by": ["x"] * 3,
+                         "homes_affected": homes, "event_date": [f"2024-11-{d:02d}" for d in (3, 10, 17)],
+                         "start_time_local": [f"2024-11-{d:02d} 13:00" for d in (3, 10, 17)]})
+
+
+def test_sug2_priority_high_when_news_reports_homes_affected(conn):
+    for d in (3, 10, 17):
+        add(conn, "BBR-a", datetime(2024, 11, d, 12, 30))
+    [s] = run(conn, events=news_frame(["12", "", "0"]))
+    assert s["rule"] == "SUG-2" and s["priority"] == "high" and s["evidence"]["homes_affected"] is True
+    assert run(conn, events=news_frame(["", "", "0"]))[0]["priority"] == "medium"
 
 
 def test_sug2_below_seventy_percent(conn):
@@ -199,7 +237,8 @@ def test_sug5_pre_event_readiness_from_backfill_alone(conn):
     out = run(conn)
     assert rules(out) == ["SUG-5"]
     assert out[0]["priority"] == "medium" and out[0]["evidence"]["alert_count"] == 5
-    assert len(out[0]["evidence"]["flood_dates"]) == 5 and out[0]["text"].endswith(END)
+    assert len(out[0]["evidence"]["episode_dates"]) == 5 and "flood_dates" not in out[0]["evidence"]
+    assert out[0]["text"].endswith(END)
     assert "pre-storm" in out[0]["text"]
 
 
@@ -285,7 +324,7 @@ def test_sug6_monitoring_gap(conn):
         report(conn, f"d2-{day}", "BBR-a", datetime(2024, 11, day, 10, 20))
     out = run(conn)
     assert rules(out) == ["SUG-6"]
-    assert out[0]["priority"] == "high" and out[0]["evidence"]["missed_floods"] == 2
+    assert out[0]["priority"] == "low" and out[0]["evidence"]["missed_floods"] == 2
     assert out[0]["text"].endswith(END) and "under-predicts" in out[0]["text"]
 
 
@@ -351,10 +390,24 @@ def test_real_sensor_confirms(conn):
 def test_news_outcomes_confirm_backfill_alerts(conn):
     for d in (3, 10, 17):
         add(conn, "BBR-a", datetime(2024, 11, d, 12, 30))
-    ev = pd.DataFrame({"street_id": ["BBR-a"] * 3, "flooded": [1, 1, 1], "date_precision": ["hour"] * 3,
-                       "start_time_local": [datetime(2024, 11, d, 13, 0) for d in (3, 10, 17)]})
+    ev = news_frame(["", "", ""])
     assert rules(run(conn, events=ev)) == ["SUG-2"]
     assert run(conn) == []
+    assert run(conn, events=ev.assign(status="draft", checked_by="")) == []        # unchecked drafts never confirm
+
+
+def test_real_pr43_rows_confirm_nothing_but_checked_copies_do(conn):
+    raw = pd.read_csv(Path(__file__).resolve().parents[1] / "fixtures" / "events_wp6_pr43.csv", dtype=str)
+    assert set(raw["status"]) == {"draft"}
+    for d in (3, 10, 17):
+        add(conn, "BBR-a", datetime(2024, 11, d, 12, 30))
+    assert run(conn, events=raw) == []
+    base = raw.iloc[:3].copy()                                  # the same rows marked checked, in test data only
+    base["status"], base["checked_by"] = "checked", "tester"
+    base["street_ids"], base["flooded"], base["date_precision"] = "BBR-a", "1", "hour"
+    base["start_time_local"] = [f"2024-11-{d:02d} 13:00" for d in (3, 10, 17)]
+    base["event_date"] = [f"2024-11-{d:02d}" for d in (3, 10, 17)]
+    assert rules(run(conn, events=base)) == ["SUG-2"]
 
 
 def test_ids_stable_and_short(conn):
@@ -393,6 +446,41 @@ def test_upsert_keeps_status_and_note(conn):
     assert rows[0].period_from == FROM and rows[0].period_to == TO
 
 
+def test_outlook_all_clear_does_not_split_a_nowcast_episode(conn):
+    for d in (2, 6, 10, 14, 18):                            # 5 storms, each ONE nowcast episode; the Outlook clears mid-storm
+        base = datetime(2024, 11, d, 10, 0)
+        add(conn, "BBR-a", base, Level.WARNING)
+        add(conn, "BBR-a", base + timedelta(hours=2, minutes=30), Level.DANGER)
+        repo.insert_alerts(conn, [alert("BBR-a", base + timedelta(hours=1), Level.NORMAL, "all_clear")],
+                           is_replay=False, is_backfill=True, horizon="outlook")
+        repo.insert_alerts(conn, [alert("BBR-a", base + timedelta(hours=4), Level.NORMAL, "all_clear")],
+                           is_replay=False, is_backfill=True)
+    [s] = run(conn)
+    assert s["rule"] == "SUG-5" and s["evidence"]["episodes"] == 5 and s["evidence"]["raw_alert_rows"] == 10
+
+
+def test_confirmed_outlook_row_is_not_a_flood_onset(conn):
+    for d in (3, 10, 17):
+        aid = add(conn, "BBR-a", datetime(2024, 11, d, 5, 0), Level.WATCH, backfill=False, horizon="outlook")
+        confirm(conn, aid, "BBR-a", datetime(2024, 11, d, 5, 0))
+    assert run(conn, onset_rain=lambda s, at: 5.0) == []
+
+
+def test_save_removes_stale_open_rows_but_keeps_touched_ones(conn):
+    for d in range(1, 6):
+        episode(conn, "BBR-a", datetime(2024, 11, d, 6, 0))
+        episode(conn, "BBR-b", datetime(2024, 11, d, 6, 0))
+    st = streets([("BBR-a", "A", 5, 0), ("BBR-b", "B", 5, 5000)])
+    first = run(conn, st=st)
+    sug.save(conn, first, FROM, TO, township="BBR")
+    ids = {s["street_id"]: s["id"] for s in first}
+    repo.update_suggestion(conn, ids["BBR-b"], "accepted", None)
+    conn.execute(schema.alerts.delete())
+    sug.save(conn, run(conn, st=st), FROM, TO, township="BBR")          # nothing fires any more
+    left = {r.street_id: r.status for r in conn.execute(schema.suggestions.select())}
+    assert left == {"BBR-b": "accepted"}                                  # the open BBR-a row is gone, the touched one stays
+
+
 def readings(station, kind, start, n, values=None, step=15):
     t = pd.date_range(start, periods=n, freq=f"{step}min")
     v = np.ones(n) if values is None else values
@@ -405,7 +493,8 @@ def test_station_health_counts_blank_and_missing_time_as_stale():
     good = readings("G", "wl", "2024-11-01", n)
     dead = readings("D", "wl", "2024-11-01", n, np.where(np.arange(n) < 0.8 * n, np.nan, 1.0))   # 80% blanked by QC
     short = readings("S", "rf", "2024-11-01", n // 2)                                           # rows missing for the last half
-    out = {h["graph_id"]: h for h in sug.station_health(pd.concat([good, dead, short]), date(2024, 11, 1),
+    other = readings("R", "rf", "2024-11-01", n)                   # another rain gauge shows the archive runs to the end
+    out = {h["graph_id"]: h for h in sug.station_health(pd.concat([good, dead, short, other]), date(2024, 11, 1),
                                                         date(2024, 11, 10), names={"D": "Dead gauge"})}
     assert out["G"]["stale_pct"] == 0.0
     assert out["D"]["stale_pct"] == 0.8 and out["D"]["name"] == "Dead gauge"
@@ -423,3 +512,49 @@ def test_station_health_takes_worst_series_of_a_station():
 def test_station_health_empty_input():
     empty = pd.DataFrame(columns=["graph_id", "kind", "time_local", "rain_15min_mm", "wl_m"])
     assert sug.station_health(empty, date(2024, 11, 1), date(2024, 11, 2)) == []
+
+
+def test_station_health_does_not_count_future_or_unarchived_slots():
+    n = 5 * 96                                                      # the archive covers 1-5 Nov only
+    good = readings("G", "rf", "2024-11-01", n)
+    dead = readings("D", "wl", "2024-11-01", n, np.full(n, np.nan))
+    by = {h["graph_id"]: h for h in sug.station_health(pd.concat([good, dead]), date(2024, 11, 1), date(2024, 11, 30),
+                                                       detail=True)}
+    assert by["G"]["stale_pct"] == 0.0 and by["D"]["stale_pct"] == 1.0
+    assert by["G"]["covered_from"].startswith("2024-11-01T00:00") and by["G"]["covered_to"].startswith("2024-11-05T23:45")
+    assert by["D"]["series"] == "wl" and by["G"]["series"] == "rf"
+
+
+def test_station_health_wl_before_archive_start_is_not_stale():
+    wl = readings("W", "wl", "2024-04-01", 96 * 10)                  # WL archive starts 1 Apr 2024
+    rf = readings("W", "rf", "2024-01-01", 96 * 120)
+    [h] = sug.station_health(pd.concat([wl, rf]), date(2024, 3, 1), date(2024, 4, 10), detail=True)
+    assert h["stale_pct"] == 0.0
+
+
+def test_station_health_series_with_no_covered_slot_is_skipped():
+    assert sug.station_health(readings("W", "wl", "2024-12-01", 96), date(2024, 11, 1), date(2024, 11, 10)) == []
+
+
+def test_station_health_default_shape_has_three_keys():
+    [h] = sug.station_health(readings("X", "rf", "2024-11-01", 96), date(2024, 11, 1), date(2024, 11, 1))
+    assert set(h) == {"graph_id", "name", "stale_pct"}
+
+
+def test_sug7_text_names_the_stale_series(conn):
+    wl = [{"graph_id": "26558", "name": "Kg. Perepat", "stale_pct": 0.7, "series": "wl",
+           "covered_from": "2024-11-01T00:00:00", "covered_to": "2024-11-30T23:45:00"}]
+    [s] = run(conn, health=wl)
+    assert "river level gauge" in s["text"] and "rain gauge" not in s["text"] and s["evidence"]["series"] == "wl"
+    assert s["evidence"]["covered_to"] == "2024-11-30T23:45:00"
+    [r] = run(conn, health=[{**wl[0], "series": "rf"}])
+    assert "rain gauge" in r["text"]
+
+
+def test_onset_rain_is_the_four_hour_total_ending_at_onset_without_look_ahead():
+    t = pd.date_range("2024-11-12 03:00", "2024-11-12 09:00", freq="15min")
+    rd = pd.DataFrame({"graph_id": "G1", "kind": "rf", "time_local": t, "rain_15min_mm": 1.0, "wl_m": np.nan})
+    fn = sug.onset_rain_from_archive(rd, {"BBR-a": {"rf": ["G1"]}})
+    assert fn("BBR-a", datetime(2024, 11, 12, 8, 0)) == 16.0           # (04:00, 08:00] = 16 slots
+    assert fn("BBR-a", datetime(2024, 11, 12, 3, 30)) == 3.0           # nothing after the onset is used
+    assert fn("BBR-zzz", datetime(2024, 11, 12, 8, 0)) is None

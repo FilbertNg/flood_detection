@@ -1,8 +1,13 @@
 """Alert episodes: the unit that statistics and suggestions count (not raw alert rows, which flap).
 
-An episode runs from an alert row to its all-clear (or to `period_end`, or the street's last row if still open).
-A new alert starting within `cooldown` of the previous all-clear merges into the same episode. The episode's
-level is the highest level reached. Shared by SUG-5 (WP7) and the statistics (WP8).
+An episode runs from an alert row to its all-clear; while no all-clear has come it is open (`end` is None). A new alert
+starting within `cooldown` of the previous all-clear merges into the same episode. The episode's level is the highest
+level reached. An open episode with no row for 48 h is cut at its last row and the next alert starts a new one. Episodes
+are built from ALL rows given, without truncating at any period end: select them by `start`. Shared by SUG-5 (WP7) and
+the statistics (WP8).
+
+Callers pass NOWCAST rows only (`horizon == 'nowcast'`): an Outlook all-clear would close, or an Outlook Watch would
+open, a nowcast episode.
 """
 from __future__ import annotations
 
@@ -23,6 +28,8 @@ MAX_OPEN_GAP = timedelta(hours=48)    # an open episode with no row for this lon
 
 def episodes(alerts: list[dict], cooldown: timedelta | None = None, max_open_gap: timedelta = MAX_OPEN_GAP) -> list[dict]:
     """alerts: AlertSummary dicts (street_id, kind 'alert'|'all_clear', level, issued_at, alert_id), any order.
+
+    `alerts` must be nowcast rows only (see the module docstring).
 
     Returns [{street_id, start, end, level, alert_ids, rows}] sorted by start. `end` is the all-clear time, or None
     while the episode is open; `level` is the highest level reached; `alert_ids` are the alert rows merged into it

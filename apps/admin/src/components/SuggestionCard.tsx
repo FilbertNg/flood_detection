@@ -11,9 +11,12 @@ const STATUSES: { value: SuggestionStatus; label: string }[] = [
 
 export function EvidenceList({ s }: { s: Suggestion }) {
   const e = s.evidence;
+  const episodeDates = Array.isArray(e.episode_dates) ? (e.episode_dates as string[]) : [];
   return (
     <ul className="evidence">
       {e.flood_dates && e.flood_dates.length > 0 && <li>Flood dates: {e.flood_dates.map(dateLabel).join(', ')}</li>}
+      {episodeDates.length > 0 && <li>Alert episode dates: {episodeDates.map(dateLabel).join(', ')}</li>}
+      {typeof e.max_depth === 'string' && <li>Deepest reported: {e.max_depth.replace('_', ' ')}</li>}
       {e.rain_at_onset_mm && e.rain_at_onset_mm.length > 0 && (
         <li>Rain at onset: {e.rain_at_onset_mm.map((v) => `${v.toFixed(1)} mm`).join(', ')}</li>
       )}

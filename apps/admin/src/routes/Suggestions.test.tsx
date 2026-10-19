@@ -28,6 +28,17 @@ describe('SuggestionsPage', () => {
     expect(within(items[0]).getByText(/Screening suggestion; site survey needed\.$/)).toBeInTheDocument();
   });
 
+  it('labels SUG-5 alert episodes as such, never as flood dates', async () => {
+    const sug5: Suggestion = { ...mk('s_five', 'medium', 'Five St'), rule: 'SUG-5',
+      evidence: { episode_dates: ['2024-11-12'], max_depth: 'knee', notes: 'ranked' } };
+    stubApi({ 'GET /admin/suggestions': [sug5] });
+    renderApp(<SuggestionsPage />);
+    const card = await screen.findByRole('article');
+    expect(within(card).getByText(/Alert episode dates: .*12 Nov 2024/)).toBeInTheDocument();
+    expect(within(card).queryByText(/Flood dates/)).toBeNull();
+    expect(within(card).getByText(/Deepest reported: knee/)).toBeInTheDocument();
+  });
+
   it('PATCHes the status with the note and updates the card', async () => {
     const fn = stubApi({
       'GET /admin/suggestions': [mk('s_high', 'high', 'High St')],
