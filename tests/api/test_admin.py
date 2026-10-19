@@ -449,3 +449,23 @@ def test_upload_paths_are_confined_even_with_a_valid_signature(adm, name):
         sig = auth._upload_sig(raw, exp, SECRET)
         r = adm.client.get(f"/uploads/{name}?exp={exp}&sig={sig}")
         assert r.status_code == 404 and b"secret" not in r.content and b"not an image" not in r.content
+
+
+def test_non_ascii_signature_is_a_404_not_a_500(adm):
+    (adm.uploads / "abc123.jpg").write_bytes(b"x")
+    exp = int(__import__("time").time()) + 600
+    assert adm.client.get(f"/uploads/abc123.jpg?exp={exp}&sig=%C3%A9%C3%A9").status_code == 404
+    assert adm.client.get(f"/uploads/abc123.jpg?exp=%D9%A1%D9%A2&sig=abc").status_code == 404
+
+
+def test_stats_and_report_survive_an_area_row_next_to_a_street_row(adm, tmp_path):
+    (tmp_path / "events.csv").write_text(
+        "event_id,street_ids,event_date,start_time_local,date_precision,flooded,sdp_township,place_name,source_type,"
+        "source_url,checked_by,status\n"
+        "area,,2024-11-12,,day,1,Bandar Bukit Raja,Area,news,https://example.org/a,TESTER,checked\n"
+        f"st,{STREET},2024-11-20,2024-11-20 09:30,hour,1,,Street,news,https://example.org/b,TESTER,checked\n",
+        encoding="utf-8")
+    h = adm.token()
+    assert adm.client.get(f"{API}/admin/stats", params={"from": "2024-11-01", "to": "2024-11-30"}, headers=h).status_code == 200
+    r = adm.client.get(f"{API}/admin/report", params={"month": "2024-11"}, headers=h)
+    assert r.status_code == 200 and [e["event_id"] for e in r.json()["events"]] == ["area", "st"]

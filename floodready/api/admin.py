@@ -118,8 +118,9 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1") -> tuple:
             raise HTTPException(status_code=503, detail="admin login not configured")
         if not limiter.allow(request.client.host if request.client else "?", body.email):
             raise HTTPException(status_code=429, detail="Too many login attempts, try again later")
-        with tx() as conn:
-            who = auth.authenticate(conn, body.email, body.password)
+        with tx() as conn:                                      # quick lookup under the lock ...
+            user, dev = auth.get_user(conn, body.email), auth.dev_mode(conn)
+        who = auth.verify_credentials(user, dev, body.email, body.password)     # ... bcrypt (~0.3 s) outside it
         if who is None:
             limiter.failed(body.email)
             raise HTTPException(status_code=401, detail="Wrong email or password")

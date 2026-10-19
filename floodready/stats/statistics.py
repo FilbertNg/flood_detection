@@ -181,12 +181,13 @@ def analyse(conn, date_from: date, date_to: date, *, street_names: dict[str, str
                 first_yes[a["alert_id"]] = at
 
     evidence = []
-    for a in mine:                                      # confirmed rows count on their own date, whichever episode owns them
-        if final[a["alert_id"]] == "confirmed":
+    pad = timedelta(days=2)       # evidence just outside the period, so a flood over the edge is one flood
+    for a in alert_rows:                                # confirmed rows count on their own date, whichever episode owns them
+        if final[a["alert_id"]] == "confirmed" and start - pad <= naive(a["issued_at"]) < end + pad:
             at = naive(a["issued_at"])
             evidence.append({"street_id": a["street_id"], "start": at, "end": at, "onset": first_yes.get(a["alert_id"])})
     for _, r in ev.iterrows():
-        if r["street_id"] is None or not date_from <= r["date"] <= date_to:
+        if not isinstance(r["street_id"], str) or not date_from - pad <= r["date"] <= date_to + pad:
             continue
         if pd.notna(r["onset"]):
             t = naive(r["onset"])
@@ -196,7 +197,8 @@ def analyse(conn, date_from: date, date_to: date, *, street_names: dict[str, str
             day = datetime.combine(r["date"], datetime.min.time())
             evidence.append({"street_id": r["street_id"], "start": day, "end": day + timedelta(hours=23, minutes=59),
                              "onset": None, "news_ids": {r["event_id"]}})
-    floods = flood_clusters(evidence)
+    # a flood belongs to the period its first evidence falls in (like episodes), so it is never counted twice
+    floods = [f for f in flood_clusters(evidence) if date_from <= f["date"] <= date_to]
 
     leads = []
     for f in floods:

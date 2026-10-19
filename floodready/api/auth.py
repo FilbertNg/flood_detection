@@ -153,8 +153,13 @@ def issue_token(email: str, role: str, key: str) -> str:
 
 
 def authenticate(conn, email: str, password: str) -> Principal | None:
-    """Principal for valid credentials, else None. The database check always costs one bcrypt comparison."""
-    user = get_user(conn, email)
+    """Principal for valid credentials, else None (lookup and check in one call)."""
+    return verify_credentials(get_user(conn, email), dev_mode(conn), email, password)
+
+
+def verify_credentials(user: dict | None, dev: bool, email: str, password: str) -> Principal | None:
+    """The slow part of a login (bcrypt), free of the database so callers can run it outside their lock. `user` is
+    the `get_user` row or None, `dev` the `dev_mode` result. Always costs one bcrypt comparison."""
     if check_password(password, user["password_hash"] if user else None):
         return Principal(user["email"], user["role"] if user["role"] in ROLES else "viewer")
     env_email, env_password = os.environ.get("ADMIN_EMAIL"), os.environ.get("ADMIN_PASSWORD")
@@ -162,7 +167,7 @@ def authenticate(conn, email: str, password: str) -> Principal | None:
         if hmac.compare_digest(email.strip().lower().encode(), env_email.strip().lower().encode()) & \
                 hmac.compare_digest(password.encode(), env_password.encode()):
             return Principal(env_email.strip().lower(), "admin")
-    elif dev_mode(conn):
+    elif dev:
         log.warning("DEVELOPMENT admin login used")
         if hmac.compare_digest(email.encode(), DEV_ADMIN[0].encode()) & hmac.compare_digest(password.encode(), DEV_ADMIN[1].encode()):
             return Principal(DEV_ADMIN[0], "admin")
@@ -274,7 +279,7 @@ def sign_upload(name: str, key: str, now: float | None = None, ttl: int = UPLOAD
 
 
 def verify_upload(name: str, exp: str | None, sig: str | None, key: str | None, now: float | None = None) -> bool:
-    if not key or not exp or not sig or not exp.isdigit():
+    if not key or not exp or not sig or not exp.isascii() or not exp.isdigit() or not sig.isascii():
         return False
     if int(exp) < (now if now is not None else time.time()):
         return False

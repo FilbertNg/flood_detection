@@ -315,3 +315,24 @@ def test_episodes_function_merge_rule():
                              ("all_clear", "normal", 80), ("alert", "warning", 140))]
     assert len(episodes_mod.episodes(rows, timedelta(minutes=60))) == 1       # 60 min after the first all-clear: merged
     assert len(episodes_mod.episodes(rows, timedelta(minutes=59))) == 3
+
+
+def test_mixed_area_and_street_events_do_not_crash(conn):
+    ev = pd.DataFrame([
+        {"event_id": "area", "street_ids": None, "event_date": "2024-11-12", "date_precision": "day", "flooded": 1,
+         "sdp_township": "Town", "checked_by": "T", "status": "checked"},
+        {"event_id": "st", "street_ids": "C", "event_date": "2024-11-20", "start_time_local": "2024-11-20 09:30",
+         "date_precision": "hour", "flooded": 1, "checked_by": "T", "status": "checked"}])
+    s, floods, _ = statistics.analyse(conn, FROM, TO, street_names=NAMES, events=ev, township_name="Town")
+    assert [f["street_id"] for f in floods] == ["C"] and s["by_street"][0]["floods"] == 1
+
+
+def test_a_flood_over_the_period_edge_counts_in_one_period_only(conn):
+    a = add_alert(conn, "A", Level.WARNING, datetime(2024, 10, 31, 23, 50))
+    b = add_alert(conn, "A", Level.WARNING, datetime(2024, 11, 1, 0, 20))
+    for aid in (a, b):
+        ans(conn, f"d1{aid[-3:]}", aid, "A", at=datetime(2024, 11, 1, 0, 40))
+        ans(conn, f"d2{aid[-3:]}", aid, "A", at=datetime(2024, 11, 1, 0, 41))
+    october = statistics.analyse(conn, date(2024, 10, 1), date(2024, 10, 31))[1]
+    november = statistics.analyse(conn, date(2024, 11, 1), date(2024, 11, 30))[1]
+    assert len(october) == 1 and november == []

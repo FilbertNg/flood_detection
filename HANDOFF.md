@@ -166,3 +166,5 @@ Done: final retrain and gate v2 (17 Oct), per-street triggers, tide check agains
 2. Does SDP want the 1–5 street score visible to buyers? (Ask the mentors after Top 10.)
 3. Free API host choice (Chingiz): which one, given the cold-start and memory limits? The API loads ~3M archive rows into memory.
 4. Should the township-wide alert behaviour ship as is for the MVP, or should per-street triggers be prioritised before the video?
+
+- **Admin login lockout (accepted for the MVP):** 5 failed logins for one email in 15 min lock that email out (429), so an attacker can keep a known admin email locked out with bad passwords. Use another admin account or restart the API to clear it.
