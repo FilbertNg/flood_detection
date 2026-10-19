@@ -224,7 +224,8 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1",
                     raise HTTPException(status_code=409, detail="This device already answered this alert") from None
                 if alert is not None and before != "confirmed" and answer == "yes":
                     if repo.outcomes_for(conn, [alert])[alert_id] == "confirmed" and subscribed_confirmer(conn, alert):
-                        confirmed_alert = {**alert, "outcome": "confirmed"}
+                        # a confirmation is not a repeated Watch: the Watch push cap does not apply to it
+                        confirmed_alert = {**alert, "outcome": "confirmed", "push": repo.push_eligible(conn, alert_id)}
         except BaseException:
             if path is not None:
                 path.unlink(missing_ok=True)
@@ -261,7 +262,7 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1",
                 raise HTTPException(status_code=409, detail="This sensor already reported at this time") from None
             # simulated readings never touch live alerts (they could not be labelled) and never push
             after = repo.outcomes_for(conn, candidates)
-            newly = [{**a, "outcome": "confirmed"} for a in candidates
+            newly = [{**a, "outcome": "confirmed", "push": repo.push_eligible(conn, a["alert_id"])} for a in candidates
                      if before[a["alert_id"]] != "confirmed" and after[a["alert_id"]] == "confirmed"]
         for a in newly:
             fire(a)

@@ -387,3 +387,34 @@ def test_cap_gap_comes_from_config(monkeypatch, conn):
     _put(conn, Level.WATCH, 1)
     _put(conn, Level.WATCH, 2)
     assert [p for *_, p in _pushes(conn)] == [True, False, True]
+
+
+def _all_rows(conn):
+    from sqlalchemy import select
+    return list(conn.execute(select(schema.alerts)))
+
+
+def test_bounded_look_back_gives_the_same_flags_as_the_unbounded_chain(conn):
+    import random
+    rnd = random.Random(7)
+    hours = 0.0
+    for _ in range(400):                     # a long sequence of Watches with gaps from 15 min to 30 h
+        hours += rnd.choice([0.25, 0.5, 1, 3, 11.9, 12, 13, 30])
+        _put(conn, Level.WATCH, hours)
+    _put(conn, Level.WATCH, 0.01, sid="BBR-b")
+    rows = _all_rows(conn)
+    assert repo._capped_watch_ids(conn, rows, ("watch",), lookback_days=7) == \
+        repo._capped_watch_ids(conn, rows, ("watch",), lookback_days=None)
+    recent = [r for r in rows if r.issued_at > T0 + timedelta(hours=hours - 24)]       # only recent rows listed, as the runner does
+    listed = {r.alert_id for r in recent}                     # callers only look up the rows they listed
+    assert recent and repo._capped_watch_ids(conn, recent, ("watch",), lookback_days=7) & listed == \
+        repo._capped_watch_ids(conn, recent, ("watch",), lookback_days=None) & listed
+
+
+def test_no_chain_start_inside_the_window_falls_back_to_the_full_history(conn):
+    for k in range(40):
+        _put(conn, Level.WATCH, 6 * k)       # never a 12 h gap, so the 7-day window has no safe start
+    last = _all_rows(conn)[-3:]
+    listed = {r.alert_id for r in last}
+    assert repo._capped_watch_ids(conn, last, ("watch",), lookback_days=7) & listed == \
+        repo._capped_watch_ids(conn, last, ("watch",), lookback_days=None) & listed

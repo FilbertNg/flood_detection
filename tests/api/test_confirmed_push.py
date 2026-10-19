@@ -94,6 +94,22 @@ def test_real_sensor_confirmation_pushes_but_simulated_does_not(env):
     assert len(env.sent) == 1 and env.sent[0][1]["title"].startswith("Confirmed by neighbours")
 
 
+def test_the_watch_cap_does_not_hold_back_a_confirmed_by_neighbours_push(env):
+    from floodready.engine.types import Level
+    subscribe(env, "dev-a")
+    now = now_myt().replace(second=0, microsecond=0)
+    live_alert(env, level=Level.WATCH, at=now - timedelta(hours=3))
+    second = live_alert(env, level=Level.WATCH, at=now - timedelta(minutes=10))
+    with env.db.begin() as c:
+        assert [x["push"] for x in repo.list_alerts(c)] == [False, True]      # newest first: the second Watch is capped
+        assert repo.push_eligible(c, second) is True                          # ...but a confirmation is a different message
+    answer(env, "dev-a", second)
+    answer(env, "dev-b", second)
+    answer(env, "dev-c", second)                                              # at most one confirmation push per alert
+    env.runner.push.flush()
+    assert len(env.sent) == 1 and env.sent[0][1]["title"].startswith("Confirmed by neighbours")
+
+
 def test_the_request_does_not_wait_for_the_push(env):
     import threading
     gate = threading.Event()

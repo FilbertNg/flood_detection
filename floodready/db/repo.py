@@ -350,7 +350,38 @@ def _still_active(conn, rows):
     return [r for r in rows if keep(r)]
 
 
-def _capped_watch_ids(conn, rows, pl) -> set[str]:
+def push_eligible(conn, alert_id: str) -> bool:
+    """Whether the alert is of a kind that may be pushed (level in `push_levels`, an alert, not backfill, outlook rule),
+    WITHOUT the Watch cap. The "Confirmed by neighbours" follow-up uses this: it means water is on the street and is a
+    different message from a repeated Watch, so the cap does not apply to it."""
+    r = conn.execute(select(t.alerts).where(t.alerts.c.alert_id == alert_id)).first()
+    return r is not None and _push(r, push_levels())
+
+
+def _watch_history(conn, streets: list[str], since: datetime | None):
+    a, out = t.alerts, []
+    for part in _chunks(streets):
+        q = select(a.c.alert_id, a.c.street_id, a.c.is_replay, a.c.issued_at).where(
+            a.c.street_id.in_(part), a.c.kind == "alert", a.c.level == "watch", a.c.horizon != "outlook",
+            a.c.is_backfill.is_(False))
+        if since is not None:
+            q = q.where(a.c.issued_at >= _naive(since))
+        out += list(conn.execute(q.order_by(a.c.issued_at, a.c.alert_id)))
+    return out
+
+
+def _greedy_cap(history, gap: timedelta) -> set[str]:
+    last_pushed: datetime | None = None
+    capped: set[str] = set()
+    for h in history:                       # one street and mode, in time order
+        if last_pushed is not None and h.issued_at - last_pushed < gap:
+            capped.add(h.alert_id)
+        else:
+            last_pushed = h.issued_at
+    return capped
+
+
+def _capped_watch_ids(conn, rows, pl, lookback_days: float | None = 7) -> set[str]:
     """Nowcast Watch alerts that are stored and shown but not pushed: the street already had a pushed Watch in the
     same mode (live / replay) less than `alerts.watch_push_min_gap_h` earlier (owner decision 19 Oct 2026).
     Warning and Danger are never capped. The cap is derived from the stored alerts, so it survives a restart, and
@@ -359,25 +390,46 @@ def _capped_watch_ids(conn, rows, pl) -> set[str]:
     gap_h = float(_alerts_cfg().get("watch_push_min_gap_h", 0))
     if gap_h <= 0 or "watch" not in pl:
         return set()
-    streets = sorted({r.street_id for r in rows if r.kind == "alert" and r.level == "watch"
-                      and r.horizon != "outlook" and not r.is_backfill})
-    if not streets:
+    first: dict[tuple, datetime] = {}
+    for r in rows:
+        if r.kind == "alert" and r.level == "watch" and r.horizon != "outlook" and not r.is_backfill:
+            key = (r.street_id, bool(r.is_replay))
+            first[key] = min(first.get(key, r.issued_at), r.issued_at)
+    if not first:
         return set()
-    a, gap = t.alerts, timedelta(hours=gap_h)
-    history = []
-    for part in _chunks(streets):
-        history += list(conn.execute(select(a.c.alert_id, a.c.street_id, a.c.is_replay, a.c.issued_at).where(
-            a.c.street_id.in_(part), a.c.kind == "alert", a.c.level == "watch", a.c.horizon != "outlook",
-            a.c.is_backfill.is_(False)).order_by(a.c.issued_at, a.c.alert_id)))
-    last_pushed: dict[tuple, datetime] = {}
+    gap = timedelta(hours=gap_h)
+    # Bounded look-back: read only `lookback_days` before the oldest listed row and start the chain at a Watch that had
+    # no other Watch in the `gap` before it. Such a Watch always pushes, so the result equals the unbounded chain.
+    # With no such start inside the window (a Watch at least every `gap` for the whole window) fall back to all history.
+    since = None if lookback_days is None else min(first.values()) - timedelta(days=lookback_days)
+
+    def by_key(history):
+        grouped: dict[tuple, list] = {}
+        for h in history:
+            grouped.setdefault((h.street_id, bool(h.is_replay)), []).append(h)
+        return grouped
+
     capped: set[str] = set()
-    for h in sorted(history, key=lambda h: (h.issued_at, h.alert_id)):
-        key = (h.street_id, bool(h.is_replay))
-        prev = last_pushed.get(key)
-        if prev is not None and h.issued_at - prev < gap:
-            capped.add(h.alert_id)
-        else:
-            last_pushed[key] = h.issued_at
+    redo: set[str] = set()
+    for key, hs in by_key(_watch_history(conn, sorted({k[0] for k in first}), since)).items():
+        if key not in first:
+            continue
+        start = None
+        if since is not None:
+            for i, h in enumerate(hs):
+                if h.issued_at > first[key]:
+                    break
+                if h.issued_at >= since + gap and (i == 0 or h.issued_at - hs[i - 1].issued_at >= gap):
+                    start = i
+                    break
+            if start is None:
+                redo.add(key[0])
+                continue
+        capped |= _greedy_cap(hs[start or 0:], gap)
+    if redo:
+        for key, hs in by_key(_watch_history(conn, sorted(redo), None)).items():
+            if key in first:
+                capped |= _greedy_cap(hs, gap)
     return capped
 
 
