@@ -119,8 +119,25 @@ def test_alert_older_than_the_hold_is_cleared_on_the_first_normal_tick_known_lim
 
 def test_clear_after_min_must_stay_inside_the_live_recompute_window(rules_cfg):
     with pytest.raises(ValueError):
-        alerts.clear_after({"cooldown_min": 60, "clear_after_min": 180})
+        alerts.validate_config({"cooldown_min": 60, "clear_after_min": 180})
+    alerts.validate_config(rules_cfg["alerts"])
     assert alerts.clear_after(rules_cfg["alerts"]) < timedelta(minutes=alerts.LIVE_WINDOW_MIN)
+
+
+def test_watch_re_entry_after_the_hold_alerts_again_and_the_push_cap_holds_it_back(rules_cfg):
+    # D1d limitation: the hold counts from the issue time. Here the alert is old when the street dips and returns.
+    from datetime import timedelta as td
+    from floodready.db import repo
+    engine = Engine(_hold_cfg(rules_cfg, cooldown_min=60, clear_after_min=60))
+    stored = []
+    for level, when in ((Level.WATCH, "09:00"), (Level.WATCH, "10:15"), (Level.NORMAL, "10:30"), (Level.WATCH, "10:45")):
+        stored += engine.step(level, when)
+    assert [(a.kind, a.issued_at) for a in stored] == [("alert", T("09:00")), ("all_clear", T("10:30")), ("alert", T("10:45"))]
+    eng = repo.connect("sqlite://")
+    with eng.begin() as c:
+        repo.insert_alerts(c, stored, is_replay=False, is_backfill=False)
+        rows = [(x["kind"], x["issued_at"][11:16], x["push"]) for x in reversed(repo.list_alerts(c))]
+    assert rows == [("alert", "09:00", True), ("all_clear", "10:30", False), ("alert", "10:45", False)]   # new row, push capped
 
 
 def test_missing_clear_after_min_falls_back_to_the_cooldown(rules_cfg):

@@ -123,6 +123,14 @@ def test_second_watch_within_12h_is_stored_but_not_sent_and_survives_a_restart(c
         assert [(a["issued_at"][11:13], a["push"]) for a in reversed(repo.list_alerts(c))] == [("09", True), ("12", False)]
 
 
+def test_a_bad_clear_after_min_fails_at_startup_not_in_the_alerts_endpoint(context):
+    import dataclasses
+    import pytest
+    bad = dataclasses.replace(context, rules_cfg={**context.rules_cfg, "alerts": {**context.rules_cfg["alerts"], "clear_after_min": 180}})
+    with pytest.raises(ValueError):
+        Runner(bad, db=repo.connect("sqlite://"), push=push.PushService(repo.connect("sqlite://")))
+
+
 def live_warning(r, level=None):
     from floodready.engine.replay import ReplayStep
     from floodready.engine.types import Alert, Level

@@ -335,6 +335,8 @@ def _still_active(conn, rows):
         for s in conn.execute(select(ss.c.street_id, ss.c.mode, ss.c.data_time).where(
                 ss.c.street_id.in_(part), ss.c.level == "normal")):
             normal[(s.street_id, s.mode)] = s.data_time
+    # repo reads the config file (`_alerts_cfg`) while serialize.street_detail uses the runner's `ctx.rules_cfg`; both are
+    # config/rules.yaml in production. The runner validates the value once at startup (`engine.alerts.validate_config`).
     hold = alert_clear_after(_alerts_cfg())
 
     def keep(r) -> bool:

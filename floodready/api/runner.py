@@ -18,7 +18,8 @@ import geopandas as gpd
 import pandas as pd
 from sqlalchemy import Engine
 
-from ..engine import outlook, replay
+from ..engine import alerts as alerts_mod, outlook, replay
+from ..engine.alerts import LIVE_WINDOW_MIN
 from ..engine.replay import ReplayStep
 from ..db import repo
 from ..engine.types import Alert, Level, Reason
@@ -94,6 +95,7 @@ class Runner:
     _outlook_streets: list[str] = field(default_factory=list)    # streets that carry the active outlook
 
     def __post_init__(self):
+        alerts_mod.validate_config(self.ctx.rules_cfg["alerts"])    # a bad config fails at boot, not in GET /alerts
         if self.db is None:
             self.db = repo.connect("sqlite://")
         if self.push is None:
@@ -169,7 +171,7 @@ class Runner:
         readings = pd.concat([f for f in frames if len(f)], ignore_index=True) if any(len(f) for f in frames) else frames[0]
         readings = readings[readings.graph_id.isin(ids)].drop_duplicates(["graph_id", "kind", "time_local"], keep="last")
         last = None
-        for step in self._steps(now - timedelta(hours=3), now, readings, live=True):
+        for step in self._steps(now - timedelta(minutes=LIVE_WINDOW_MIN), now, readings, live=True):
             last = step
         if last is None:
             return
