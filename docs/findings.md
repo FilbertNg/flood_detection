@@ -119,8 +119,23 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - Per-street alerts cut Warning + Danger alerts in Nov 2024 by a third (**4,526 → 3,032**).
 
 ### D1b. Notification volume decides whether people keep listening
-- In Nov 2024 (a stormy month), issuing Watch as well as Warning/Danger gives about **17.5 messages per street** (alerts + all-clears; max 34). Pushing only Warning and Danger gives **3.2 per street** (max 8). Longer Watch cooldowns barely help (8.7 → 8.3 alerts per street).
+- In Nov 2024 (a stormy month), issuing Watch as well as Warning/Danger gives about **17.5 messages per street** (alerts + all-clears; max 34). Pushing only Warning and Danger gives **3.2 per street** (max 8). Longer Watch cooldowns barely help (8.7 → 8.3 alerts per street). *(Measured before the all-clear hold of D1d, which removes some of these messages.)*
 - **So:** this is the cost of pushing Watch. The team decided (17 Oct 2026) to push Watch, Warning and Danger (`alerts.push_levels`); the numbers above are what residents should expect in a stormy month.
+
+
+### D1d. The all-clear hold removes some flapping, not all of it
+- When rain hovers around the Watch threshold a street used to get an all-clear on the first normal tick and then a new alert. `alerts.clear_after_min: 60` holds the all-clear until the alert is 60 min old, and the alert stays active in the app meanwhile.
+- BBR, 1 Apr to 1 May 2024, full replay (rules + out-of-sample ML, per-street stations, 943 streets). "Fast re-alert" = an alert issued 60 min or less after an all-clear on the same street (measured by the #53 reviewer, who reproduced the alert counts):
+
+| Hold | Alerts | All-clears | Re-alerts within 60 min of an all-clear |
+|---|---|---|---|
+| 0 (old behaviour) | 8,782 | 6,684 | 1,566 |
+| 60 | 8,426 (-4%) | 6,205 | 1,123 (13% of alerts) |
+| 180 | 8,426 | 5,420 | 369 |
+
+- Watch 6,689 → 6,333; Warning (1,689) and Danger (404) unchanged. Median alerts per street stays 8; the maximum falls 76 → 65.
+- **Why a longer hold does not cut the alert count (8,426 at both 60 and 180):** the hold counts from the alert's issue time, not from when the street went quiet. An alert older than the hold is cleared on the first Normal tick, and a same-level re-entry alerts again once the cooldown has passed. So the hold only removes flapping in the first hour of an alert; about 1,100 re-alerts a month still follow an all-clear within an hour.
+- **Known limitation:** the full fix is to hold the all-clear until the street has been continuously Normal for `clear_after_min`, and not to re-alert at the same level while an alert is active. That needs per-street "normal since" state next to `last_alerts`, which changes a frozen engine interface, so it is deferred. The Watch push cap (D1e) limits what residents feel.
 
 ### D1c. 85 BBR streets take their river signal from the dead gauge
 - The street→station mapping (`assets/geo/bbr_street_stations.json`) follows the flow path: **85 of 943 BBR streets** use Kg. Perepat (`26558`) as their own river (668 use Pekan Meru, 190 Pandamaran). With the gauge blanked, those streets keep their rain rules but have no river level or ML probability.

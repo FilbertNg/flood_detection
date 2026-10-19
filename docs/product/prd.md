@@ -222,7 +222,7 @@ Priority = High if the street had confirmed floods affecting homes (depth "knee"
 | TRG-7 | Trigger | Street flash-flood classifier trained on news and resident labels (township-day); ships only with ≥ 20 labelled events and if it beats TRG-3 | Should |
 | ALR-1 | Alerts | **Web Push** (PWA, service worker, VAPID) to residents subscribed to a street when it reaches Watch, Warning or Danger (`alerts.push_levels`; team decision 17 Oct 2026): level, street, time window, top reasons, action, link to the street page, and "Is it flooding here?" buttons. Text in BM or English | Must |
 | ALR-2 | Alerts | Outlook push when 6–24 h risk is high | Must |
-| ALR-3 | Alerts | No repeat alert for the same street within 60 min unless the level rises; "All clear" push when it returns to Normal | Must |
+| ALR-3 | Alerts | No repeat alert for the same street within 60 min unless the level rises; "All clear" push when it returns to Normal, but not before the alert is `alerts.clear_after_min` (60 min) old; the alert stays active until then | Must |
 | ALR-4 | Alerts | Alert status (confirmed / not confirmed / unverified) from the sensor and resident answers, using the *Live benchmark* rules; "Confirmed by neighbours" follow-up push | Must |
 | ALR-5 | Alerts | Telegram bot fallback with the same messages, for iPhone users who don't install the PWA | Could |
 | RES-1 | Resident app | Onboarding without an account: choose street(s) by search or by tapping the map, choose BM/EN, allow notifications; prompt to install as an app (needed for push on iPhone) | Must |

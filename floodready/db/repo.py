@@ -13,10 +13,11 @@ from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 
 import yaml
-from sqlalchemy import Engine, and_, bindparam, case, create_engine, delete, func, insert, or_, select, update
+from sqlalchemy import Engine, and_, bindparam, create_engine, delete, func, insert, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
+from ..engine.alerts import clear_after as alert_clear_after
 from ..engine.outlook import pushes as outlook_pushes
 from ..engine.types import Alert, Level, Reason, StreetState
 from ..jobs import now_myt
@@ -275,8 +276,11 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
 
     replay_only: only replay rows (the API's view while a replay is on).
     active: per street, mode (live / replay / backfill) and horizon (nowcast / outlook) the latest row, if it is an 'alert' (not an all-clear)
-    AND the street's current state in that mode is not 'normal' (a missed all-clear, e.g. the API was down, must not
-    leave an alert active for ever). Streets without a saved state row, and backfill rows, are not filtered by state."""
+    AND (the street's current state in that mode is not 'normal' OR that state is less than `alerts.clear_after_min` past
+    the alert). The engine holds an all-clear for `clear_after_min`, so a street can be normal while its latest row is still
+    an 'alert': that alert stays active during the hold (residents still see it and can confirm it). A missed all-clear,
+    e.g. the API was down, drops out of `active` once the hold has passed, so no alert stays active for ever. Streets
+    without a saved state row, and backfill rows, are not filtered by state."""
     a = t.alerts
     q = select(a).order_by(a.c.issued_at.desc(), a.c.alert_id)
     if street_id is not None:
@@ -300,15 +304,13 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
                                  a.c.is_backfill == latest.c.is_backfill, a.c.horizon == latest.c.horizon,
                                  a.c.issued_at == latest.c.m))
              .where(a.c.kind == "alert"))
-        ss = t.street_state
-        normal_now = (select(ss.c.street_id).where(
-            ss.c.street_id == a.c.street_id, ss.c.level == "normal",
-            ss.c.mode == case((a.c.is_replay.is_(True), "replay"), else_="live")).exists())
-        q = q.where(a.c.is_backfill.is_(True) | (a.c.horizon == "outlook") | ~normal_now)   # an outlook sits on streets that are Normal now
+        # the state test (normal now and past the hold) is done in Python on the fetched rows, see _past_the_hold
         # an outlook is active only until its window ends (it has no nowcast state to fall back on)
         q = q.where((a.c.horizon != "outlook") | a.c.window_end.is_(None) | (a.c.window_end > _naive(now or now_myt())))
     pl = push_levels()
     rows = list(conn.execute(q))
+    if active:
+        rows = _still_active(conn, rows)
     out = outcomes_for(conn, [{"alert_id": r.alert_id, "street_id": r.street_id, "kind": r.kind,
                                "issued_at": r.issued_at, "is_replay": bool(r.is_replay)} for r in rows],
                        count_simulated_sensor=count_simulated_sensor, exclude_demo=exclude_demo)
@@ -318,6 +320,31 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
         "outcome": out[r.alert_id],
         "is_replay": bool(r.is_replay), "push": _push(r, pl),
     } for r in rows]
+
+
+def _still_active(conn, rows):
+    """Drop nowcast alert rows whose street is Normal in their mode and whose state is `clear_after_min` or more past the
+    alert (the all-clear hold is over, so a missing all-clear must not keep it active). Backfill and outlook rows are kept."""
+    ss = t.street_state
+    nowcast = [r for r in rows if not r.is_backfill and r.horizon != "outlook"]
+    if not nowcast:
+        return rows
+    normal: dict[tuple, datetime | None] = {}
+    for part in _chunks(sorted({r.street_id for r in nowcast})):
+        for s in conn.execute(select(ss.c.street_id, ss.c.mode, ss.c.data_time).where(
+                ss.c.street_id.in_(part), ss.c.level == "normal")):
+            normal[(s.street_id, s.mode)] = s.data_time
+    hold = alert_clear_after(_alerts_cfg())
+
+    def keep(r) -> bool:
+        if r.is_backfill or r.horizon == "outlook":
+            return True
+        key = (r.street_id, "replay" if r.is_replay else "live")
+        if key not in normal:
+            return True                  # elevated now, or no saved state
+        seen = normal[key]
+        return seen is not None and seen - r.issued_at < hold
+    return [r for r in rows if keep(r)]
 
 
 def _push(r, pl) -> bool:

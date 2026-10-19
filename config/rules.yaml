@@ -14,6 +14,10 @@ stale_after_min: 120          # a station with no reading for longer is stale
 
 alerts:
   cooldown_min: 60            # no repeat alert for a street unless its level rises
+  # Minimum alert age before an all-clear; stops alert/all-clear flapping when rain hovers at a threshold (default: cooldown_min).
+  # Must stay below 180: the live runner recomputes the last 3 h on each refresh, so the hold survives a restart only inside
+  # that window (engine.alerts.clear_after raises otherwise).
+  clear_after_min: 60
   alert_levels: [watch, warning, danger]   # issued and stored (in-app)
   push_levels: [watch, warning, danger]   # only these are flagged push: true for a notifier (team decision 17 Oct 2026: push Watch too)
   window_from: warning                    # the "flooding expected" nowcast window is only set from this level up

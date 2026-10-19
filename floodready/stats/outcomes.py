@@ -91,7 +91,9 @@ def missed_floods(reports: list[dict], alerts: list[dict]) -> list[dict]:
             continue
         by_street.setdefault(r["street_id"], []).append(r)
     # a Warning/Danger is active from its issue until the street's next row that is not a Warning/Danger
-    # (watch or all-clear); with no later row it is still active
+    # (watch or all-clear); with no later row it is still active. The all-clear is held for alerts.clear_after_min after
+    # the street returns to normal, so a span can run up to that long past the real end: missed floods are, if anything,
+    # under-counted, never over-counted.
     spans: dict[str, list[tuple[datetime, datetime | None]]] = {}
     for a in sorted(alerts, key=lambda x: str(x["issued_at"])):
         rows_ = spans.setdefault(a["street_id"], [])

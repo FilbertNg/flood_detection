@@ -271,3 +271,35 @@ def test_latest_outlook_reseeds_the_runner(conn):
                        is_replay=False, is_backfill=False, horizon="outlook")
     last, streets = repo.latest_outlook(conn, "BBR")
     assert last.kind == "all_clear" and streets == []
+
+
+# ---------- a held all-clear keeps the alert active (alerts.clear_after_min = 60) ----------
+
+def _normal_at(conn, minutes, level=Level.NORMAL):
+    import dataclasses
+    repo.save_street_states(conn, [dataclasses.replace(state("BBR-a", level), data_time=T0 + timedelta(minutes=minutes))], "live")
+
+
+def test_held_alert_is_active_during_the_hold_and_drops_out_after_it_without_an_all_clear(conn):
+    repo.insert_alerts(conn, [alert("BBR-a", Level.WARNING)], is_replay=False, is_backfill=False)
+    _normal_at(conn, 15)
+    assert [x["level"] for x in repo.list_alerts(conn, active=True)] == ["warning"]       # held: still active
+    _normal_at(conn, 59)
+    assert len(repo.list_alerts(conn, active=True)) == 1
+    _normal_at(conn, 75)                                                                  # all-clear never came
+    assert repo.list_alerts(conn, active=True) == []
+
+
+def test_danger_normal_danger_inside_the_hold_stays_active_throughout(conn):
+    repo.insert_alerts(conn, [alert("BBR-a", Level.DANGER)], is_replay=False, is_backfill=False)
+    _normal_at(conn, 15)
+    assert len(repo.list_alerts(conn, active=True)) == 1
+    _normal_at(conn, 30, Level.DANGER)
+    assert [(x["level"], x["push"]) for x in repo.list_alerts(conn, active=True)] == [("danger", True)]
+    assert len(repo.list_alerts(conn)) == 1                      # no second alert row, so no second push
+
+
+def test_held_alert_follows_its_own_mode(conn):
+    repo.insert_alerts(conn, [alert("BBR-a", Level.WARNING)], is_replay=True, is_backfill=False)
+    _normal_at(conn, 15)                                          # a live Normal state does not affect a replay alert
+    assert len(repo.list_alerts(conn, active=True)) == 1
