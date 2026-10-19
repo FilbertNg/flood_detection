@@ -4,37 +4,27 @@ Run: uvicorn floodready.api.app:app --reload   (see scripts/serve_api.py)
 """
 from __future__ import annotations
 
-import hmac
 import logging
 import os
 import re
 import threading
 import time
 from contextlib import asynccontextmanager
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-import jwt
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from urllib3.exceptions import LocationParseError
 from urllib3.util import parse_url
 
 from ..db import repo
-from . import answers, serialize
+from . import admin, auth, answers, serialize
 from .runner import Runner
 
 log = logging.getLogger(__name__)
-DEV_ADMIN = ("admin@floodready.local", "floodready-demo")
-bearer = HTTPBearer(auto_error=False)
-
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
 
 
 class ReplayRequest(BaseModel):
@@ -97,27 +87,6 @@ class SubscriptionBody(BaseModel):
     lang: Literal["en", "ms"]
 
 
-def _secret() -> str:
-    return os.environ.get("JWT_SECRET", "dev-only-secret-change-me-before-any-deployment")
-
-
-def _admin_credentials() -> tuple[str, str]:
-    email, password = os.environ.get("ADMIN_EMAIL"), os.environ.get("ADMIN_PASSWORD")
-    if not email or not password:
-        log.warning("ADMIN_EMAIL / ADMIN_PASSWORD not set: using the development login")
-        return DEV_ADMIN
-    return email, password
-
-
-def require_admin(credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]) -> str:
-    if credentials is None:
-        raise HTTPException(status_code=401, detail="Missing token")
-    try:
-        return jwt.decode(credentials.credentials, _secret(), algorithms=["HS256"])["sub"]
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid token") from None
-
-
 def _parse_time(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -145,12 +114,17 @@ def create_app(runner: Runner, start_live_loop: bool = True, on_alert_confirmed=
         runner.stop_replay(keep_mode=True)
         runner.push.shutdown()
 
-    app = FastAPI(title="Flood-Ready Township API", version="0.1.0", lifespan=lifespan)
+    dev = auth.dev_flag()       # the interactive API docs are only served in dev mode
+    app = FastAPI(title="Flood-Ready Township API", version="0.1.0", lifespan=lifespan,
+                  docs_url="/docs" if dev else None, redoc_url="/redoc" if dev else None,
+                  openapi_url="/openapi.json" if dev else None)
     origins = [o for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174").split(",") if o]
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"])
     ctx = runner.ctx
     api = "/api/v1"
     answers.install(app, ctx=ctx, runner=runner, api=api, on_confirmed=on_alert_confirmed)   # WP4: POST /answers, /sensor/readings
+
+    _read, write = admin.install(app, ctx=ctx, runner=runner, api=api)     # WP8: login, stats, report, suggestions, answers, notes, /uploads
 
     @app.get(f"{api}/status")
     def get_status():
@@ -215,22 +189,14 @@ def create_app(runner: Runner, start_live_loop: bool = True, on_alert_confirmed=
         repo.remove_files(files)          # only after the transaction committed
         return Response(status_code=204)
 
-    # ---------- admin ----------
-    @app.post(f"{api}/admin/login")
-    def login(body: LoginRequest):
-        email, password = _admin_credentials()
-        if not (hmac.compare_digest(body.email, email) and hmac.compare_digest(body.password, password)):
-            raise HTTPException(status_code=401, detail="Wrong email or password")
-        token = jwt.encode({"sub": email, "exp": datetime.now(timezone.utc) + timedelta(hours=12)}, _secret(), algorithm="HS256")
-        return {"token": token}
-
+    # ---------- replay (admin role) ----------
     @app.post(f"{api}/admin/replay")
-    def start_replay(body: ReplayRequest, _admin: Annotated[str, Depends(require_admin)]):
+    def start_replay(body: ReplayRequest, _admin: auth.Principal = Depends(write)):
         runner.start_replay(body.event, speed=body.speed or None, start=body.start, end=body.end, stop_at=body.stop_at)
         return serialize.status(runner.snapshot(), ctx)
 
     @app.delete(f"{api}/admin/replay")
-    def stop_replay(_admin: Annotated[str, Depends(require_admin)]):
+    def stop_replay(_admin: auth.Principal = Depends(write)):
         runner.stop_replay()
         threading.Thread(target=runner.refresh_live, daemon=True).start()
         return serialize.status(runner.snapshot(), ctx)

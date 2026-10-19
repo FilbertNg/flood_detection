@@ -36,7 +36,7 @@ npx pnpm@9.15.0 dev:resident                                                    
 .venv/Scripts/python.exe scripts/demo_replay.py --stop                               # back to live
 ```
 
-- **Dev admin login** (only while `ADMIN_EMAIL` / `ADMIN_PASSWORD` are unset): `admin@floodready.local` / `floodready-demo`. Set real values plus `JWT_SECRET` before deploying.
+- **Admin accounts:** `python scripts/seed_admin.py --email you@example.org --role admin` (bcrypt, roles admin/viewer; viewers cannot write). Set `JWT_SECRET`. **Dev admin login** (only with `FLOODREADY_DEV_LOGIN=1` while `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `JWT_SECRET` are unset and no admin user exists; otherwise login answers 503): `admin@floodready.local` / `floodready-demo`. Set real values plus `JWT_SECRET` before deploying.
 - **The API needs local data that is not in git** (§5). On a fresh clone the tests and the app build work, but the API has no archive, live logs or station lookup until §5 is done.
 
 ## 3. What is built, and where
@@ -166,3 +166,5 @@ Done: final retrain and gate v2 (17 Oct), per-street triggers, tide check agains
 2. Does SDP want the 1–5 street score visible to buyers? (Ask the mentors after Top 10.)
 3. Free API host choice (Chingiz): which one, given the cold-start and memory limits? The API loads ~3M archive rows into memory.
 4. Should the township-wide alert behaviour ship as is for the MVP, or should per-street triggers be prioritised before the video?
+
+- **Admin login lockout (accepted for the MVP):** 5 failed logins for one email in 15 min lock that email out (429), so an attacker can keep a known admin email locked out with bad passwords. Use another admin account or restart the API to clear it.

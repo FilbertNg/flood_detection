@@ -13,7 +13,7 @@ from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 
 import yaml
-from sqlalchemy import Engine, and_, bindparam, case, create_engine, delete, func, insert, select, update
+from sqlalchemy import Engine, and_, bindparam, case, create_engine, delete, func, insert, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
@@ -210,7 +210,7 @@ def replace_backfill(conn, township_id: str, start: datetime, end: datetime) -> 
     return res.rowcount
 
 
-def outcomes_for(conn, items: list[dict], *, count_simulated_sensor: bool = True) -> dict[str, str]:
+def outcomes_for(conn, items: list[dict], *, count_simulated_sensor: bool = True, exclude_demo: bool = False) -> dict[str, str]:
     """alert_id -> confirmed | not_confirmed | unverified for dicts with `alert_id`, `street_id`, `kind`, `issued_at`
     (and optionally `is_replay`).
 
@@ -221,12 +221,15 @@ def outcomes_for(conn, items: list[dict], *, count_simulated_sensor: bool = True
     - replay alerts (`is_replay`): scored on their demo answers, plus simulated readings of the mapped sensor above the
       threshold with no time window (replay times are 2024); `count_simulated_sensor=False` drops those.
 
-    STATISTICS MUST call list_alerts(include_replay=False, count_simulated_sensor=False) and drop answers with
-    source='demo'."""
+    STATISTICS MUST call list_alerts(include_replay=False, count_simulated_sensor=False, exclude_demo=True);
+    `exclude_demo` ignores answers with source='demo'."""
     ids = [i["alert_id"] for i in items]
     by_alert: dict[str, list[dict]] = {}
     for part in _chunks(ids):
-        for r in conn.execute(select(t.answers).where(t.answers.c.alert_id.in_(part))):
+        q = select(t.answers).where(t.answers.c.alert_id.in_(part))
+        if exclude_demo:
+            q = q.where(t.answers.c.source != "demo")
+        for r in conn.execute(q):
             by_alert.setdefault(r.alert_id, []).append({
                 "device_id": r.device_id, "answer": r.answer, "photo_path": r.photo_path, "distance_m": r.distance_m,
                 "answered_at": r.answered_at, "review_status": r.review_status})
@@ -264,10 +267,11 @@ def outcomes_for(conn, items: list[dict], *, count_simulated_sensor: bool = True
 def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
                 include_replay: bool = True, since: datetime | None = None, include_backfill: bool = False,
                 replay_only: bool = False, count_simulated_sensor: bool = True, alert_id: str | None = None,
-                now: datetime | None = None) -> list[dict]:
+                exclude_demo: bool = False, now: datetime | None = None,
+                until: datetime | None = None) -> list[dict]:
     """AlertSummary dicts, newest first. Backfill rows are excluded unless `include_backfill`.
     `outcome` is computed from answers and sensor readings (see `outcomes_for`).
-    Statistics must pass include_replay=False and count_simulated_sensor=False, and ignore answers with source='demo'.
+    Statistics must pass include_replay=False, count_simulated_sensor=False and exclude_demo=True.
 
     replay_only: only replay rows (the API's view while a replay is on).
     active: per street, mode (live / replay / backfill) and horizon (nowcast / outlook) the latest row, if it is an 'alert' (not an all-clear)
@@ -287,6 +291,8 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
         q = q.where(a.c.is_backfill.is_(False))
     if since is not None:
         q = q.where(a.c.issued_at >= _naive(since))
+    if until is not None:
+        q = q.where(a.c.issued_at < _naive(until))
     if active:
         latest = (select(a.c.street_id, a.c.is_replay, a.c.is_backfill, a.c.horizon, func.max(a.c.issued_at).label("m"))
                   .group_by(a.c.street_id, a.c.is_replay, a.c.is_backfill, a.c.horizon).subquery())
@@ -305,7 +311,7 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
     rows = list(conn.execute(q))
     out = outcomes_for(conn, [{"alert_id": r.alert_id, "street_id": r.street_id, "kind": r.kind,
                                "issued_at": r.issued_at, "is_replay": bool(r.is_replay)} for r in rows],
-                       count_simulated_sensor=count_simulated_sensor)
+                       count_simulated_sensor=count_simulated_sensor, exclude_demo=exclude_demo)
     return [{
         "alert_id": r.alert_id, "street_id": r.street_id, "horizon": r.horizon, "kind": r.kind, "level": r.level,
         "issued_at": _iso(r.issued_at), "window": _window(r.window_start, r.window_end),
@@ -426,12 +432,21 @@ def list_answers(conn, *, alert_id=None, street_id=None, review_status=None) -> 
                      (t.answers.c.review_status, review_status)):
         if val is not None:
             q = q.where(col == val)
+    return _answer_rows(conn, q)
+
+
+def _answer_rows(conn, q) -> list[dict]:
     return [{
         "answer_id": r.answer_id, "device_id": r.device_id, "alert_id": r.alert_id, "street_id": r.street_id,
         "answer": r.answer, "depth": r.depth, "photo_path": r.photo_path, "lat3": r.lat3, "lon3": r.lon3,
         "distance_m": r.distance_m, "answered_at": _iso(r.answered_at), "review_status": r.review_status,
         "source": r.source,
     } for r in conn.execute(q)]
+
+
+def get_answer(conn, answer_id: str) -> dict | None:
+    q = select(t.answers).where(t.answers.c.answer_id == answer_id)
+    return next(iter(_answer_rows(conn, q)), None)
 
 
 def set_answer_review(conn, answer_id: str, status: str) -> None:
@@ -474,6 +489,30 @@ def upsert_suggestions(conn, suggestions: list[dict]) -> None:
 
 def _date(d: date | str | None) -> date | None:
     return date.fromisoformat(d) if isinstance(d, str) else d
+
+
+def _suggestion_row(r) -> dict:
+    return {"id": r.id, "street_id": r.street_id, "rule": r.rule, "priority": r.priority, "text": r.text,
+            "evidence": json.loads(r.evidence_json) if r.evidence_json else {}, "status": r.status, "note": r.note,
+            "period_from": r.period_from.isoformat() if r.period_from else None,
+            "period_to": r.period_to.isoformat() if r.period_to else None}
+
+
+def list_suggestions(conn, date_from: date | None = None, date_to: date | None = None) -> list[dict]:
+    """Suggestions whose period overlaps [date_from, date_to] (rows without a period always match), best priority first."""
+    s = t.suggestions
+    q = select(s).order_by(s.c.id)
+    if date_from is not None:
+        q = q.where(or_(s.c.period_to.is_(None), s.c.period_to >= date_from))
+    if date_to is not None:
+        q = q.where(or_(s.c.period_from.is_(None), s.c.period_from <= date_to))
+    rank = {"high": 0, "medium": 1, "low": 2}
+    return sorted((_suggestion_row(r) for r in conn.execute(q)), key=lambda x: rank.get(x["priority"], 3))
+
+
+def get_suggestion(conn, suggestion_id: str) -> dict | None:
+    r = conn.execute(select(t.suggestions).where(t.suggestions.c.id == suggestion_id)).first()
+    return _suggestion_row(r) if r else None
 
 
 def update_suggestion(conn, suggestion_id: str, status: str, note: str | None) -> None:
