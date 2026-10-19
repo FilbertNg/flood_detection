@@ -67,8 +67,9 @@ def station_health(readings: pd.DataFrame, date_from: date, date_to: date, names
     QC blanked (including a gauge in dead state) is NaN. A 15-minute slot is stale when its series has no valid value
     in it (blanked, NaN or no row). A station with rain and river series reports its worse series.
 
-    Only COVERED slots count: a series is judged from max(period start, its first row) to min(period end, the last row
-    of that kind in `readings`, i.e. where the archive ends), so future or not-yet-archived time is never "offline".
+    Only COVERED slots count: a series is judged from max(period start, the first row of that kind in `readings`) to
+    min(period end, the last row of that kind, i.e. where the archive ends), so future or not-yet-archived time is never
+    "offline" while a gauge that was already silent at the start still counts as stale.
     A series with no covered slot is skipped. `only` limits the output to those stations (coverage still uses all).
     `detail=True` adds `series` ('rf'|'wl', the worse one), `covered_from` and `covered_to` (ISO)."""
     if readings is None or readings.empty:
@@ -76,6 +77,7 @@ def station_health(readings: pd.DataFrame, date_from: date, date_to: date, names
     start = pd.Timestamp(date_from)
     last_slot = pd.Timestamp(date_to) + pd.Timedelta(days=1) - pd.Timedelta(minutes=SLOT_MIN)
     freq = f"{SLOT_MIN}min"
+    kind_start = readings.groupby("kind")["time_local"].min().dt.floor(freq).to_dict()
     kind_end = readings.groupby("kind")["time_local"].max().dt.floor(freq).to_dict()
     names = names or {}
     keep = set(only) if only is not None else None
@@ -84,7 +86,7 @@ def station_health(readings: pd.DataFrame, date_from: date, date_to: date, names
         if keep is not None and gid not in keep:
             continue
         col = "rain_15min_mm" if kind == "rf" else "wl_m"
-        cov_from = max(start, part["time_local"].min().floor(freq))
+        cov_from = max(start, kind_start[kind])      # the archive's start for this kind: a gauge silent from the start is stale
         cov_to = min(last_slot, kind_end[kind])
         if cov_to < cov_from:
             continue
@@ -242,6 +244,16 @@ def _floods(alerts: list[dict], conf: dict[str, dict]) -> dict[str, list[dict]]:
     return out
 
 
+def _flood_rain(onset_rain: OnsetRain, sid: str, f: dict) -> float | None:
+    """Highest 4 h rain total over windows ending at each 15-min step from the flood's first alert to its onset (and at
+    the onset). A late first "yes" must not hide the rain that fell before the alert; every window still ends at or
+    before the observation, so nothing later is used."""
+    first = min(f["start"], f["onset"])
+    ends = pd.date_range(first, f["onset"], freq=f"{SLOT_MIN}min").to_pydatetime().tolist() + [f["onset"]]
+    vals = [v for v in (onset_rain(sid, t) for t in ends) if v is not None]
+    return max(vals) if vals else None
+
+
 def _in(ts: datetime, start: datetime, end: datetime) -> bool:
     return start <= ts < end
 
@@ -338,7 +350,7 @@ def suggestions(conn, date_from: date, date_to: date, tide: pd.DataFrame | None,
         dates = [_iso(t) for t in starts]
         # SUG-1 drainage capacity: rain in the 4 h ending at the first observation of each flood
         if onset_rain is not None:
-            known = [(f, onset_rain(sid, f["onset"])) for f in fs if f["onset"] is not None]
+            known = [(f, _flood_rain(onset_rain, sid, f)) for f in fs if f["onset"] is not None]
             known = [(f, r) for f, r in known if r is not None]
             if len(known) >= MIN_FLOODS_SUG1 and statistics.median(r for _, r in known) < JPS_GUIDE_MM:
                 med = statistics.median(r for _, r in known)
@@ -347,8 +359,8 @@ def suggestions(conn, date_from: date, date_to: date, tide: pd.DataFrame | None,
                 ev = {"flood_dates": [_iso(f["onset"]) for f, _ in known],
                       "rain_at_onset_mm": [round(float(r), 1) for _, r in known],
                       "median_rain_mm": round(float(med), 1), "jps_guide_mm": JPS_GUIDE_MM, **sev,
-                      "notes": f"Median rain {med:.0f} mm in the {RAIN_WINDOW_H} h ending at the first observation of each flood "
-                               f"(highest total among the street's gauges; QC ran on each gauge's full archive) is below the JPS guide of "
+                      "notes": f"Median rain {med:.0f} mm (for each flood the highest {RAIN_WINDOW_H} h total ending between its first alert "
+                               f"and its first observation, at the street's gauges; QC ran on each gauge's full archive) is below the JPS guide of "
                                f"{JPS_GUIDE_MM:.0f} mm in 2-4 h."}
                 if nbr:
                     ev["neighbour_streets"] = len(nbr)
@@ -439,12 +451,12 @@ def suggestions(conn, date_from: date, date_to: date, tide: pd.DataFrame | None,
             subject = f"JPS station {h['name']}" + (f" ({what})" if what else "")
             ev = {"graph_id": h["graph_id"], "stale_pct": h["stale_pct"],
                   "stale_hours": round(((date_to - date_from).days + 1) * 24 * h["stale_pct"], 1),
-                  "notes": "Stale = no valid reading in the 15-minute slot (missing, or blanked by QC including dead-gauge time), counted only over the covered window."}
+                  "notes": "Stale = no valid reading in our archive for the 15-minute slot (a JPS outage, a gap in our archive, or blanked by QC including dead-gauge time), counted only over the covered window."}
             for k in ("series", "covered_from", "covered_to"):
                 if h.get(k) is not None:
                     ev[k] = h[k]
             add("SUG-7", h["graph_id"], f"station:{h['graph_id']}",
-                f"{subject} is often offline ({h['stale_pct']:.0%} of the covered period without valid data); {tail}", ev,
+                f"{subject} has no valid data in our archive for {h['stale_pct']:.0%} of the covered period (a JPS outage or a gap in our archive); {tail}", ev,
                 sname=h["name"])
 
     order = {"high": 0, "medium": 1, "low": 2}

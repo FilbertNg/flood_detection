@@ -91,7 +91,7 @@ def test_sug1_drainage_capacity(conn):
         flood(conn, "BBR-a", datetime(2024, 11, d, 6, 0))
     # onset = the first resident observation (yes at +10 min), not the alert time
     rain = {datetime(2024, 11, 3, 6, 10): 35.0, datetime(2024, 11, 10, 6, 10): 42.0, datetime(2024, 11, 17, 6, 10): 48.0}
-    out = run(conn, onset_rain=lambda s, at: rain[at])
+    out = run(conn, onset_rain=lambda s, at: rain.get(at))
     assert rules(out) == ["SUG-1"]
     s = out[0]
     assert s["priority"] == "medium" and s["street_id"] == "BBR-a" and s["street_name"] == "Jalan A"     # no knee depth reported
@@ -119,7 +119,23 @@ def test_sug1_flood_onset_is_the_first_observation_and_a_sensor_counts(conn):
     seen = []
     sug.suggestions(conn, FROM, TO, tide_table(), [], streets=streets([(street, "S", 5, 0)]),
                     onset_rain=lambda st, at: seen.append(at) or 30.0)
-    assert seen == [datetime(2024, 11, d, 6, 40) for d in (3, 10, 17)]
+    assert max(seen) == datetime(2024, 11, 17, 6, 40)
+    assert {datetime(2024, 11, d, 6, 40) for d in (3, 10, 17)} <= set(seen)     # every window ends at or before the onset
+    assert all(t.time() <= datetime(2024, 1, 1, 6, 40).time() for t in seen)
+
+
+def test_sug1_late_yes_does_not_hide_the_storm_rain(conn):
+    t = pd.date_range("2024-11-01", "2024-11-30 23:45", freq="15min")
+    mm = np.where((t.day.isin([3, 10, 17])) & (t.hour >= 6) & ((t.hour < 8) | ((t.hour == 8) & (t.minute <= 45))), 6.0, 0.0)
+    rd = pd.DataFrame({"graph_id": "G1", "kind": "rf", "time_local": t, "rain_15min_mm": mm, "wl_m": np.nan})
+    fn = sug.onset_rain_from_archive(rd, {"BBR-a": {"rf": ["G1"]}})
+    for d in (3, 10, 17):                       # 72 mm fell 06:00-08:45; alert 09:00; first yes only at 11:30
+        aid = add(conn, "BBR-a", datetime(2024, 11, d, 9, 0), backfill=False)
+        for i in range(2):
+            repo.insert_answer(conn, {"device_id": f"late-{d}-{i}", "alert_id": aid, "street_id": "BBR-a", "answer": "yes",
+                                      "answered_at": datetime(2024, 11, d, 11, 30 + i)})
+    assert fn("BBR-a", datetime(2024, 11, 3, 11, 30)) == 30.0               # the window at the answer alone misses most of it
+    assert run(conn, onset_rain=fn) == []                                    # so SUG-1 must not claim "less rain than the guide"
 
 
 def test_sug1_near_misses(conn):
@@ -545,7 +561,7 @@ def test_sug7_text_names_the_stale_series(conn):
     wl = [{"graph_id": "26558", "name": "Kg. Perepat", "stale_pct": 0.7, "series": "wl",
            "covered_from": "2024-11-01T00:00:00", "covered_to": "2024-11-30T23:45:00"}]
     [s] = run(conn, health=wl)
-    assert "river level gauge" in s["text"] and "rain gauge" not in s["text"] and s["evidence"]["series"] == "wl"
+    assert "in our archive" in s["text"] and "river level gauge" in s["text"] and "rain gauge" not in s["text"] and s["evidence"]["series"] == "wl"
     assert s["evidence"]["covered_to"] == "2024-11-30T23:45:00"
     [r] = run(conn, health=[{**wl[0], "series": "rf"}])
     assert "rain gauge" in r["text"]
@@ -558,3 +574,11 @@ def test_onset_rain_is_the_four_hour_total_ending_at_onset_without_look_ahead():
     assert fn("BBR-a", datetime(2024, 11, 12, 8, 0)) == 16.0           # (04:00, 08:00] = 16 slots
     assert fn("BBR-a", datetime(2024, 11, 12, 3, 30)) == 3.0           # nothing after the onset is used
     assert fn("BBR-zzz", datetime(2024, 11, 12, 8, 0)) is None
+
+
+def test_station_health_counts_from_the_archive_start_of_the_kind_not_the_gauges_own_first_row():
+    n = 10 * 96
+    ref = readings("R", "rf", "2024-11-01", n)
+    late = readings("L", "rf", "2024-11-06", n // 2)                # silent for the first 5 days of the period
+    out = {h["graph_id"]: h for h in sug.station_health(pd.concat([ref, late]), date(2024, 11, 1), date(2024, 11, 10))}
+    assert out["L"]["stale_pct"] == 0.5 and out["R"]["stale_pct"] == 0.0
