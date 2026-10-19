@@ -16,7 +16,7 @@ This is the starting point for anyone (or any Claude Code session) picking up wo
 | M3 Full MVP | Code done, data not loaded: DB, push, verify/report, alert history, Admin app (map, statistics, report, suggestions, review), own-station fallback, Outlook, backfill, suggestions, all-clear hold, Watch push cap. **Still to do: load the backfill (§5), hosting + phone test (§7)** |
 | M4 Ship | Not started: deck, video, submission (§7) |
 
-Merged PRs since 15 Oct: #39 R4 push permission · #40 DB layer · #41 runbook · #42 Admin shell/map · #44 own-station fallback · #45 verify/report/history · #46 Web Push backend · #47 answers/outcomes/sensor · #48 backfill · #49 Admin statistics pages · #50 Outlook · #51 Admin API (auth, statistics, report) · #52 suggestions SUG-1..7 · #53 all-clear hold · #54 Watch push cap. Tests: **803 Python** plus the web Vitest suites, all green in CI. The remaining-MVP plan is [docs/plans/2026-10-17-MVP2-remaining-mvp.md](docs/plans/2026-10-17-MVP2-remaining-mvp.md); day-to-day start/stop is in [docs/runbook.md](docs/runbook.md).
+Merged PRs since 15 Oct: #39 R4 push permission · #40 DB layer · #41 runbook · #42 Admin shell/map · #44 own-station fallback · #45 verify/report/history · #46 Web Push backend · #47 answers/outcomes/sensor · #48 backfill · #49 Admin statistics pages · #50 Outlook · #51 Admin API (auth, statistics, report) · #52 suggestions SUG-1..7 · #53 all-clear hold · #54 Watch push cap. Tests: **803 Python pass (1 skipped)** plus the web Vitest suites, all green in CI. The remaining-MVP plan is [docs/plans/2026-10-17-MVP2-remaining-mvp.md](docs/plans/2026-10-17-MVP2-remaining-mvp.md); day-to-day start/stop is in [docs/runbook.md](docs/runbook.md).
 
 ## 2. Run it (5 minutes)
 
@@ -102,7 +102,7 @@ If the laptop sleeps, live logging stops (it did on 16–17 Oct). JPS gaps can b
 
 The Admin statistics, monthly report and suggestions read **backfill alerts** (BBR, Jan 2024 → 17 Oct 2026) from `data/floodready.db`. **None are loaded yet.** The code is final on `main` (#48 backfill with a 1-day warm-up per month, #53 all-clear hold). An earlier run (18 Oct, before #53) is superseded; a re-run was started on 19 Oct and stopped on purpose. The Watch push cap (#54) does not change stored rows, so it needs no re-run.
 
-**Cost:** about 100 min with 5 parts in parallel (about 10 min per month per process, about 400 MB RAM each). Keep the laptop awake and on AC. Run it from a clean, up-to-date `main`. Each part writes its own SQLite file, because SQLite allows one writer at a time; each month commits on its own, so a crash loses only that month and a re-run of the same range replaces it (idempotent).
+**Cost:** about 100 min with 5 parts in parallel (8–13 min per month per process in the 18 Oct run; about 390 MB RAM per process, seen on 19 Oct). Keep the laptop awake and on AC. Run it from a clean, up-to-date `main`. Each part writes its own SQLite file, because SQLite allows one writer at a time; each month commits on its own, so a crash loses only that month and a re-run of the same range replaces it (idempotent).
 
 1. Start the 5 parts (PowerShell, repo root). Each line opens its own window:
 
@@ -117,19 +117,19 @@ The Admin statistics, monthly report and suggestions read **backfill alerts** (B
 2. **Check the counts** against the earlier run. The all-clear hold removes a few percent of rows; April 2024 should be about 8,426 alert rows (8,782 before #53; `docs/findings.md` D1d), and there should be no burst of Watch rows at 00:00 on the 1st of a month.
 3. **Load the parts into the app database.** Stop the API first. `db_init.py` creates the tables if `data/floodready.db` doesn't exist yet; existing live alerts, subscriptions and answers are kept:
 
-   ```powershell
-   .venv\Scripts\python.exe scripts\db_init.py --url sqlite:///data/floodready.db
-   @'
-   import glob, sqlite3
-   db = sqlite3.connect("data/floodready.db")
-   for p in sorted(glob.glob("data/interim/backfill/part*.db")):
-       db.execute("ATTACH ? AS p", (p,))
-       db.execute("INSERT OR REPLACE INTO alerts SELECT * FROM p.alerts WHERE is_backfill = 1")
-       db.commit()
-       db.execute("DETACH p")
-   print("backfill alert rows:", db.execute("SELECT count(*) FROM alerts WHERE is_backfill = 1").fetchone()[0])
-   '@ | .venv\Scripts\python.exe -
-   ```
+```powershell
+.venv\Scripts\python.exe scripts\db_init.py --url sqlite:///data/floodready.db
+@'
+import glob, sqlite3
+db = sqlite3.connect("data/floodready.db")
+for p in sorted(glob.glob("data/interim/backfill/part*.db")):
+    db.execute("ATTACH ? AS p", (p,))
+    db.execute("INSERT OR REPLACE INTO alerts SELECT * FROM p.alerts WHERE is_backfill = 1")
+    db.commit()
+    db.execute("DETACH p")
+print("backfill alert rows:", db.execute("SELECT count(*) FROM alerts WHERE is_backfill = 1").fetchone()[0])
+'@ | .venv\Scripts\python.exe -
+```
 
 4. **Suggestions** (SUG-1..7), one run per month (ids include the period, so months don't overwrite each other; admin status and notes survive re-runs). Leave out `--events` until the news labels are checked (§7):
 
@@ -138,7 +138,7 @@ The Admin statistics, monthly report and suggestions read **backfill alerts** (B
    .venv\Scripts\python.exe -X utf8 scripts\suggestions.py --from 2024-11-01 --to 2024-11-30 --township BBR
    ```
 
-   Expected for Nov 2024 (dry runs on the earlier backfill): 10 × SUG-5 (top-ranked streets by Warning/Danger episodes) and 1 × SUG-7 (`26558`, no valid data for 73% of the month). SUG-1..4 and SUG-6 stay empty until floods are confirmed by checked news labels or residents.
+   Expected for Nov 2024 (local dry runs in the PR #52 review, on the earlier backfill): 10 × SUG-5 (top-ranked streets by Warning/Danger episodes) and 1 × SUG-7 (`26558`, no valid data for 73% of the month). SUG-1..4 and SUG-6 stay empty until floods are confirmed by checked news labels or residents.
 5. Start the API, log in to the Admin app and check Statistics (`/admin/stats`), Report (`2024-11`) and Suggestions. Then delete `data\interim\backfill\` if you want the space back.
 
 ## 6. Gotchas we already paid for
