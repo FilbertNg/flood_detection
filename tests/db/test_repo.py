@@ -303,3 +303,118 @@ def test_held_alert_follows_its_own_mode(conn):
     repo.insert_alerts(conn, [alert("BBR-a", Level.WARNING)], is_replay=True, is_backfill=False)
     _normal_at(conn, 15)                                          # a live Normal state does not affect a replay alert
     assert len(repo.list_alerts(conn, active=True)) == 1
+
+
+# ---------- Watch push cap: at most one pushed Watch per street per 12 h (owner decision 19 Oct 2026) ----------
+
+def _put(conn, level, hours, kind="alert", sid="BBR-a", replay=False):
+    lv = Level.NORMAL if kind == "all_clear" else level
+    repo.insert_alerts(conn, [alert(sid, lv, kind, T0 + timedelta(hours=hours))], is_replay=replay, is_backfill=False)
+
+
+def _pushes(conn, **kw):
+    return [(x["level"], x["issued_at"][11:16], x["push"]) for x in reversed(repo.list_alerts(conn, **kw))
+            if x["kind"] == "alert"]
+
+
+def test_second_watch_within_12h_is_stored_but_not_pushed(conn):
+    _put(conn, Level.WATCH, 0)
+    _put(conn, Level.NORMAL, 1, "all_clear")
+    _put(conn, Level.WATCH, 3)
+    assert _pushes(conn) == [("watch", "09:00", True), ("watch", "12:00", False)]
+    assert len([x for x in repo.list_alerts(conn) if x["kind"] == "alert"]) == 2        # still stored and listed
+
+
+def test_watch_after_12h_pushes_again_and_the_gap_is_measured_from_the_last_pushed_one(conn):
+    for h in (0, 3, 12, 15, 24):
+        _put(conn, Level.WATCH, h)
+    assert [p for *_, p in _pushes(conn)] == [True, False, True, False, True]
+
+
+def test_warning_and_a_rise_always_push(conn):
+    _put(conn, Level.WATCH, 0)
+    _put(conn, Level.WARNING, 1)
+    _put(conn, Level.WATCH, 2)       # a fall back to Watch within 12 h of the pushed Watch stays quiet
+    _put(conn, Level.DANGER, 3)
+    assert _pushes(conn) == [("watch", "09:00", True), ("warning", "10:00", True), ("watch", "11:00", False),
+                             ("danger", "12:00", True)]
+
+
+def test_cap_survives_a_restart_because_it_reads_the_stored_alerts(tmp_path):
+    url = f"sqlite:///{tmp_path / 'f.db'}"
+    eng = repo.connect(url)
+    with eng.begin() as c:
+        _put(c, Level.WATCH, 0)
+    eng2 = repo.connect(url)            # a new process: no in-memory state
+    with eng2.begin() as c:
+        _put(c, Level.WATCH, 3)
+        since = T0 + timedelta(hours=3)
+        assert [x["push"] for x in repo.list_alerts(c, since=since)] == [False]     # even when only the new row is listed
+
+
+def test_live_and_replay_do_not_share_the_cap(conn):
+    _put(conn, Level.WATCH, 0)
+    _put(conn, Level.WATCH, 1, replay=True)
+    assert _pushes(conn, include_replay=False) == [("watch", "09:00", True)]
+    assert _pushes(conn, replay_only=True) == [("watch", "10:00", True)]
+
+
+def test_streets_are_capped_separately(conn):
+    _put(conn, Level.WATCH, 0, sid="BBR-a")
+    _put(conn, Level.WATCH, 1, sid="BBR-b")
+    assert [x["push"] for x in repo.list_alerts(conn)] == [True, True]
+
+
+def test_outlook_rows_are_unaffected_by_the_cap(conn):
+    rs = [Reason("forecast_rain", 50.0, "mm", None, "x", "x")]
+    repo.insert_alerts(conn, [_outlook("BBR-a", T0, rs=rs), _outlook("BBR-a", T0 + timedelta(hours=1), rs=rs)],
+                       is_replay=False, is_backfill=False, horizon="outlook")
+    _put(conn, Level.WATCH, 2)
+    got = {(x["horizon"], x["issued_at"][11:16]): x["push"] for x in repo.list_alerts(conn)}
+    assert got == {("outlook", "09:00"): True, ("outlook", "10:00"): True, ("nowcast", "11:00"): True}
+
+
+def test_backfill_rows_never_push_and_do_not_count_towards_the_cap(conn):
+    repo.insert_alerts(conn, [alert("BBR-a", Level.WATCH, "alert", T0)], is_replay=False, is_backfill=True)
+    _put(conn, Level.WATCH, 1)
+    got = {x["issued_at"][11:16]: x["push"] for x in repo.list_alerts(conn, include_backfill=True)}
+    assert got == {"09:00": False, "10:00": True}
+
+
+def test_cap_gap_comes_from_config(monkeypatch, conn):
+    monkeypatch.setattr(repo, "_alerts_cfg", lambda: {"push_levels": ["watch", "warning", "danger"], "watch_push_min_gap_h": 2})
+    _put(conn, Level.WATCH, 0)
+    _put(conn, Level.WATCH, 1)
+    _put(conn, Level.WATCH, 2)
+    assert [p for *_, p in _pushes(conn)] == [True, False, True]
+
+
+def _all_rows(conn):
+    from sqlalchemy import select
+    return list(conn.execute(select(schema.alerts)))
+
+
+def test_bounded_look_back_gives_the_same_flags_as_the_unbounded_chain(conn):
+    import random
+    rnd = random.Random(7)
+    hours = 0.0
+    for _ in range(400):                     # a long sequence of Watches with gaps from 15 min to 30 h
+        hours += rnd.choice([0.25, 0.5, 1, 3, 11.9, 12, 13, 30])
+        _put(conn, Level.WATCH, hours)
+    _put(conn, Level.WATCH, 0.01, sid="BBR-b")
+    rows = _all_rows(conn)
+    assert repo._capped_watch_ids(conn, rows, ("watch",), lookback_days=7) == \
+        repo._capped_watch_ids(conn, rows, ("watch",), lookback_days=None)
+    recent = [r for r in rows if r.issued_at > T0 + timedelta(hours=hours - 24)]       # only recent rows listed, as the runner does
+    listed = {r.alert_id for r in recent}                     # callers only look up the rows they listed
+    assert recent and repo._capped_watch_ids(conn, recent, ("watch",), lookback_days=7) & listed == \
+        repo._capped_watch_ids(conn, recent, ("watch",), lookback_days=None) & listed
+
+
+def test_no_chain_start_inside_the_window_falls_back_to_the_full_history(conn):
+    for k in range(40):
+        _put(conn, Level.WATCH, 6 * k)       # never a 12 h gap, so the 7-day window has no safe start
+    last = _all_rows(conn)[-3:]
+    listed = {r.alert_id for r in last}
+    assert repo._capped_watch_ids(conn, last, ("watch",), lookback_days=7) & listed == \
+        repo._capped_watch_ids(conn, last, ("watch",), lookback_days=None) & listed

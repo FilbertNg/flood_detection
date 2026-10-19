@@ -101,6 +101,36 @@ def test_an_all_clear_is_stored_but_not_pushed(context):
     assert [a["kind"] for a in r.snapshot().alerts] == ["all_clear"] and sent == []
 
 
+def test_second_watch_within_12h_is_stored_but_not_sent_and_survives_a_restart(context, tmp_path):
+    from floodready.engine.replay import ReplayStep
+    from floodready.engine.types import Alert, Level
+    url = f"sqlite:///{tmp_path / 'cap.db'}"
+
+    def watch(r, hour):
+        t = datetime(2026, 10, 18, hour, 0)
+        a = Alert("BBR-prone-street", Level.WATCH, "alert", t, None, None, (), ("rule_rain",))
+        r._record(ReplayStep(time=t, trigger=None, states=[], alerts=[a]), is_replay=False)
+
+    r, sent, svc = make(context, url)
+    watch(r, 9)
+    svc.flush()
+    assert len(sent) == 1
+    r2, sent2, svc2 = make(context, url)      # restart: the cap is read from the stored alerts
+    watch(r2, 12)
+    svc2.flush()
+    assert sent2 == []
+    with r2.db.begin() as c:
+        assert [(a["issued_at"][11:13], a["push"]) for a in reversed(repo.list_alerts(c))] == [("09", True), ("12", False)]
+
+
+def test_a_bad_clear_after_min_fails_at_startup_not_in_the_alerts_endpoint(context):
+    import dataclasses
+    import pytest
+    bad = dataclasses.replace(context, rules_cfg={**context.rules_cfg, "alerts": {**context.rules_cfg["alerts"], "clear_after_min": 180}})
+    with pytest.raises(ValueError):
+        Runner(bad, db=repo.connect("sqlite://"), push=push.PushService(repo.connect("sqlite://")))
+
+
 def live_warning(r, level=None):
     from floodready.engine.replay import ReplayStep
     from floodready.engine.types import Alert, Level

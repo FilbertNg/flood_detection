@@ -123,6 +123,10 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 - **So:** this is the cost of pushing Watch. The team decided (17 Oct 2026) to push Watch, Warning and Danger (`alerts.push_levels`); the numbers above are what residents should expect in a stormy month.
 
 
+### D1c. 85 BBR streets take their river signal from the dead gauge
+- The street→station mapping (`assets/geo/bbr_street_stations.json`) follows the flow path: **85 of 943 BBR streets** use Kg. Perepat (`26558`) as their own river (668 use Pekan Meru, 190 Pandamaran). With the gauge blanked, those streets keep their rain rules but have no river level or ML probability.
+- **Open fix:** when a street's own river station is dead or stale, fall back to its next-nearest river station.
+
 ### D1d. The all-clear hold removes some flapping, not all of it
 - When rain hovers around the Watch threshold a street used to get an all-clear on the first normal tick and then a new alert. `alerts.clear_after_min: 60` holds the all-clear until the alert is 60 min old, and the alert stays active in the app meanwhile.
 - BBR, 1 Apr to 1 May 2024, full replay (rules + out-of-sample ML, per-street stations, 943 streets). "Fast re-alert" = an alert issued 60 min or less after an all-clear on the same street (measured by the #53 reviewer, who reproduced the alert counts):
@@ -131,15 +135,29 @@ Sources: [ml-data-eda.md](ml-data-eda.md), [tide-check.md](tide-check.md), [data
 |---|---|---|---|
 | 0 (old behaviour) | 8,782 | 6,684 | 1,566 |
 | 60 | 8,426 (-4%) | 6,205 | 1,123 (13% of alerts) |
-| 180 | 8,426 | 5,420 | 369 |
+| 180 (not allowed by config; for comparison) | 8,426 | 5,420 | 369 |
 
 - Watch 6,689 → 6,333; Warning (1,689) and Danger (404) unchanged. Median alerts per street stays 8; the maximum falls 76 → 65.
-- **Why a longer hold does not cut the alert count (8,426 at both 60 and 180):** the hold counts from the alert's issue time, not from when the street went quiet. An alert older than the hold is cleared on the first Normal tick, and a same-level re-entry alerts again once the cooldown has passed. So the hold only removes flapping in the first hour of an alert; about 1,100 re-alerts a month still follow an all-clear within an hour.
+- **Why a longer hold does not cut the alert count (8,426 at both 60 and 180):** the hold counts from the alert's issue time, not from when the street went quiet. An alert older than the hold is cleared on the first Normal tick, and a same-level re-entry alerts again once the cooldown has passed. So the hold only removes flapping in the first hour of an alert; about 1,100 re-alerts in April 2024 still follow an all-clear within an hour.
 - **Known limitation:** the full fix is to hold the all-clear until the street has been continuously Normal for `clear_after_min`, and not to re-alert at the same level while an alert is active. That needs per-street "normal since" state next to `last_alerts`, which changes a frozen engine interface, so it is deferred. The Watch push cap (D1e) limits what residents feel.
 
-### D1c. 85 BBR streets take their river signal from the dead gauge
-- The street→station mapping (`assets/geo/bbr_street_stations.json`) follows the flow path: **85 of 943 BBR streets** use Kg. Perepat (`26558`) as their own river (668 use Pekan Meru, 190 Pandamaran). With the gauge blanked, those streets keep their rain rules but have no river level or ML probability.
-- **Open fix:** when a street's own river station is dead or stale, fall back to its next-nearest river station.
+
+### D1e. What drives alert volume, and the Watch push cap
+Measured on a BBR replay for April 2024 (943 streets, rules + out-of-sample ML, `alerts.clear_after_min: 60`): 8,426 alerts (6,333 Watch, 1,689 Warning, 404 Danger).
+- **One repeated river signal.** Gauge 26558 (Sg. Kapar Kechil at Kg. Perepat) is in a tidal reach and its real, tide-driven level crosses its 0.6 m JPS alert band every tide (warning band 1.0 m, danger 1.5 m). It is the only firing rule in **1,770 alerts (21%)**: 1,588 Watch and 182 Warning. The worst 20 streets have 64-65 alerts each (about 54 river alerts plus about 10 rain alerts), all on this one signal. 461 streets list 26558 among their rain gauges, but its river level only decides the 85 streets whose own river station it is.
+- **Rain-only Watch comes from one gauge.** 3,973 Watch alerts were fired by the rain rule alone; in **98.97% (3,932)** a single gauge was over threshold while the street's other gauges (median 4 in radius) were below it. Convective cells are small, so this is how the rain looks, not a fault.
+- **Alerts are clustered in time.** Only **76 of 2,880** 15-min steps had any alert, on 14 days; the top 5 days hold **63.9%** of all alerts (16 April alone: 2,295).
+- **Push policy, alerts pushed per street (all 943 streets), same month:**
+
+| Policy | Total | p50 | p90 | Max |
+|---|---|---|---|---|
+| Push every alert | 8,426 | 8 | 12 | 65 |
+| **Watch at most once per street per 12 h, Warning/Danger always (chosen)** | **7,261** | 8 | 12 | **30** |
+| Watch only when 2+ rain gauges agree or a river band fires | 4,494 | 2 | 7 | 58 |
+| Warning and Danger only | 2,093 | 1 | 4 | 10 |
+
+- **Decision (owner, 19 Oct 2026):** Warning and Danger always push; Watch pushes at most once per street per 12 h (`alerts.watch_push_min_gap_h`). Every alert is still stored and shown in the app. Through the real code path the pushed total is 7,261 (5,168 Watch, 1,689 Warning, 404 Danger), p50 8, p90 12, max 30, equal to the simulation.
+- **Note:** the cap cuts the worst street from 65 to 30 but leaves the median at 8 and p90 at 12. Streets on one gauge still fire together, so each burst still reaches all of them.
 
 ### D2. Flow paths on a 30 m DEM fail on the flat coast
 - D8 flow tracing links inland stations correctly (Damansara → Sri Muda; Kuyoh, Penchala → Puchong Drop) but finds **nothing upstream of Bandar Klang**: the coastal plain is too flat. Same-river links there are added by name with stated evidence.

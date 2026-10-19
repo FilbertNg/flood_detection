@@ -30,9 +30,14 @@ def clear_after(alerts_cfg: dict) -> timedelta:
     minutes = alerts_cfg.get("clear_after_min")
     if minutes is None:
         minutes = alerts_cfg["cooldown_min"]
-    if minutes >= LIVE_WINDOW_MIN:
-        raise ValueError(f"alerts.clear_after_min ({minutes}) must be below the {LIVE_WINDOW_MIN} min live recompute window")
     return timedelta(minutes=minutes)
+
+
+def validate_config(alerts_cfg: dict) -> None:
+    """Fail fast at startup (the runner calls this once) when the hold would not survive a restart."""
+    hold = clear_after(alerts_cfg)
+    if hold >= timedelta(minutes=LIVE_WINDOW_MIN):
+        raise ValueError(f"alerts.clear_after_min ({hold.total_seconds() / 60:g}) must be below the {LIVE_WINDOW_MIN} min live recompute window")
 
 
 def issue(prev: dict[str, StreetState], new: list[StreetState], last_alerts: dict[str, Alert],

@@ -16,11 +16,14 @@ alerts:
   cooldown_min: 60            # no repeat alert for a street unless its level rises
   # Minimum alert age before an all-clear; stops alert/all-clear flapping when rain hovers at a threshold (default: cooldown_min).
   # Must stay below 180: the live runner recomputes the last 3 h on each refresh, so the hold survives a restart only inside
-  # that window (engine.alerts.clear_after raises otherwise).
+  # that window (the runner refuses to start otherwise).
   clear_after_min: 60
   alert_levels: [watch, warning, danger]   # issued and stored (in-app)
   push_levels: [watch, warning, danger]   # only these are flagged push: true for a notifier (team decision 17 Oct 2026: push Watch too)
-  window_from: warning                    # the "flooding expected" nowcast window is only set from this level up
+  # Watch is pushed at most once per street per this many hours (owner decision, 19 Oct 2026); every alert is still stored and
+  # shown in the app, Warning and Danger always push. BBR Apr 2024: pushing every alert gave 8,426 (p50 8, p90 12, max 65 per street).
+  watch_push_min_gap_h: 12
+  window_from: warning                   # the "flooding expected" nowcast window is only set from this level up
 
 # Improvement suggestions (WP7). SUG-5 (pre-event readiness) lists only the top N streets, ranked by Warning/Danger
 # alert episodes, then Danger episodes, then susceptibility: a manager needs an action list, not every street on one river.
