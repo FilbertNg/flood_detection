@@ -314,11 +314,12 @@ def list_alerts(conn, *, street_id: str | None = None, active: bool = False,
     out = outcomes_for(conn, [{"alert_id": r.alert_id, "street_id": r.street_id, "kind": r.kind,
                                "issued_at": r.issued_at, "is_replay": bool(r.is_replay)} for r in rows],
                        count_simulated_sensor=count_simulated_sensor, exclude_demo=exclude_demo)
+    capped = _capped_watch_ids(conn, rows, pl)
     return [{
         "alert_id": r.alert_id, "street_id": r.street_id, "horizon": r.horizon, "kind": r.kind, "level": r.level,
         "issued_at": _iso(r.issued_at), "window": _window(r.window_start, r.window_end),
         "outcome": out[r.alert_id],
-        "is_replay": bool(r.is_replay), "push": _push(r, pl),
+        "is_replay": bool(r.is_replay), "push": _push(r, pl) and r.alert_id not in capped,
     } for r in rows]
 
 
@@ -347,8 +348,39 @@ def _still_active(conn, rows):
     return [r for r in rows if keep(r)]
 
 
+def _capped_watch_ids(conn, rows, pl) -> set[str]:
+    """Nowcast Watch alerts that are stored and shown but not pushed: the street already had a pushed Watch in the
+    same mode (live / replay) less than `alerts.watch_push_min_gap_h` earlier (owner decision 19 Oct 2026).
+    Warning and Danger are never capped. The cap is derived from the stored alerts, so it survives a restart, and
+    this is the one place that decides it: the API `push` flag and what the runner sends come from the same value.
+    Greedy per street in time order: a Watch pushes when no pushed Watch precedes it within the gap."""
+    gap_h = float(_alerts_cfg().get("watch_push_min_gap_h", 0))
+    if gap_h <= 0 or "watch" not in pl:
+        return set()
+    streets = sorted({r.street_id for r in rows if r.kind == "alert" and r.level == "watch"
+                      and r.horizon != "outlook" and not r.is_backfill})
+    if not streets:
+        return set()
+    a, gap = t.alerts, timedelta(hours=gap_h)
+    history = []
+    for part in _chunks(streets):
+        history += list(conn.execute(select(a.c.alert_id, a.c.street_id, a.c.is_replay, a.c.issued_at).where(
+            a.c.street_id.in_(part), a.c.kind == "alert", a.c.level == "watch", a.c.horizon != "outlook",
+            a.c.is_backfill.is_(False)).order_by(a.c.issued_at, a.c.alert_id)))
+    last_pushed: dict[tuple, datetime] = {}
+    capped: set[str] = set()
+    for h in sorted(history, key=lambda h: (h.issued_at, h.alert_id)):
+        key = (h.street_id, bool(h.is_replay))
+        prev = last_pushed.get(key)
+        if prev is not None and h.issued_at - prev < gap:
+            capped.add(h.alert_id)
+        else:
+            last_pushed[key] = h.issued_at
+    return capped
+
+
 def _push(r, pl) -> bool:
-    if r.kind != "alert" or r.level not in pl:
+    if r.kind != "alert" or r.level not in pl or r.is_backfill:
         return False
     if r.horizon == "outlook":      # only an outlook that is genuinely ahead is pushed (engine.outlook.pushes)
         return outlook_pushes(json.loads(r.reasons_json or "[]"))
