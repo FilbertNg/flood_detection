@@ -134,10 +134,36 @@ def test_a_live_alert_without_an_all_clear_is_not_active_once_the_street_is_norm
     with TestClient(create_app(r, start_live_loop=False)) as client:
         live_warning(r)
         assert len(client.get("/api/v1/alerts", params={"active": "true"}).json()) == 1
-        with r.db.begin() as c:                       # the street recovered while the all-clear was never issued
-            from tests.db.test_repo import state
-            repo.save_street_states(c, [state("BBR-prone-street", Level.NORMAL)], "live")
+        import dataclasses
+        from datetime import timedelta
+        from tests.db.test_repo import state
+
+        def recovered(minutes):       # the street is Normal `minutes` after the alert and the all-clear was never issued
+            return dataclasses.replace(state("BBR-prone-street", Level.NORMAL), data_time=datetime(2026, 10, 18, 9, 0) + timedelta(minutes=minutes))
+        with r.db.begin() as c:       # inside the hold the alert is still active (the all-clear is only delayed)
+            repo.save_street_states(c, [recovered(15)], "live")
+        assert len(client.get("/api/v1/alerts", params={"active": "true"}).json()) == 1
+        with r.db.begin() as c:       # past the hold the missed all-clear no longer keeps it active
+            repo.save_street_states(c, [recovered(75)], "live")
         assert client.get("/api/v1/alerts", params={"active": "true"}).json() == []
+
+
+def test_street_page_shows_the_held_alert_as_active_then_drops_it(context):
+    import dataclasses
+    from datetime import timedelta
+    from floodready.engine.replay import ReplayStep
+    from floodready.engine.types import Level
+    from tests.db.test_repo import state
+    r, sent, svc = make(context)
+    with TestClient(create_app(r, start_live_loop=False)) as client:
+        live_warning(r)
+        t0 = datetime(2026, 10, 18, 9, 0)
+        for minutes, expect_active in ((15, True), (75, False)):
+            t = t0 + timedelta(minutes=minutes)
+            normal = dataclasses.replace(state("BBR-prone-street", Level.NORMAL), data_time=t)
+            r._record(ReplayStep(time=t, trigger=None, states=[normal], alerts=[]), is_replay=False)
+            detail = client.get("/api/v1/streets/BBR-prone-street").json()
+            assert (detail["active_alert"] is not None) is expect_active, minutes
 
 
 def test_snapshot_does_not_query_alerts_until_they_are_read(context, monkeypatch):

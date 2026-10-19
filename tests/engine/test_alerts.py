@@ -1,4 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+
+import pytest
 
 from floodready.engine import alerts
 from floodready.engine.types import Level, StreetState
@@ -95,6 +97,30 @@ def test_rising_level_during_the_hold_still_alerts(rules_cfg):
     assert engine.step(Level.NORMAL, "09:15") == []
     issued = engine.step(Level.WARNING, "09:30")
     assert [(a.kind, a.level) for a in issued] == [("alert", Level.WARNING)]
+
+
+def test_danger_normal_danger_inside_the_hold_gives_no_all_clear_and_no_repeat(rules_cfg):
+    engine = Engine(_hold_cfg(rules_cfg, cooldown_min=60, clear_after_min=60))
+    assert [(a.kind, a.level) for a in engine.step(Level.DANGER, "09:00")] == [("alert", Level.DANGER)]
+    assert engine.step(Level.NORMAL, "09:15") == []
+    assert engine.step(Level.DANGER, "09:30") == []      # same alert still active: no extra push
+    assert engine.step(Level.DANGER, "09:45") == []
+
+
+def test_alert_older_than_the_hold_is_cleared_on_the_first_normal_tick_known_limitation(rules_cfg):
+    # The hold counts from the alert's issue time, not from when the street went quiet.
+    engine = Engine(_hold_cfg(rules_cfg, cooldown_min=60, clear_after_min=60))
+    engine.step(Level.WATCH, "09:00")
+    for when in ("09:15", "09:30", "09:45", "10:00", "10:15"):
+        engine.step(Level.WATCH, when)
+    assert [a.kind for a in engine.step(Level.NORMAL, "10:30")] == ["all_clear"]
+    assert [a.kind for a in engine.step(Level.WATCH, "10:45")] == ["alert"]
+
+
+def test_clear_after_min_must_stay_inside_the_live_recompute_window(rules_cfg):
+    with pytest.raises(ValueError):
+        alerts.clear_after({"cooldown_min": 60, "clear_after_min": 180})
+    assert alerts.clear_after(rules_cfg["alerts"]) < timedelta(minutes=alerts.LIVE_WINDOW_MIN)
 
 
 def test_missing_clear_after_min_falls_back_to_the_cooldown(rules_cfg):

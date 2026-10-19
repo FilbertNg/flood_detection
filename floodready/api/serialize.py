@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from ..engine import features, street_stations
+from ..engine.alerts import clear_after
 from ..engine.types import Reason, StreetState
 from ..jobs import now_myt
 from ..ml import forecast as river
@@ -99,13 +100,17 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
     state = _states(snap).get(street_id)
     data_time = snap.step.time if snap.step else datetime.now()
     history = snap.alerts_for(street_id)
-    # a missed or still-held all-clear (alerts.clear_after_min) must not stay active: `active` is the current situation
-    still_elevated = state is None or state.level.json != "normal"
     # latest row per horizon: a nowcast all-clear never hides an outlook and the reverse; nowcast wins when both are active
     latest = {}
     for a in history:
         latest.setdefault(a.get("horizon", "nowcast"), a)
     now_row, out_row = latest.get("nowcast"), latest.get("outlook")
+    # an alert stays active while the street is elevated, or while its all-clear is held (the state is less than
+    # alerts.clear_after_min past the alert); a missed all-clear drops out once the hold is over
+    still_elevated = state is None or state.level.json != "normal"
+    if not still_elevated and now_row is not None and now_row["kind"] == "alert":
+        issued = pd.Timestamp(now_row["issued_at"]).tz_localize(None)
+        still_elevated = pd.Timestamp(state.data_time) - issued < clear_after(ctx.rules_cfg["alerts"])
     pick = (now_row if now_row and now_row["kind"] == "alert" and still_elevated
             else out_row if out_row and out_row["kind"] == "alert" and not _expired(out_row) else None)
     active = {"alert_id": pick["alert_id"], "level": pick["level"], "issued_at": pick["issued_at"]} if pick else None
