@@ -15,7 +15,12 @@ import type {
 } from '@floodready/shared';
 import { auth } from '../auth';
 
-export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+/** The API origin without a trailing slash (a `VITE_API_URL` ending in `/` made every path `//api/v1/...` → 404). */
+export function apiBase(raw: string | undefined): string {
+  return (raw ?? 'http://localhost:8000').replace(/\/+$/, '');
+}
+
+export const API_URL: string = apiBase(import.meta.env.VITE_API_URL);
 
 /** The one event with a verified replay (12 Nov 2024 flash flood). */
 export const REPLAY_EVENT = '2024-11-12';

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '../auth';
-import { api } from './api';
+import { api, apiBase } from './api';
 
 beforeEach(() => auth.logout());
 afterEach(() => vi.unstubAllGlobals());
@@ -71,5 +71,16 @@ describe('api', () => {
     expect(c[5][0]).toMatch(/\/admin\/answers\/ans_01$/);
     expect(c[5][1].method).toBe('PATCH');
     expect(JSON.parse(c[5][1].body as string)).toEqual({ review_status: 'spam' });
+  });
+});
+
+describe('apiBase', () => {
+  it('drops trailing slashes so paths never start with //', () => {
+    expect(apiBase('https://api.example.ts.net/')).toBe('https://api.example.ts.net');
+    expect(apiBase('https://api.example.ts.net//')).toBe('https://api.example.ts.net');
+    expect(apiBase('https://api.example.ts.net')).toBe('https://api.example.ts.net');
+  });
+  it('falls back to the local API', () => {
+    expect(apiBase(undefined)).toBe('http://localhost:8000');
   });
 });

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AnswerError, postAnswer } from './api';
+import { AnswerError, postAnswer, apiBase } from './api';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -35,5 +35,16 @@ describe('postAnswer', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{"detail":"dup"}', { status: 409 })));
     await expect(postAnswer({ device_id: 'd', street_id: 's', answer: 'no' })).rejects.toMatchObject({ status: 409 });
     await expect(postAnswer({ device_id: 'd', street_id: 's', answer: 'no' })).rejects.toBeInstanceOf(AnswerError);
+  });
+});
+
+describe('apiBase', () => {
+  it('drops trailing slashes so paths never start with //', () => {
+    expect(apiBase('https://api.example.ts.net/')).toBe('https://api.example.ts.net');
+    expect(apiBase('https://api.example.ts.net//')).toBe('https://api.example.ts.net');
+    expect(apiBase('https://api.example.ts.net')).toBe('https://api.example.ts.net');
+  });
+  it('falls back to the local API', () => {
+    expect(apiBase(undefined)).toBe('http://localhost:8000');
   });
 });

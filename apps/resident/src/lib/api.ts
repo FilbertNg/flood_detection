@@ -1,6 +1,11 @@
 import type { AlertSummary, AnswerCreated, AnswerForm, PushPublicKey, Station, Status, StreetCollection, StreetDetail, SubscriptionRequest } from '@floodready/shared';
 
-export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+/** The API origin without a trailing slash (a `VITE_API_URL` ending in `/` made every path `//api/v1/...` → 404). */
+export function apiBase(raw: string | undefined): string {
+  return (raw ?? 'http://localhost:8000').replace(/\/+$/, '');
+}
+
+export const API_URL: string = apiBase(import.meta.env.VITE_API_URL);
 
 async function get<T>(path: string): Promise<T> {
   const response = await fetch(`${API_URL}/api/v1${path}`);
