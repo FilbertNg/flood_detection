@@ -7,8 +7,11 @@ import { NotificationOffer } from '../components/NotificationOffer';
 import { t } from '../lib/i18n';
 import { isSubscribed } from '../push/subscribe';
 
-/** Choose the streets to follow (stored on this device only). */
-export function PickStreetsPage({ lang, mine, deviceId, onSave }: { lang: Lang; mine: string[]; deviceId: string; onSave: (ids: string[]) => void }) {
+/**
+ * Choose the streets to follow (stored on this device only). As a page (/streets) it has a Back link;
+ * as the map's bottom sheet it gets `onClose` and shows a Close button instead.
+ */
+export function PickStreetsPage({ lang, mine, deviceId, onSave, onClose }: { lang: Lang; mine: string[]; deviceId: string; onSave: (ids: string[]) => void; onClose?: () => void }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [chosen, setChosen] = useState<string[]>(mine);
@@ -36,7 +39,11 @@ export function PickStreetsPage({ lang, mine, deviceId, onSave }: { lang: Lang; 
 
   return (
     <div className="pad pick">
-      <Link to="/" className="back">← {t(lang, 'back')}</Link>
+      {onClose ? (
+        <button type="button" className="sheet-close" onClick={onClose}>{t(lang, 'close')}</button>
+      ) : (
+        <Link to="/" className="back">← {t(lang, 'back')}</Link>
+      )}
       <h1>{t(lang, 'pickStreets')}</h1>
       <input className="search" placeholder={t(lang, 'searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
       <ul className="pick-list">

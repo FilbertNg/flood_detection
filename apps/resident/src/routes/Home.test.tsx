@@ -1,20 +1,44 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { streets } from '@floodready/shared/mocks';
+import { status, streets } from '@floodready/shared/mocks';
+import * as geo from '../lib/geo';
 import { HomePage } from './Home';
 
-vi.mock('../components/StreetMap', () => ({ StreetMap: () => <div data-testid="map" /> }));
+// The real map is Leaflet; the stand-in offers one button per street line, calling onSelect like a tap.
+vi.mock('../components/StreetMap', () => ({
+  StreetMap: ({ data, onSelect }: { data: typeof streets; onSelect: (id: string) => void }) => (
+    <div data-testid="map">
+      {data.features.map((f) => (
+        <button key={f.properties.street_id} type="button" onClick={() => onSelect(f.properties.street_id)}>line {f.properties.name}</button>
+      ))}
+    </div>
+  ),
+}));
+vi.mock('../lib/geo', async (importOriginal) => ({ ...(await importOriginal<typeof geo>()), currentPosition: vi.fn() }));
 
-function renderHome(lang: 'en' | 'ms', mine: string[]) {
-  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(streets), { status: 200 })));
+let path = '';
+function Where() {
+  path = useLocation().pathname;
+  return null;
+}
+
+function renderHome(lang: 'en' | 'ms', mine: string[], onSave = vi.fn()) {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url.includes('/status') ? status : streets), { status: 200 })));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter><HomePage lang={lang} mine={mine} /></MemoryRouter>
+      <MemoryRouter initialEntries={['/map']}>
+        <Routes>
+          <Route path="/map" element={<HomePage lang={lang} mine={mine} deviceId="dev_1" onSave={onSave} />} />
+          <Route path="*" element={null} />
+        </Routes>
+        <Where />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
+  return onSave;
 }
 
 afterEach(() => {
@@ -82,9 +106,56 @@ describe('HomePage report link', () => {
 });
 
 describe('HomePage at /map', () => {
-  it('links back to the swipe home', async () => {
+  it('has a red header with Back to the swipe home and the title', async () => {
     renderHome('en', []);
     await screen.findByText(/streets at Warning or Danger/);
     expect(screen.getByRole('link', { name: '← Back' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('heading', { level: 1, name: 'Flood map' })).toBeInTheDocument();
+  });
+
+  it('shows my current street and level in the location card, with both buttons', async () => {
+    renderHome('en', ['BBR-persiaran-batu-belah', 'BBR-jalan-makyong']);
+    const card = await screen.findByRole('region', { name: 'My location' });
+    expect(within(card).getByText('Persiaran Batu Belah')).toBeInTheDocument();
+    expect(within(card).getByText('Watch')).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Use my location' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Choose another' })).toBeInTheDocument();
+  });
+
+  it('puts a tapped street line in the card; saving it opens the pager on that street', async () => {
+    const onSave = renderHome('en', ['BBR-persiaran-batu-belah']);
+    fireEvent.click(await screen.findByRole('button', { name: 'line Jalan Makyong' }));
+    const card = screen.getByRole('region', { name: 'My location' });
+    expect(within(card).getByText('Jalan Makyong')).toBeInTheDocument();
+    expect(within(card).getByText('Warning')).toBeInTheDocument();
+    fireEvent.click(within(card).getByRole('button', { name: 'Add to my streets' }));
+    expect(onSave).toHaveBeenCalledWith(['BBR-persiaran-batu-belah', 'BBR-jalan-makyong']);
+    expect(path).toBe('/street/BBR-jalan-makyong');
+  });
+
+  it('offers "Set as my street" when no street is saved yet', async () => {
+    const onSave = renderHome('en', []);
+    fireEvent.click(await screen.findByRole('button', { name: 'line Jalan Makyong' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Set as my street' }));
+    expect(onSave).toHaveBeenCalledWith(['BBR-jalan-makyong']);
+    expect(path).toBe('/street/BBR-jalan-makyong');
+  });
+
+  it('fills the card from the phone location (nearest street found on the phone)', async () => {
+    vi.mocked(geo.currentPosition).mockResolvedValue({ lat: 3.0899, lon: 101.4251 });
+    renderHome('en', ['BBR-persiaran-batu-belah']);
+    const card = await screen.findByRole('region', { name: 'My location' });
+    fireEvent.click(within(card).getByRole('button', { name: 'Use my location' }));
+    expect(await within(card).findByText('Jalan Makyong')).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Add to my streets' })).toBeInTheDocument();
+  });
+
+  it('opens the street picker as a sheet over the map from "Choose another"', async () => {
+    renderHome('en', ['BBR-persiaran-batu-belah']);
+    fireEvent.click(await screen.findByRole('button', { name: 'Choose another' }));
+    const sheet = screen.getByRole('dialog', { name: 'Choose your street' });
+    expect(within(sheet).getByPlaceholderText('Search a street…')).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog', { name: 'Choose your street' })).toBeNull();
   });
 });
