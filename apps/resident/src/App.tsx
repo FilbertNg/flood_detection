@@ -20,7 +20,10 @@ export function App() {
   const lang: Lang = prefs.lang;
   usePushSync({ deviceId: prefs.deviceId, streets: prefs.streets, lang });
   // The street page is full screen (weather sky to the top edge) and draws its own top row.
-  const fullScreen = useLocation().pathname.startsWith('/street/');
+  const path = useLocation().pathname;
+  const fullScreen = path.startsWith('/street/');
+  // The report form needs no live strip; a replay is still labelled there (replayed data must be shown as such).
+  const showLive = !path.startsWith('/report');
 
   return (
     <div className="app">
@@ -32,7 +35,7 @@ export function App() {
           </header>
           {status?.mode === 'replay' ? (
             <div className="ribbon replay">▶ {t(lang, 'replay')}: {dayTime(status.data_time)}</div>
-          ) : status ? (
+          ) : status && showLive ? (
             <div className="ribbon live">● {t(lang, 'live')} · {t(lang, 'dataTime')} {dayTime(status.data_time)}</div>
           ) : null}
         </>
