@@ -232,3 +232,15 @@ def test_station_with_untrusted_thresholds_is_skipped():
     assert wl_flags(flags).empty and clean[clean.kind == "wl"].wl_m.notna().all()
     nan_alert = base.assign(thresholds_ok=True, wl_alert_m=np.nan)       # thresholds_ok says fine but no alert level exists
     assert wl_flags(qc.clean_readings(df, stations=nan_alert)[1]).empty
+
+
+def test_a_reading_off_the_15_min_grid_does_not_crash_the_check():
+    """Live tables can hold 5-min readings (e.g. 00:25). The check works on the 15-min grid; an off-grid reading is
+    simply not judged by it (kept), and the on-grid run is still flagged."""
+    off = pd.DataFrame({"graph_id": ["R"], "kind": ["wl"], "time_local": [T0 + pd.Timedelta(minutes=25)],
+                        "rain_15min_mm": [np.nan], "wl_m": [1.20]})
+    df = pd.concat([wet(storm()), level("R", np.full(40, 1.20)), off], ignore_index=True)
+    clean, flags = qc.clean_readings(df, stations=STATIONS)
+    f = wl_flags(flags)
+    assert not f.empty and (f.time_local != off.time_local.iloc[0]).all()
+    assert clean[(clean.kind == "wl") & (clean.time_local == off.time_local.iloc[0])].wl_m.notna().all()
