@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BottomBar } from './BottomBar';
+import { PageDots } from './PageDots';
 
 afterEach(cleanup);
 
@@ -11,19 +11,13 @@ const dots = [
   { id: 'c', name: 'Jalan Mock', level: 'normal' as const },
 ];
 
-function renderBar(props: Partial<Parameters<typeof BottomBar>[0]> = {}) {
+function renderBar(props: Partial<Parameters<typeof PageDots>[0]> = {}) {
   const onDot = vi.fn();
-  render(<MemoryRouter><BottomBar lang="en" dots={dots} active={1} onDot={onDot} {...props} /></MemoryRouter>);
+  render(<MemoryRouter><PageDots lang="en" dots={dots} active={1} onDot={onDot} {...props} /></MemoryRouter>);
   return onDot;
 }
 
-describe('BottomBar', () => {
-  it('links to the flood map and the street list', () => {
-    renderBar();
-    expect(screen.getByRole('link', { name: 'Flood map' })).toHaveAttribute('href', '/map');
-    expect(screen.getByRole('link', { name: 'My streets' })).toHaveAttribute('href', '/streets');
-  });
-
+describe('PageDots', () => {
   it('has one labelled dot per saved street and marks the active one', () => {
     renderBar();
     const buttons = screen.getAllByRole('button', { name: /^Street \d of 3/ });
@@ -46,15 +40,15 @@ describe('BottomBar', () => {
     expect(onDot).toHaveBeenCalledWith(2);
   });
 
-  it('shows no dots for a single unsaved street', () => {
-    renderBar({ dots: undefined });
-    expect(screen.queryByRole('button', { name: /^Street/ })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Flood map' })).toBeInTheDocument();
-  });
-
   it('names the dots in Malay', () => {
-    render(<MemoryRouter><BottomBar lang="ms" dots={dots} active={0} onDot={() => {}} /></MemoryRouter>);
+    render(<MemoryRouter><PageDots lang="ms" dots={dots} active={0} onDot={() => {}} /></MemoryRouter>);
     expect(screen.getByRole('button', { name: 'Jalan 1 daripada 3: Jalan Makyong, Amaran' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Peta banjir' })).toBeInTheDocument();
+  });
+});
+
+describe('PageDots with a single street', () => {
+  it('draws nothing for one street, since there is nowhere to swipe', () => {
+    const { container } = render(<MemoryRouter><PageDots lang="en" dots={[dots[0]]} active={0} onDot={() => {}} /></MemoryRouter>);
+    expect(container).toBeEmptyDOMElement();
   });
 });

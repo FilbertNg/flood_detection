@@ -2,30 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import type { Lang, Level } from '@floodready/shared';
-import { BottomBar } from '../components/BottomBar';
+import { MapFab } from '../components/MapFab';
+import { PageDots } from '../components/PageDots';
 import { StreetView } from '../components/StreetView';
 import { api } from '../lib/api';
 import { t } from '../lib/i18n';
+import { readLastStreet, writeLastStreet } from '../lib/lastStreet';
 import { orderStreets } from '../lib/order';
 import { FindStreetPage } from './FindStreet';
-
-const LAST_KEY = 'floodready.lastStreet';
-
-function readLast(): string | null {
-  try {
-    return sessionStorage.getItem(LAST_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function writeLast(id: string) {
-  try {
-    sessionStorage.setItem(LAST_KEY, id);
-  } catch {
-    // storage blocked: the pager then opens on the first street next time
-  }
-}
 
 const reducedMotion = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -54,7 +38,7 @@ export function SwipeShell({ lang, deviceId, saved, onSave }: ShellProps) {
           showBack={false}
           topLeft={<button type="button" className="add-street" onClick={() => onSave([...saved, id])}>{t(lang, 'addStreet')}</button>}
         />
-        <BottomBar lang={lang} />
+        <MapFab lang={lang} />
       </div>
     );
   }
@@ -78,7 +62,7 @@ function Pager({ lang, deviceId, saved, openId }: { lang: Lang; deviceId: string
     if (!streets.data && !streets.isError) return;
     const levels = Object.fromEntries([...props].map(([id, p]) => [id, p.level]));
     const next = orderStreets(saved, levels);
-    const last = readLast();
+    const last = readLastStreet();
     let start = 0;
     if (openId && next.includes(openId)) start = next.indexOf(openId);
     else if (!ALERTING.includes(levels[next[0]])) start = last && next.includes(last) ? next.indexOf(last) : 0;
@@ -118,7 +102,7 @@ function Pager({ lang, deviceId, saved, openId }: { lang: Lang; deviceId: string
   useEffect(() => {
     if (!order) return;
     const id = order[active];
-    writeLast(id);
+    writeLastStreet(id);
     navigate(`/street/${encodeURIComponent(id)}`, { replace: true });
   }, [order, active, navigate]);
 
@@ -157,12 +141,19 @@ function Pager({ lang, deviceId, saved, openId }: { lang: Lang; deviceId: string
             aria-hidden={i !== active ? 'true' : undefined}
           >
             {Math.abs(i - active) <= 1 && (
-              <StreetView id={id} lang={lang} deviceId={deviceId} active={i === active} showBack={false} />
+              <StreetView
+                id={id}
+                lang={lang}
+                deviceId={deviceId}
+                active={i === active}
+                showBack={false}
+                belowHero={<PageDots lang={lang} dots={dots} active={i} onDot={goTo} />}
+              />
             )}
           </section>
         ))}
       </div>
-      <BottomBar lang={lang} dots={dots} active={active} onDot={goTo} />
+      <MapFab lang={lang} />
     </div>
   );
 }

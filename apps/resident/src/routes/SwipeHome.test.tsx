@@ -105,15 +105,21 @@ describe('SwipeShell', () => {
     const onSave = renderShell('/street/BBR-persiaran-batu-belah', ['BBR-jalan-makyong']);
     const add = await screen.findByRole('button', { name: '+ Add to my streets' }, slow);
     expect(screen.queryByRole('button', { name: /^Street \d/ })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Flood map' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Flood map and location' })).toHaveAttribute('href', '/map');
     fireEvent.click(add);
     expect(onSave).toHaveBeenCalledWith(['BBR-jalan-makyong', 'BBR-persiaran-batu-belah']);
   });
 
-  it('has no Back link on the full-screen pages; the bottom bar navigates', async () => {
-    renderShell('/', ['BBR-jalan-makyong']);
+  it('has no bottom bar: a red map button opens the map and the dots sit under the hero card', async () => {
+    renderShell('/', ['BBR-jalan-makyong', 'BBR-persiaran-batu-belah']);
     const page = await screen.findByRole('heading', { level: 1, name: 'Jalan Makyong' }, slow);
-    expect(within(page.closest('.street') as HTMLElement).queryByRole('link', { name: /Back/ })).toBeNull();
-    expect(screen.getByRole('link', { name: 'My streets' })).toHaveAttribute('href', '/streets');
+    const street = page.closest('.street') as HTMLElement;
+    expect(within(street).queryByRole('link', { name: /Back/ })).toBeNull();
+    expect(document.querySelector('.bottom-bar')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'My streets' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Flood map and location' })).toHaveAttribute('href', '/map');
+    const dots = within(street).getByRole('group', { name: 'Your streets' });
+    expect(street.querySelector('.hero')!.nextElementSibling).toBe(dots);
+    expect(within(dots).getAllByRole('button')).toHaveLength(2);
   });
 });
