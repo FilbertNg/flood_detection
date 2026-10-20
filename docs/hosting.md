@@ -101,7 +101,9 @@ The script then stops at a `Password:` prompt. Type the password and press Enter
 
 Cloudflare builds the apps from GitHub on every push to `main`. Do this twice, once per app.
 
-1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**. Authorise GitHub and pick the repository `FilbertNg/flood_detection`.
+1. Cloudflare dashboard → **Workers & Pages** → **Create application** → select the **Pages** tab (not Workers; if only Workers shows, use the small "Looking to deploy Pages? **Get started**" link) → **Import an existing Git repository**. Authorise GitHub, pick `FilbertNg/flood_detection`, **Begin setup**.
+
+   **Check you are in Pages:** the form has **Build command** and **Build output directory** and no **Deploy command**. If you see a "Deploy command" (`npx wrangler deploy`), you are creating a *Worker*: it builds, then fails with "application detection logic has been run in the root of a workspace". Delete that project (its **Settings** → **Delete**) and start again with the Pages tab.
 2. **Production branch:** `main`.
 3. **Build settings** (Framework preset: **None**):
 
@@ -206,6 +208,7 @@ It prints `https://<random-words>.trycloudflare.com`. Then:
 | Apps load but show no map data | API not running, Funnel off, or `CORS_ORIGINS` missing the Pages address | Step 7 and Step 6; browser dev tools → Console shows "CORS" errors |
 | `…ts.net` doesn't open | Funnel not enabled or approved | Step 2.2–2.3; `tailscale funnel status` |
 | Pages build fails at install | pnpm version | `PNPM_VERSION=9.15.0` in the project's variables |
+| Deploy fails: "application detection logic has been run in the root of a workspace" | The project was created as a Worker, not Pages | Step 5.1: delete it and create it from the **Pages** tab |
 | "Allow notifications" does nothing | VAPID keys missing, or the page isn't the installed app | Step 3 (*Ask Claude* to check `/api/v1/push/public-key`); install the app first |
 | Push never arrives | Phone battery saver, Chrome notifications blocked, or no alert on the chosen street | Android settings → Chrome → Notifications on; pick a street that alerts in the replay |
 | Admin login says "admin login not configured" (503) | `JWT_SECRET` missing or too short, or no admin user | Step 3 and Step 4 |
