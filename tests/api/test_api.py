@@ -120,6 +120,50 @@ def test_street_detail_uses_the_station_closest_to_warning_with_a_fresh_reading(
     assert d["river_forecast"]["name"] == "Sg. Binjai di Pekan Meru"
 
 
+def _blank_wl(runner, graph_id):
+    real = runner.ctx.load_readings
+
+    def load(start, end):
+        df = real(start, end).copy()
+        df.loc[(df.graph_id == graph_id) & (df.kind == "wl"), "wl_m"] = float("nan")
+        return df
+    runner.ctx.load_readings = load
+
+
+def test_river_forecast_follows_the_first_live_candidate(runner, client):
+    seen = []
+    runner.ctx.river_forecast = lambda readings, gid, at, live: seen.append(gid) or {
+        "graph_id": gid, "wl_now_m": 3.5, "wl_now_time": "2024-11-12T09:00:00+08:00", "warning_m": 4.0, "points": []}
+    runner.ctx.street_stations = {"BBR-prone-street": {"wl": "26558", "wl_candidates": ["26558", "PEKANMERU"], "rf": [],
+                                                       "method": "flow", "distance_m": 5.0}}
+    _blank_wl(runner, "26558")                       # QC has blanked the dead gauge
+    replay_until(client, "09:00")
+    d = client.get("/api/v1/streets/BBR-prone-street").json()
+    assert seen[-1] == "PEKANMERU" and d["river_forecast"]["name"] == "Sg. Binjai di Pekan Meru"
+
+
+def test_river_forecast_is_null_when_every_candidate_is_dead(runner, client):
+    seen = []
+    runner.ctx.river_forecast = lambda readings, gid, at, live: seen.append(gid) or {"graph_id": gid}
+    runner.ctx.street_stations = {"BBR-prone-street": {"wl": "26558", "wl_candidates": ["26558"], "rf": [],
+                                                       "method": "flow", "distance_m": 5.0}}
+    _blank_wl(runner, "26558")
+    replay_until(client, "09:00")
+    assert client.get("/api/v1/streets/BBR-prone-street").json()["river_forecast"] is None
+    assert seen == []                                # no township-wide borrow either
+
+
+def test_river_forecast_keeps_the_first_candidate_while_it_is_alive(runner, client):
+    seen = []
+    runner.ctx.river_forecast = lambda readings, gid, at, live: seen.append(gid) or {
+        "graph_id": gid, "wl_now_m": 3.5, "wl_now_time": "2024-11-12T09:00:00+08:00", "warning_m": 4.0, "points": []}
+    runner.ctx.street_stations = {"BBR-prone-street": {"wl": "PANDAMARAN", "wl_candidates": ["PANDAMARAN", "PEKANMERU"],
+                                                       "rf": [], "method": "flow", "distance_m": 5.0}}
+    replay_until(client, "09:00")
+    client.get("/api/v1/streets/BBR-prone-street")
+    assert seen[-1] == "PANDAMARAN"
+
+
 def test_river_forecast_uses_the_streets_own_station_and_falls_back_to_the_pick(runner, client):
     seen = []
     runner.ctx.river_forecast = lambda readings, gid, at, live: seen.append(gid) or {

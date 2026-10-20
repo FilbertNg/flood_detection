@@ -47,6 +47,23 @@ def run_pass(session, cfg: dict, with_forecast: bool) -> None:
             log.exception("%s failed", name)
 
 
+TIDE_OUT = ROOT / "data" / "interim" / "tide_hourly.parquet"
+TIDE_RAW = DATA / "tide"
+
+
+def maybe_refresh_tide(session):
+    """Once per day (and after a failure no sooner than 6 h later) re-download the marine tide up to today + 3 d and
+    rebuild the hourly table the API and ML read. Failures are logged, never fatal."""
+    now = jobs.now_myt()
+    if not jobs.tide_refresh_due(TIDE_OUT, now, jobs.read_tide_attempt(TIDE_OUT)):
+        return
+    try:
+        jobs.write_tide_attempt(TIDE_OUT, now)           # shared by loop and --once runs: no hammering after a failure
+        log.info("tide_refresh %s", jobs.run_tide_refresh(session, TIDE_RAW, TIDE_OUT, now.date()))
+    except Exception:
+        log.exception("tide_refresh failed")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
@@ -75,11 +92,13 @@ def main() -> None:
 
     if args.once:
         run_pass(session, cfg, with_forecast=True)
+        maybe_refresh_tide(session)
         return
 
     interval = cfg["jps_live"]["interval_min"] * 60
     last_forecast_hour = None
     while True:
+        maybe_refresh_tide(session)
         now = jobs.now_myt()
         hour = now.strftime("%Y-%m-%d %H")
         run_pass(session, cfg, with_forecast=hour != last_forecast_hour)

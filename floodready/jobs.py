@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import infobanjir as ib
-from . import met, openmeteo, storage
+from . import met, openmeteo, storage, tide
 from .http import fetch_text
 
 log = logging.getLogger(__name__)
@@ -265,3 +265,59 @@ def run_radar(session, root: Path, now_local: datetime) -> dict:
         summary["errors"].append(str(exc))
     (root / "_status.json").write_text(json.dumps(summary, indent=2))
     return summary
+
+# ---------- G3: daily tide refresh ----------
+
+def tide_refresh_due(out_path: Path, now_local: datetime, last_attempt: datetime | None = None,
+                     retry_after: timedelta = timedelta(hours=6)) -> bool:
+    """True when the tide table is missing or was last written on an earlier MYT day, and the last attempt
+    (if any) is at least `retry_after` ago, so a failing download is not hammered. `now_local` is naive MYT;
+    the file time is converted to MYT explicitly, whatever the process timezone."""
+    out_path = Path(out_path)
+    if last_attempt is not None and now_local - last_attempt < retry_after:
+        return False
+    if not out_path.exists():
+        return True
+    written = datetime.fromtimestamp(out_path.stat().st_mtime, MYT)
+    return written.date() != now_local.date()
+
+
+def _attempt_file(out_path: Path) -> Path:
+    out_path = Path(out_path)
+    return out_path.with_name(out_path.stem + ".attempt")
+
+
+def read_tide_attempt(out_path: Path) -> datetime | None:
+    """Time (naive MYT) of the last refresh attempt, kept in a sidecar file so `--once` runs share the backoff."""
+    try:
+        return datetime.fromisoformat(_attempt_file(out_path).read_text().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def write_tide_attempt(out_path: Path, when: datetime) -> None:
+    f = _attempt_file(out_path)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(when.isoformat())
+
+
+def run_tide_refresh(session, raw_dir: Path, out_path: Path, today: date) -> dict:
+    """Download this year's Open-Meteo marine sea level up to today + 3 days (one request), validate it, cache the
+    raw response, rebuild the hourly table the API and ML read (never shrinking it), then drop the superseded
+    chunk(s) with the same start date."""
+    end = today + timedelta(days=3)
+    start = date(today.year, 1, 1)
+    text = fetch_text(session, tide.MARINE_URL, tide.marine_params(start.isoformat(), end.isoformat()))
+    new_series = tide.parse_marine_text(text)          # raises ValueError before anything is cached
+    chunk = storage.save_raw(Path(raw_dir) / f"{start:%Y%m%d}_{end:%Y%m%d}.json.gz", text)
+    table = tide.build_hourly_table(raw_dir, out_path)
+    for old in Path(raw_dir).glob(f"{start:%Y%m%d}_*.json.gz"):
+        if old == chunk:
+            continue
+        try:
+            lost = tide.parse_marine_text(storage.read_raw(old)).dropna().index.difference(new_series.dropna().index)
+        except Exception:
+            lost = []                                  # unparseable: nothing real to keep
+        if len(lost) == 0:                             # keep a chunk that holds real hours the new one lacks
+            old.unlink(missing_ok=True)
+    return {"rows": len(table), "last_hour": str(table.time_local.max())}

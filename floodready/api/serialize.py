@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from ..engine import street_stations
+from ..engine import features, street_stations
+from ..engine.alerts import clear_after
 from ..engine.types import Reason, StreetState
 from ..jobs import now_myt
 from ..ml import forecast as river
@@ -40,10 +41,11 @@ def streets_geojson(ctx: EngineContext, snap: Snapshot) -> dict:
 
 
 def _tide(ctx: EngineContext, start: datetime) -> list[dict]:
-    if ctx.tide is None or not len(ctx.tide):
+    table = ctx.tide_table()
+    if table is None or not len(table):
         return []
-    t = ctx.tide[(ctx.tide.time_local >= pd.Timestamp(start).floor("h")) &
-                 (ctx.tide.time_local <= pd.Timestamp(start) + timedelta(hours=12))]
+    t = table[(table.time_local >= pd.Timestamp(start).floor("h")) &
+              (table.time_local <= pd.Timestamp(start) + timedelta(hours=12))]
     # `filled`: the hour came from the harmonic fit (tide.fill_gaps), not from Open-Meteo. A frame without
     # the tide_filled column (older file) reports false.
     filled = t["tide_filled"].fillna(False).astype(bool) if "tide_filled" in t else pd.Series(False, index=t.index)
@@ -73,6 +75,27 @@ def river_forecast_for(ctx: EngineContext, snap: Snapshot, at: datetime, graph_i
         return None
 
 
+def _street_river_forecast(ctx: EngineContext, snap: Snapshot, at: datetime, street_id: str) -> dict | None:
+    """The forecast for the street's river station at `at`: its first candidate with a valid reading at or before
+    `at` (the same choice the engine made for its rules and ML probability). A street whose candidates are all dead
+    gets no forecast; it does not borrow a township-wide pick."""
+    candidates = street_stations.candidates_for(ctx.street_stations, street_id)
+    if not candidates:
+        return river_forecast_for(ctx, snap, at, None)
+    dead: set[str] = set()
+    if snap.step is not None and len(snap.readings):
+        wl = snap.readings[snap.readings.graph_id.isin(candidates) & (snap.readings.kind == "wl")]
+        feats = features.station_features(wl, at, ctx.stations, ctx.rules_cfg.get("stale_after_min", 120))
+        dead = street_stations.dead_wl(feats, candidates)
+    chosen = street_stations.wl_for(ctx.street_stations, street_id, dead)
+    return river_forecast_for(ctx, snap, at, chosen) if chosen else None
+
+
+def _expired(row: dict) -> bool:
+    end = (row.get("window") or {}).get("end")
+    return bool(end) and pd.Timestamp(end).tz_localize(None) <= pd.Timestamp(now_myt())
+
+
 def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | None:
     match = ctx.streets[ctx.streets.street_id == street_id]
     if match.empty:
@@ -80,10 +103,21 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
     row = match.iloc[0]
     state = _states(snap).get(street_id)
     data_time = snap.step.time if snap.step else datetime.now()
-    history = [a for a in snap.alerts if a["street_id"] == street_id]
-    latest = history[0] if history else None
-    active = ({"alert_id": latest["alert_id"], "level": latest["level"], "issued_at": latest["issued_at"]}
-              if latest and latest["kind"] == "alert" else None)
+    history = snap.alerts_for(street_id)
+    # latest row per horizon: a nowcast all-clear never hides an outlook and the reverse; nowcast wins when both are active
+    latest = {}
+    for a in history:
+        latest.setdefault(a.get("horizon", "nowcast"), a)
+    now_row, out_row = latest.get("nowcast"), latest.get("outlook")
+    # an alert stays active while the street is elevated, or while its all-clear is held (the state is less than
+    # alerts.clear_after_min past the alert); a missed all-clear drops out once the hold is over
+    still_elevated = state is None or state.level.json != "normal"
+    if not still_elevated and now_row is not None and now_row["kind"] == "alert":
+        issued = pd.Timestamp(now_row["issued_at"]).tz_localize(None)
+        still_elevated = pd.Timestamp(state.data_time) - issued < clear_after(ctx.rules_cfg["alerts"])
+    pick = (now_row if now_row and now_row["kind"] == "alert" and still_elevated
+            else out_row if out_row and out_row["kind"] == "alert" and not _expired(out_row) else None)
+    active = {"alert_id": pick["alert_id"], "level": pick["level"], "issued_at": pick["issued_at"]} if pick else None
     rain_next = ctx.forecast(data_time) if (ctx.forecast is not None and snap.mode == "live") else []
     reasons = [reason(r) for r in state.reasons] if state else []
     if ctx.radar is not None and snap.mode == "live":
@@ -107,7 +141,7 @@ def street_detail(ctx: EngineContext, snap: Snapshot, street_id: str) -> dict | 
         "data_time": iso(data_time),
         "rain_next_12h": rain_next,
         "tide": _tide(ctx, data_time),
-        "river_forecast": river_forecast_for(ctx, snap, data_time, street_stations.wl_for(ctx.street_stations, street_id)),
+        "river_forecast": _street_river_forecast(ctx, snap, data_time, street_id),
         "stations": list(street_stations.stations_for(ctx.street_stations, street_id)
                          or [s["graph_id"] for s in ctx.township["stations"]]),
         "active_alert": active,

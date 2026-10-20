@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import type { Lang, Level } from '@floodready/shared';
+import { AlertHistory } from '../components/AlertHistory';
 import { RainBars, TideLine } from '../components/Bars';
 import { LevelBadge } from '../components/LevelBadge';
+import { VerifySheet } from '../components/VerifySheet';
 import { api } from '../lib/api';
 import { dayTime, percent, riverForecastText, windowText } from '../lib/format';
 import { t, type StringKey } from '../lib/i18n';
@@ -11,7 +13,7 @@ const ADVICE: Record<Level, StringKey> = {
   normal: 'adviceNormal', watch: 'adviceWatch', warning: 'adviceWarning', danger: 'adviceDanger',
 };
 
-export function StreetPage({ lang }: { lang: Lang }) {
+export function StreetPage({ lang, deviceId }: { lang: Lang; deviceId: string }) {
   const { id = '' } = useParams();
   const { data, isLoading, isError } = useQuery({
     queryKey: ['street', id],
@@ -20,6 +22,8 @@ export function StreetPage({ lang }: { lang: Lang }) {
   });
 
   const river = data ? riverForecastText(data.river_forecast, lang) : null;
+
+  const verify = !!data?.active_alert && (data.active_alert.level === 'warning' || data.active_alert.level === 'danger');
 
   if (isLoading) return <p className="pad">{t(lang, 'loading')}</p>;
   if (isError || !data) return <p className="pad">{t(lang, 'error')}</p>;
@@ -79,6 +83,14 @@ export function StreetPage({ lang }: { lang: Lang }) {
           <p className="muted small">{t(lang, 'riverNote')}</p>
         </section>
       )}
+
+      {verify ? (
+        <VerifySheet key={data.active_alert!.alert_id} lang={lang} deviceId={deviceId} streetId={data.street_id} alertId={data.active_alert!.alert_id} mode="verify" />
+      ) : (
+        <Link to={`/report?street=${encodeURIComponent(data.street_id)}`} className="secondary report-link">{t(lang, 'reportLink')}</Link>
+      )}
+
+      <AlertHistory history={data.history} lang={lang} />
 
       <section className="card">
         <h2>{t(lang, 'rainNext')}</h2>

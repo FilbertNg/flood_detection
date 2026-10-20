@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router';
 import type { Lang, StreetProperties } from '@floodready/shared';
+import { Credits } from '../components/Credits';
 import { LevelBadge } from '../components/LevelBadge';
 import { StreetMap } from '../components/StreetMap';
 import { api } from '../lib/api';
@@ -15,8 +16,10 @@ export function HomePage({ lang, mine }: { lang: Lang; mine: string[] }) {
 
   const props = data.features.map((f) => f.properties);
   const atRisk = props.filter((p) => p.level === 'warning' || p.level === 'danger').length;
+  const atWatch = props.filter((p) => p.level === 'watch').length;
   const followed = mine.map((id) => props.find((p) => p.street_id === id)).filter((p): p is StreetProperties => !!p);
   const alerting = followed.filter((p) => p.level === 'warning' || p.level === 'danger');
+  const watching = followed.filter((p) => p.level === 'watch');
 
   return (
     <div className="home">
@@ -25,9 +28,14 @@ export function HomePage({ lang, mine }: { lang: Lang; mine: string[] }) {
           ⚠ {t(lang, 'activeAlert')}: {alerting[0].name}
         </Link>
       )}
+      {alerting.length === 0 && watching.length > 0 && (
+        <Link to={`/street/${watching[0].street_id}`} className="alert-banner watch">
+          {t(lang, 'watchAlert')}: {watching[0].name}
+        </Link>
+      )}
       <StreetMap data={data} mine={mine} onSelect={(id) => navigate(`/street/${id}`)} />
       <section className="pad">
-        <p className="summary"><strong>{atRisk}</strong> {t(lang, 'streetsAtRisk')}</p>
+        <p className="summary"><strong>{atRisk}</strong> {t(lang, 'streetsAtRisk')} · {atWatch} {t(lang, 'streetsAtWatch')}</p>
         <div className="row">
           <h2>{t(lang, 'myStreets')}</h2>
           <Link to="/streets" className="link">{t(lang, 'edit')}</Link>
@@ -43,7 +51,8 @@ export function HomePage({ lang, mine }: { lang: Lang; mine: string[] }) {
             </li>
           ))}
         </ul>
-        <p className="credits">{t(lang, 'credits')}</p>
+        {alerting.length === 0 && <Link to="/report" className="secondary report-link">{t(lang, 'reportLink')}</Link>}
+        <Credits lang={lang} />
       </section>
     </div>
   );

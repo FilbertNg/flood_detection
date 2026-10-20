@@ -8,7 +8,6 @@ Usage: python scripts/build_tide.py            # re-parse the cached raw JSON in
 """
 from __future__ import annotations
 
-import json
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -36,10 +35,7 @@ def download() -> None:
 
 
 def load_cached() -> pd.Series:
-    """All cached chunks; where chunks overlap (a later, longer download) the latest file wins."""
-    parts = [tide.series_from_marine(json.loads(storage.read_raw(p))) for p in sorted(RAW.glob("*.json.gz"))]
-    series = pd.concat(parts[::-1])
-    return series[~series.index.duplicated()].sort_index()
+    return tide.load_cached(RAW)
 
 
 def main() -> None:

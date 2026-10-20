@@ -148,7 +148,7 @@ def save_model(model, path: Path, features: list[str], card: dict, params: dict 
     path.parent.mkdir(parents=True, exist_ok=True)
     params = params or MODEL_PARAMS
     joblib.dump({"model": model, "features": features, "params": params,
-                 "trained_at": datetime.now().isoformat(timespec="seconds")}, path)
+                 "trained_at": datetime.now().isoformat(timespec="seconds")}, path, compress=3)
     path.with_suffix(".json").write_text(json.dumps({"features": features, "params": params, **card},
                                                     indent=2, default=str), encoding="utf-8")
 

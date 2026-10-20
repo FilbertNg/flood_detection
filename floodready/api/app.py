@@ -1,7 +1,8 @@
 """Production wiring: build the engine context from the repo's data and expose `app`.
 
 uvicorn floodready.api.app:app --port 8000
-Environment: TOWNSHIP (default BBR), ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET, CORS_ORIGINS.
+Environment (also read from <repo>/.env): TOWNSHIP (default BBR), DATABASE_URL, UPLOADS_DIR, VAPID_PUBLIC_KEY,
+VAPID_PRIVATE_KEY, VAPID_SUBJECT, ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET, CORS_ORIGINS.
 """
 from __future__ import annotations
 
@@ -16,8 +17,10 @@ import geopandas as gpd
 import pandas as pd
 import yaml
 
-from .. import live, radar
-from ..engine import street_stations
+from .. import live, met_parse, radar
+from .. import tide as tide_mod
+from ..db import repo
+from ..engine import outlook, street_stations
 from ..engine.replay import load_archive_readings
 from ..ml import dataset, forecast as river, predict
 from .main import create_app
@@ -48,7 +51,7 @@ def build_context(township_id: str = "BBR") -> EngineContext:
         return a[(a.time_local >= pd.Timestamp(start)) & (a.time_local <= pd.Timestamp(end))]
 
     def load_live(since: datetime) -> pd.DataFrame:
-        return live.load_live_readings(DATA / "raw" / "jps_live", since, set(ids))
+        return live.load_live_readings(DATA / "raw" / "jps_live", since, set(ids), archive_dir=hist)
 
     def forecast(at: datetime) -> list[dict]:
         files = sorted(glob.glob(str(DATA / "raw" / "openmeteo_live" / "*.parquet")))
@@ -62,8 +65,7 @@ def build_context(township_id: str = "BBR") -> EngineContext:
         f = f[(f.time_local > pd.Timestamp(at)) & (f.time_local <= pd.Timestamp(at) + timedelta(hours=12))]
         return [{"time": iso(t), "mm": float(mm or 0)} for t, mm in zip(f.time_local, f.precip_mm)]
 
-    tide_path = DATA / "interim" / "tide_hourly.parquet"
-    tide = pd.read_parquet(tide_path) if tide_path.exists() else None
+    tide_cache = tide_mod.TideTable(DATA / "interim" / "tide_hourly.parquet")   # reloaded when the daily refresh rewrites it
 
     bundles = river.BundleCache(ROOT / "models")
     river_cache: dict = {}
@@ -77,7 +79,7 @@ def build_context(township_id: str = "BBR") -> EngineContext:
             if key in river_cache:
                 return river_cache[key]
         bundle = bundles.get(at, is_live)
-        out = river.forecast_from_readings(bundle, readings, stations, tide, graph_id, at) if bundle else None
+        out = river.forecast_from_readings(bundle, readings, stations, tide_cache.get(), graph_id, at) if bundle else None
         if bundle is not None:                      # a missing model is retried later, never cached here
             with river_lock:
                 if len(river_cache) >= 64:
@@ -88,13 +90,40 @@ def build_context(township_id: str = "BBR") -> EngineContext:
     return EngineContext(
         township=town, streets=streets[["street_id", "name", "township_id", "susceptibility", "geometry"]],
         stations=stations, rules_cfg=_yaml("rules.yaml"), matrix=_yaml("risk_matrix.yaml")["matrix"],
-        ml_cfg=_yaml("ml.yaml"), tide=tide,
+        ml_cfg=_yaml("ml.yaml"), tide=tide_cache.get(), tide_loader=tide_cache.get,
         load_readings=load_readings, load_live_readings=load_live,
         bundle_for=lambda when, is_live: predict.bundle_for(ROOT / "models", when, live=is_live),
         radar=lambda now: radar.latest_reason(DATA / "raw" / "radar", town["centre"]["lat"], town["centre"]["lon"], now),
         street_stations=street_stations.load(ROOT / "assets" / "geo" / f"{township_id.lower()}_street_stations.json"),
         forecast=forecast, river_forecast=river_forecast,
+        outlook_inputs=lambda now: (met_parse.load_latest(DATA / "raw" / "met_warnings"),
+                                    outlook.load_forecast(DATA / "raw" / "openmeteo_live", township_id)),
     )
 
 
-app = create_app(Runner(build_context(os.environ.get("TOWNSHIP", "BBR"))))
+def load_env_file(path: Path) -> None:
+    """Read KEY=VALUE lines of a .env file into os.environ (existing variables win; no extra dependency)."""
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, value = line.partition("=")
+            value = value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":      # strip a matching quote pair only
+                value = value[1:-1]
+            os.environ.setdefault(key.strip(), value)
+
+
+def build_runner() -> Runner:
+    load_env_file(ROOT / ".env")
+    db_url = os.environ.get("DATABASE_URL", "sqlite:///data/floodready.db")
+    if db_url.startswith("sqlite:///") and not db_url.startswith("sqlite:////") and ":memory:" not in db_url:
+        db_path = ROOT / db_url.removeprefix("sqlite:///")        # relative sqlite paths are relative to the repo
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        db_url = f"sqlite:///{db_path.as_posix()}"
+    engine = repo.connect(db_url)
+    return Runner(build_context(os.environ.get("TOWNSHIP", "BBR")), db=engine)
+
+
+app = create_app(build_runner())

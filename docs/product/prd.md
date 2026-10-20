@@ -158,7 +158,7 @@ Every alert becomes a measurable prediction.
 
 | Resident input | When | Counts as |
 | --- | --- | --- |
-| "Yes, flooding here" (+ depth: ankle / knee / above knee, optional photo) | Prompted with each Warning/Danger push, and on the street page during an active alert | Confirmation; first "Yes" time gives the live lead time |
+| "Yes, flooding here" (+ depth: ankle / knee / above knee, optional photo) | Prompted with each Warning/Danger push (not with Watch), and on the street page during an active alert | Confirmation; first "Yes" time gives the live lead time |
 | "No flooding here" | Same | Evidence of a false alarm |
 | "Not sure" | Same | Ignored in scoring |
 | "Report a flood" (no alert active) | Any time | **Missed flood**: the most important signal for improving recall |
@@ -220,9 +220,9 @@ Priority = High if the street had confirmed floods affecting homes (depth "knee"
 | TRG-5 | Trigger | River-level forecast curve (quantile model, p50/p90, 1–2 h ahead) on Resident and Admin charts | Should |
 | TRG-6 | Trigger | Every alert carries an **expected time window** (Nowcast: from rule-to-flood lag on past events, shifted by tide; Outlook: forecast peak-rain hours overlapped with high tide) and **ranked plain-language reasons** | Must |
 | TRG-7 | Trigger | Street flash-flood classifier trained on news and resident labels (township-day); ships only with ≥ 20 labelled events and if it beats TRG-3 | Should |
-| ALR-1 | Alerts | **Web Push** (PWA, service worker, VAPID) to residents subscribed to a street when it reaches Warning or Danger: level, street, time window, top reasons, action, link to the street page, and "Is it flooding here?" buttons. Text in BM or English | Must |
+| ALR-1 | Alerts | **Web Push** (PWA, service worker, VAPID) to residents subscribed to a street when it reaches Watch, Warning or Danger (`alerts.push_levels`; team decision 17 Oct 2026): level, street, time window, top reasons, action, link to the street page, and "Is it flooding here?" buttons. Text in BM or English | Must |
 | ALR-2 | Alerts | Outlook push when 6–24 h risk is high | Must |
-| ALR-3 | Alerts | No repeat alert for the same street within 60 min unless the level rises; "All clear" push when it returns to Normal | Must |
+| ALR-3 | Alerts | No repeat alert for the same street within 60 min unless the level rises; "All clear" push when it returns to Normal, but not before the alert is `alerts.clear_after_min` (60 min) old; the alert stays active until then | Must |
 | ALR-4 | Alerts | Alert status (confirmed / not confirmed / unverified) from the sensor and resident answers, using the *Live benchmark* rules; "Confirmed by neighbours" follow-up push | Must |
 | ALR-5 | Alerts | Telegram bot fallback with the same messages, for iPhone users who don't install the PWA | Could |
 | RES-1 | Resident app | Onboarding without an account: choose street(s) by search or by tapping the map, choose BM/EN, allow notifications; prompt to install as an app (needed for push on iPhone) | Must |
@@ -326,7 +326,7 @@ The first DevOps check is whether JPS Infobanjir answers requests from GitHub's 
 
 1. Resident opens the link or scans a QR code in the township, picks BM or English, chooses their street(s) on the map or by search, and allows notifications. iPhone users are guided to "Add to Home Screen" first.
 2. An **Outlook** push arrives the day before, or that afternoon, when 6–24 h risk is high: area, time window, reasons.
-3. A **Nowcast** push arrives when the street reaches Warning: street, time window, top reasons, action ("Move your car to \[nearest higher car park set by SDP ops\]") and "Is it flooding here? Yes / No".
+3. A **Watch** push arrives when the street reaches Watch (rain building, river rising), then a **Nowcast** push when it reaches Warning: street, time window, top reasons, action ("Move your car to \[nearest higher car park set by SDP ops\]") and "Is it flooding here? Yes / No".
 4. Tapping the push opens the street page: map of the impacted area, level, time window, ranked reasons, next 12 h rain, tide, what to do.
 5. During and after the event, the resident answers Yes / No / Not sure, adds depth and optionally a photo.
 6. A "Confirmed by neighbours" or "All clear" push follows.

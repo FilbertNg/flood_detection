@@ -47,4 +47,5 @@ def test_alerts_carry_a_push_flag_from_config(runner):
     runner.start_replay(date(2024, 11, 12), speed=None, start="06:00", end="14:00")
     alerts = runner.snapshot().alerts
     assert {a["level"] for a in alerts} >= {"watch", "warning"}
-    assert all(a["push"] == (a["level"] in ("warning", "danger")) for a in alerts if a["kind"] == "alert")
+    assert all(a["push"] == (a["level"] in ("watch", "warning", "danger")) for a in alerts if a["kind"] == "alert")
+    assert not any(a["push"] for a in alerts if a["kind"] != "alert")       # all-clears are never pushed

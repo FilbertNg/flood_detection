@@ -6,11 +6,16 @@ against JUPEM tide tables before quoting tide in public material.
 """
 from __future__ import annotations
 
+import json
+import logging
+import time
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+log = logging.getLogger(__name__)
 MARINE_URL = "https://marine-api.open-meteo.com/v1/marine"
 PORT_KLANG_OFFSHORE = (2.95, 101.25)
 
@@ -130,6 +135,64 @@ def high_water_times_subhourly(fit: HarmonicFit, start: pd.Timestamp, end: pd.Ti
     return grid[is_high.fillna(False).to_numpy()]
 
 
+def hours_to_nearest_high(index: pd.DatetimeIndex, highs) -> np.ndarray:
+    """Signed hours from each time in `index` to the nearest high water in `highs` (+ = coming, - = past).
+    NaN where none lies within MAX_HOURS_TO_HIGH. Ties go to the coming high."""
+    highs = np.sort(np.asarray(highs, dtype="datetime64[ns]"))
+    times = index.to_numpy()
+    nearest = np.full(len(times), np.nan)
+    if len(highs):
+        pos = np.searchsorted(highs, times)
+        nxt = highs[np.minimum(pos, len(highs) - 1)]
+        prv = highs[np.maximum(pos - 1, 0)]
+        to_next = (nxt - times) / np.timedelta64(1, "h")
+        to_prev = (prv - times) / np.timedelta64(1, "h")
+        to_next = np.where(to_next < 0, np.inf, to_next)
+        to_prev = np.where(to_prev > 0, -np.inf, to_prev)
+        nearest = np.where(to_next <= -to_prev, to_next, to_prev)
+        nearest = np.where(np.isfinite(nearest) & (np.abs(nearest) <= MAX_HOURS_TO_HIGH), nearest, np.nan)
+    return nearest
+
+
+def tide_at(hourly: pd.DataFrame, index: pd.DatetimeIndex) -> pd.DataFrame:
+    """tide_height_m and hours_to_high_tide valid at each time in `index` (any sub-hourly grid), from the
+    hourly table of `tide_features` (columns time_local, tide_height_m, hours_to_high_tide).
+
+    Why evaluating between the hours is allowed: the table is a model product (Open-Meteo marine
+    `sea_level_height_msl`: tides plus inverted-barometer and sea-surface-height effects, with harmonic gap fill),
+    not a gauge observation. It is available as a forecast ahead of t (build_tide --refresh fetches up to today + 3 d),
+    so the value at t, and the hour after it, is known at t: no look-ahead. Reading the 09:00 value at 09:45
+    would be up to 45 min stale while the tide moves ~0.5 m/h. Archived past values differ slightly from what the
+    forecast showed live (non-harmonic part: ~4.7 cm/h std, against ~0.5 m/h of tidal movement). If a column here
+    ever becomes a real observation, do not interpolate it towards the next hour.
+
+    Height: linear in time between the hourly values (error vs the true curve ~2 cm RMS for the 12.4 h tide). Times
+    next to a NaN hour or a missing row (table rows more than 1 h apart) are NaN, never bridged.
+    Hours to high: the high-water times are recovered from the hourly column (hour + hours_to_high_tide, which
+    already come from the sub-hourly harmonic fit with the phase shift) and the nearest one is re-evaluated at
+    each time. NaN outside the table's span or beyond MAX_HOURS_TO_HIGH.
+    Timestamps are compared in nanoseconds, so table and grid may carry different datetime units."""
+    h = hourly.drop_duplicates("time_local").set_index("time_local").sort_index()
+    hours = pd.DatetimeIndex(h.index).as_unit("ns")
+    index = pd.DatetimeIndex(index).as_unit("ns")
+    height = h["tide_height_m"].to_numpy(float)
+    ok = ~np.isnan(height)
+    out_h = np.full(len(index), np.nan)
+    if ok.sum() >= 2:
+        out_h = np.interp(index.asi8.astype(float), hours.asi8[ok].astype(float), height[ok], left=np.nan, right=np.nan)
+        # a gap must not be bridged by the line: both bracketing rows must be valid and at most one hour apart
+        pos = np.clip(np.searchsorted(hours.asi8, index.asi8, side="right") - 1, 0, len(hours) - 1)
+        nxt = np.minimum(pos + 1, len(hours) - 1)
+        exact = hours.asi8[pos] == index.asi8
+        adjacent = (ok[pos] & ok[nxt]) & (hours.asi8[nxt] - hours.asi8[pos] <= 3_600_000_000_000)
+        out_h = np.where(exact | adjacent, out_h, np.nan)
+    rel = h["hours_to_high_tide"].to_numpy(float)
+    keep = ~np.isnan(rel)
+    highs = np.unique((hours[keep] + pd.to_timedelta(np.round(rel[keep] * 3600), unit="s")).to_numpy())
+    in_span = (index >= hours.min()) & (index <= hours.max())
+    to_high = np.where(in_span, hours_to_nearest_high(index, highs), np.nan)
+    return pd.DataFrame({"tide_height_m": out_h, "hours_to_high_tide": to_high}, index=index)
+
 def tide_features(series: pd.Series, filled: pd.Series | None = None, fit: HarmonicFit | None = None,
                   phase_shift_min: float = TIDE_PHASE_SHIFT_MIN) -> pd.DataFrame:
     """tide_height_m, signed hours to the nearest high tide (+ = coming, - = past) and `tide_filled`
@@ -144,19 +207,105 @@ def tide_features(series: pd.Series, filled: pd.Series | None = None, fit: Harmo
         highs = high_water_times_subhourly(fit, series.index.min(), series.index.max(), phase_shift_min).to_numpy()
     else:
         highs = high_tide_times(series).to_numpy()
-    times = series.index.to_numpy()
-    nearest = np.full(len(times), np.nan)
-    if len(highs):
-        pos = np.searchsorted(highs, times)
-        nxt = highs[np.minimum(pos, len(highs) - 1)]
-        prv = highs[np.maximum(pos - 1, 0)]
-        to_next = (nxt - times) / np.timedelta64(1, "h")
-        to_prev = (prv - times) / np.timedelta64(1, "h")
-        to_next = np.where(to_next < 0, np.inf, to_next)
-        to_prev = np.where(to_prev > 0, -np.inf, to_prev)
-        nearest = np.where(to_next <= -to_prev, to_next, to_prev)
-        nearest = np.where(np.isfinite(nearest) & (np.abs(nearest) <= MAX_HOURS_TO_HIGH), nearest, np.nan)
+    nearest = hours_to_nearest_high(series.index, highs)
     return pd.DataFrame({"time_local": series.index, "tide_height_m": series.to_numpy(),
                          "hours_to_high_tide": nearest,
                          "tide_filled": (filled.reindex(series.index, fill_value=False).to_numpy(bool)
                                          if filled is not None else np.zeros(len(series), bool))})
+
+def parse_marine_text(text: str) -> pd.Series:
+    """Validated hourly series from a marine API response body; ValueError if it is not a usable payload."""
+    try:
+        hourly = json.loads(text)["hourly"]
+        times, values = hourly["time"], hourly["sea_level_height_msl"]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise ValueError(f"not a marine payload: {exc!r}") from exc
+    if len(times) != len(values) or len(times) < 24 or all(v is None for v in values):
+        raise ValueError(f"marine payload unusable: {len(times)} times, {len(values)} values")
+    return series_from_marine({"hourly": hourly})
+
+
+def load_cached(raw_dir: Path) -> pd.Series:
+    """All parseable cached marine chunks in `raw_dir`; an unparseable file is skipped with a warning. Where chunks
+    overlap the latest file wins, but a null never overrides a real value from an older chunk."""
+    from . import storage
+    parts = []
+    for p in sorted(Path(raw_dir).glob("*.json.gz")):
+        try:
+            parts.append(parse_marine_text(storage.read_raw(p)))
+        except Exception as exc:
+            log.warning("tide chunk %s skipped: %s", p.name, exc)
+    if not parts:
+        raise ValueError(f"no usable tide chunks in {raw_dir}")
+    series = pd.concat(parts[::-1]).dropna()
+    return series[~series.index.duplicated()].sort_index()
+
+
+def _replace_with_retry(tmp: Path, target: Path, tries: int = 5, wait_s: float = 0.2) -> None:
+    for attempt in range(tries):
+        try:
+            tmp.replace(target)
+            return
+        except PermissionError:                  # Windows: a reader has the file open
+            if attempt == tries - 1:
+                raise
+            time.sleep(wait_s)
+
+
+def build_hourly_table(raw_dir: Path, out_path: Path, seed_from_existing: bool = True) -> pd.DataFrame:
+    """Rebuild the hourly tide table (tide_features with the sub-hourly +shifted high waters) from the cached raw
+    chunks and write it to `out_path` atomically.
+
+    With `seed_from_existing`, the real (not harmonically filled) hours of the current table fill what the raw
+    chunks lack, so a host without the raw history keeps it. The table is never allowed to shrink: if the result
+    starts later or has fewer rows than the current one, nothing is written and RuntimeError is raised.
+    A table file that cannot be replaced (a reader holds it) also raises, leaving the old file."""
+    out_path = Path(out_path)
+    old = pd.read_parquet(out_path) if out_path.exists() else None
+    series = load_cached(raw_dir)
+    if seed_from_existing and old is not None and len(old):
+        real = old[~old.tide_filled.astype(bool)].set_index("time_local").tide_height_m.dropna()
+        real.index = pd.DatetimeIndex(real.index).as_unit("ns")
+        series = series.copy()
+        series.index = pd.DatetimeIndex(series.index).as_unit("ns")
+        series = series.combine_first(real).sort_index()
+    filled, mask = fill_gaps(series)
+    features = tide_features(filled, mask, fit=fit_harmonics(series))
+    features['time_local'] = pd.DatetimeIndex(features.time_local).as_unit('us')   # one unit for seeded and fresh builds
+    if old is not None and len(old) and (features.time_local.min() > old.time_local.min() or len(features) < len(old)):
+        msg = (f"tide rebuild refused: {len(features)} rows from {features.time_local.min()} would replace "
+               f"{len(old)} rows from {old.time_local.min()}")
+        log.error(msg)
+        raise RuntimeError(msg)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out_path.with_name(out_path.name + ".tmp")
+    features.to_parquet(tmp, index=False)
+    try:
+        _replace_with_retry(tmp, out_path)
+    except Exception as exc:
+        tmp.unlink(missing_ok=True)
+        log.error("tide table %s not replaced, keeping the old one: %s", out_path, exc)
+        raise RuntimeError(f"tide table not replaced: {exc}") from exc
+    return features
+
+class TideTable:
+    """The hourly tide parquet, re-read whenever its modification time changes (one stat per `get`).
+    A missing file gives None; an unreadable new file keeps the previous table."""
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+        self._mtime: int | None = None
+        self._table: pd.DataFrame | None = None
+
+    def get(self) -> pd.DataFrame | None:
+        try:
+            mtime = self.path.stat().st_mtime_ns
+        except OSError:
+            return self._table
+        if mtime != self._mtime:
+            self._mtime = mtime          # a bad file is logged once, not on every tick
+            try:
+                self._table = pd.read_parquet(self.path)
+            except Exception:
+                log.exception("tide table %s unreadable, keeping the previous one", self.path)
+        return self._table

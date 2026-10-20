@@ -330,6 +330,7 @@ Each task lists: **Owner · Depends on · Files · Interfaces · Acceptance test
 #### E5. Alerts with cooldown and all-clear
 **Depends:** E4 · **Files:** `floodready/engine/alerts.py`, `tests/engine/test_alerts.py`
 - **Acceptance:** WARNING at 09:00 → alert; WARNING again at 09:15 → none (cooldown); DANGER at 10:00 → new alert (level rose); back to NORMAL → one `all_clear`; WATCH never produces an alert.
+- **Hold (added 19 Oct 2026):** the `all_clear` is issued only once the alert is `alerts.clear_after_min` (60 min, default the cooldown) old; until then the alert stays active, and a level that rises still alerts at once.
 
 #### E6. Replay runner + CLI (M1)
 **Depends:** E5, F3 · **Files:** `floodready/engine/replay.py`, `scripts/replay.py`, `tests/engine/test_replay.py`

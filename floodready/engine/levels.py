@@ -50,6 +50,6 @@ def street_state(street_id: str, susceptibility: int, trigger: TriggerResult, ru
         flood_probability=flood_probability, fired_by=trigger.fired_by,
         window_start=trigger.data_time + timedelta(minutes=window["start"]) if has_window else None,
         window_end=trigger.data_time + timedelta(minutes=window["end"]) if has_window else None,
-        reasons=trigger.reasons if level > Level.NORMAL or trigger.confidence == "low" else (),
+        reasons=trigger.reasons if level > Level.NORMAL or trigger.confidence != "high" else (),
         data_time=trigger.data_time,
     )

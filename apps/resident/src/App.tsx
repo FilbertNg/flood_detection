@@ -6,8 +6,10 @@ import { api } from './lib/api';
 import { dayTime } from './lib/format';
 import { t } from './lib/i18n';
 import { loadPrefs, savePrefs, type Prefs } from './lib/prefs';
+import { usePushSync } from './push/usePushSync';
 import { HomePage } from './routes/Home';
 import { PickStreetsPage } from './routes/PickStreets';
+import { ReportPage } from './routes/Report';
 import { StreetPage } from './routes/Street';
 
 export function App() {
@@ -15,6 +17,7 @@ export function App() {
   const update = (next: Partial<Prefs>) => setPrefs((p) => { const merged = { ...p, ...next }; savePrefs(merged); return merged; });
   const { data: status } = useQuery({ queryKey: ['status'], queryFn: api.status, refetchInterval: 10_000 });
   const lang: Lang = prefs.lang;
+  usePushSync({ deviceId: prefs.deviceId, streets: prefs.streets, lang });
 
   return (
     <div className="app">
@@ -31,8 +34,9 @@ export function App() {
       ) : null}
       <Routes>
         <Route path="/" element={<HomePage lang={lang} mine={prefs.streets} />} />
-        <Route path="/street/:id" element={<StreetPage lang={lang} />} />
-        <Route path="/streets" element={<PickStreetsPage lang={lang} mine={prefs.streets} onSave={(streets) => update({ streets })} />} />
+        <Route path="/street/:id" element={<StreetPage lang={lang} deviceId={prefs.deviceId} />} />
+        <Route path="/report" element={<ReportPage lang={lang} deviceId={prefs.deviceId} mine={prefs.streets} />} />
+        <Route path="/streets" element={<PickStreetsPage lang={lang} mine={prefs.streets} deviceId={prefs.deviceId} onSave={(streets) => update({ streets })} />} />
       </Routes>
     </div>
   );

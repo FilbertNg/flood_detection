@@ -1,0 +1,4 @@
+QC fixtures (real JPS data, no processing beyond selecting rows).
+
+- `storm_20241112.parquet`, `stations_storm.parquet`: the 12 Nov 2024 storm, PEKANMERU and 26558 and neighbours.
+- `pekanmeru_feb2025.parquet`, `stations_pekanmeru.parquet`: raw Infobanjir history rows (15 min) for 20 Jan to 1 Mar 2025 of the PEKANMERU river station, the 8 rain gauges within 10 km of it and the 8 other river stations within 15 km, read from `data/raw/jps_hist/` (the archive from `scripts/archive_jps_history.py`); the station rows are from `data/interim/stations.parquet`. `river26039_apr2026.parquet`, `stations_26039.parquet`: the same selection for the 26039 river station (7 rain gauges, 13 river stations), 20 Mar to 6 May 2026. Both are used by `tests/test_qc_dead_gauge.py`; the PEKANMERU one for 26-27 Feb 2025, when two storm cells over neighbouring catchments left PEKANMERU flat at 2.95 m before its real rise to 4.17 m.
