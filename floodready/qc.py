@@ -368,7 +368,9 @@ def _wl_unresponsive_mask(wl: pd.DataFrame, rain: pd.DataFrame, stations: pd.Dat
             closest = near[int(np.argmin(d[d <= WL_RAIN_RADIUS_KM]))]               # the rain gauge nearest to the station
             over_station = np.minimum(rain_sum.to_numpy(), sums[closest].to_numpy())    # the storm is over the station, not a cell in the next catchment
             hit |= _dead_gauge_hits(lvl, over_station, alert_m, neighbours)
-        out.loc[g.index] = pd.Series(hit, index=grid).reindex(g["time_local"]).to_numpy() & g["wl_m"].notna().to_numpy()
+        # A reading off the 15-min grid (live tables can hold 5-min times) is not judged by this rule: keep it.
+        on_grid = pd.Series(hit, index=grid).reindex(g["time_local"], fill_value=False).to_numpy(dtype=bool)
+        out.loc[g.index] = on_grid & g["wl_m"].notna().to_numpy()
     return out
 
 
