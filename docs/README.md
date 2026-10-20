@@ -21,6 +21,7 @@ Every plan and document lives in this folder. Status and next tasks are in [HAND
 
 | Document | What it is |
 | --- | --- |
+| [hosting.md](hosting.md) | **Put the apps online** step by step: Tailscale Funnel, `.env` secrets (what a VAPID key is), Admin account, Cloudflare Pages, phone push test; marks what only you can do |
 | [runbook.md](runbook.md) | **Start everything on the laptop** after it was off: loggers, API, apps, refill JPS gaps, demo replay, stop, troubleshooting |
 | [api-contract.md](api-contract.md) | API contract between backend and frontend (frozen; changes need a `contract` PR) |
 | [evaluation-report.md](evaluation-report.md) | ML vs rule-floor results and the gate verdict (rewritten by `scripts/train_trigger.py`) |
