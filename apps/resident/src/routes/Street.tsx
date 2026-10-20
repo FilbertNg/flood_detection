@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router';
 import type { Lang, Level } from '@floodready/shared';
 import { AlertHistory } from '../components/AlertHistory';
 import { RainBars, TideLine } from '../components/Bars';
+import { LEVEL_STYLE } from '@floodready/shared';
 import { LevelBadge } from '../components/LevelBadge';
 import { VerifySheet } from '../components/VerifySheet';
 import { api } from '../lib/api';
@@ -36,7 +37,7 @@ export function StreetPage({ lang, deviceId }: { lang: Lang; deviceId: string })
         {t(lang, 'susceptibility')}: {data.susceptibility} {t(lang, 'of5')} · {t(lang, 'dataTime')} {dayTime(data.data_time)}
       </p>
 
-      <section className="card">
+      <section className="card hero" style={{ background: LEVEL_STYLE[data.level].bg, color: LEVEL_STYLE[data.level].fg }}>
         <h2>{t(lang, 'floodRisk')}</h2>
         <LevelBadge level={data.level} lang={lang} large />
         {data.window && (

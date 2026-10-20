@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, Route, Routes } from 'react-router';
 import type { Lang } from '@floodready/shared';
+import { LangSwitch } from './components/LangSwitch';
 import { api } from './lib/api';
 import { dayTime } from './lib/format';
 import { t } from './lib/i18n';
@@ -23,9 +24,7 @@ export function App() {
     <div className="app">
       <header className="top">
         <Link to="/" className="brand">{t(lang, 'appName')} · {t(lang, 'township')}</Link>
-        <button className="lang" onClick={() => update({ lang: lang === 'en' ? 'ms' : 'en' })}>
-          {lang === 'en' ? 'BM' : 'EN'}
-        </button>
+        <LangSwitch lang={lang} onChange={(next) => update({ lang: next })} />
       </header>
       {status?.mode === 'replay' ? (
         <div className="ribbon replay">▶ {t(lang, 'replay')}: {dayTime(status.data_time)}</div>

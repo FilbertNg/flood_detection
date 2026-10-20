@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ByStreetTable } from '../components/ByStreetTable';
 import { ByWeekChart } from '../components/ByWeekChart';
 import { KpiTiles } from '../components/KpiTiles';
+import { OutcomeChart, StationHealthChart, TopStreetsChart } from '../components/StatsCharts';
 import { RainAtOnsetChart } from '../components/RainAtOnsetChart';
 import { StationHealthTable } from '../components/StationHealthTable';
 import { api } from '../lib/api';
@@ -38,10 +39,20 @@ export function StatisticsPage() {
             Outcomes from news: {s.sources.outcomes_from_news} · from residents: {s.sources.outcomes_from_residents}.
             {' '}Replay and demo data are excluded.
           </p>
+          <section className="card"><h2>How alerts ended</h2><OutcomeChart kpis={s.kpis} /></section>
           <section className="card"><h2>Alerts by week</h2><ByWeekChart weeks={s.by_week} /></section>
-          <section className="card"><h2>By street</h2><ByStreetTable rows={s.by_street} /></section>
+          <div className="stats-grid">
+            <section className="card"><h2>Streets with the most alerts</h2><TopStreetsChart rows={s.by_street} /></section>
+            <section className="card"><h2>Station health</h2><StationHealthChart rows={s.station_health} /></section>
+          </div>
           <section className="card"><h2>Rain at flood onset</h2><RainAtOnsetChart rows={s.rain_at_onset} nameOf={nameOf} /></section>
-          <section className="card"><h2>Station health</h2><StationHealthTable rows={s.station_health} /></section>
+          <section className="card"><h2>By street</h2><ByStreetTable rows={s.by_street} /></section>
+          <section className="card">
+            <details>
+              <summary className="small">Station health as table</summary>
+              <StationHealthTable rows={s.station_health} />
+            </details>
+          </section>
         </>
       )}
     </main>

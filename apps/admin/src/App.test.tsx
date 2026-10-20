@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { status, stations, streets } from '@floodready/shared/mocks';
 import { App } from './App';
@@ -28,6 +28,24 @@ describe('App shell', () => {
     for (const name of ['Map', 'Statistics', 'Reports', 'Suggestions', 'Review']) {
       expect(screen.getByRole('link', { name })).toBeInTheDocument();
     }
+  });
+
+  it('groups the navigation in a sidebar: Monitor, Analyse, Follow up', () => {
+    auth.login('t');
+    stubApi({ 'GET /status': status, 'GET /streets': streets, 'GET /stations': stations });
+    renderApp(<App />);
+    const groups: Record<string, string[]> = {
+      Monitor: ['Map'],
+      Analyse: ['Statistics', 'Reports'],
+      'Follow up': ['Suggestions', 'Review'],
+    };
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(nav.closest('aside')).not.toBeNull();
+    for (const [group, links] of Object.entries(groups)) {
+      const list = within(nav).getByRole('list', { name: group });
+      expect(within(list).getAllByRole('link').map((a) => a.textContent)).toEqual(links);
+    }
+    expect(screen.getByRole('button', { name: 'Sign out' }).closest('aside')).not.toBeNull();
   });
 
   it('routes the four admin pages and returns to login on a 401 from them', async () => {
