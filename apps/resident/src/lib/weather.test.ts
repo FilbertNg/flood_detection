@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gaugeRain, hourAt, parseWeather, skyFor, weatherKind, weatherUrl } from './weather';
+import { gaugeRain, hourAt, parseWeather, skyFor, skyGradient, weatherKind, weatherUrl } from './weather';
 
 describe('weatherKind (WMO codes from Open-Meteo)', () => {
   it.each([
@@ -113,5 +113,26 @@ describe('skyFor', () => {
 
   it('falls back to a neutral sky when there is no weather and no gauge rain', () => {
     expect(skyFor('normal', null, null)).toBe('none');
+  });
+});
+
+describe('skyGradient', () => {
+  const lum = (hex: string) => {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const contrastWithWhite = (hex: string) => 1.05 / (lum(hex) + 0.05);
+  /** The stop seen through a glass card: 12 % white over it. */
+  const underGlass = (hex: string) =>
+    '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.88 + 255 * 0.12).toString(16).padStart(2, '0')).join('');
+  const skies = ['clear-day', 'clear-night', 'partly-day', 'partly-night', 'cloudy', 'fog', 'drizzle', 'rain', 'storm', 'alert', 'none'] as const;
+
+  it.each(skies)('%s has three stops, dark enough for white text (>= 4.5:1) even under a glass card', (sky) => {
+    const stops = skyGradient(sky);
+    expect(stops).toHaveLength(3);
+    for (const s of stops) {
+      expect(contrastWithWhite(s)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastWithWhite(underGlass(s))).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });

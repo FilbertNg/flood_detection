@@ -112,3 +112,26 @@ export function skyFor(level: Level, kind: WeatherKind | null, gauge: GaugeRain 
   if (gauge && kind !== 'rain' && kind !== 'storm') return gauge.mm < LIGHT_RAIN_MM ? 'drizzle' : 'rain';
   return kind ?? 'none';
 }
+
+/**
+ * Three vertical stops (top, middle, bottom) per sky. Every stop keeps white text at >= 4.5:1,
+ * also under the street page's 12 % white glass cards, so the prototype's light day blue is
+ * darkened. The canvas adds the clouds and rain on top.
+ */
+const SKY_STOPS: Record<Sky, [string, string, string]> = {
+  'clear-day': ['#174f86', '#1f5f9e', '#2b679c'],
+  'clear-night': ['#0a1228', '#121d3d', '#1e2d55'],
+  'partly-day': ['#244f7a', '#2c5f8f', '#456585'],
+  'partly-night': ['#111a31', '#1b2643', '#2b3858'],
+  cloudy: ['#3f4c5d', '#4f5e70', '#576273'],
+  fog: ['#4b5560', '#525c68', '#59636e'],
+  drizzle: ['#2c3a57', '#3d4b5c', '#556278'],
+  rain: ['#202b39', '#2b3746', '#414f62'],
+  storm: ['#161c2a', '#1d2230', '#323a4d'],
+  alert: ['#15171d', '#1a1d24', '#2a2e38'],
+  none: ['#3c4656', '#4a5566', '#586271'],
+};
+
+export function skyGradient(sky: Sky): [string, string, string] {
+  return SKY_STOPS[sky];
+}
