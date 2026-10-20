@@ -1,8 +1,9 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { skyGradient, type Sky } from '../lib/weather';
 
-/** Rain drops per sky: sparse and short; about half the old full-screen counts, now that the sky fills one card. */
-const DROPS: Partial<Record<Sky, number>> = { drizzle: 22, rain: 45, storm: 85 };
+/** Rain drops per sky: sparse and short. The hero card draws about half of the full-screen view's drops. */
+const DROPS_CARD: Partial<Record<Sky, number>> = { drizzle: 22, rain: 45, storm: 85 };
+const DROPS_FULL: Partial<Record<Sky, number>> = { drizzle: 45, rain: 90, storm: 170 };
 
 /** Cloud cover per sky, 0 (none) to 1 (full). */
 const CLOUDS: Record<Sky, number> = {
@@ -14,16 +15,16 @@ interface Cloud { x: number; y: number; s: number; v: number; puffs: [number, nu
 interface Drop { x: number; y: number; l: number; v: number; a: number }
 
 /**
- * Weather sky inside the street hero card: a 3-stop gradient plus a canvas of soft drifting clouds
+ * Weather sky for the street hero card, or (full) the full-screen sky view: a 3-stop gradient plus a canvas of soft drifting clouds
  * and sparse rain. Decoration only (aria-hidden). Reduced motion draws one still frame; the loop stops
  * when the tab is hidden, on unmount, and while `active` is false (an off-screen pager panel). Warning and Danger ("alert") get no canvas: no rain, no motion.
  */
-export function SkyBackdrop({ sky, active = true }: { sky: Sky; active?: boolean }) {
+export function SkyBackdrop({ sky, active = true, full = false }: { sky: Sky; active?: boolean; full?: boolean }) {
   const [top, mid, bottom] = skyGradient(sky);
   const style = { '--sky-top': top, '--sky-mid': mid, '--sky-bottom': bottom } as CSSProperties;
   return (
     <div className={`sky sky-${sky}`} style={style} aria-hidden="true">
-      {sky !== 'alert' && <SkyCanvas key={sky} clouds={CLOUDS[sky]} drops={DROPS[sky] ?? 0} flash={sky === 'storm'} paused={!active} />}
+      {sky !== 'alert' && <SkyCanvas key={sky} clouds={CLOUDS[sky]} drops={(full ? DROPS_FULL : DROPS_CARD)[sky] ?? 0} flash={sky === 'storm'} paused={!active} />}
     </div>
   );
 }

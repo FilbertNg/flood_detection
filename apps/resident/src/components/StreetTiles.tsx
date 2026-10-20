@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import type { Lang, StreetDetail } from '@floodready/shared';
-import { CURVE, curvePoints, curveRuns } from '../lib/curve';
+import { CURVE, chanceColor, curvePoints, curveRuns } from '../lib/curve';
 import { hhmm } from '../lib/format';
 import { t } from '../lib/i18n';
 import { riverScale, type Thresholds } from '../lib/river';
@@ -16,10 +16,13 @@ const INK = '#121212';
 /**
  * "Rain in the next 12 hours": a scrolling curve of Open-Meteo's chance of rain over the hours our
  * API forecasts, with our mm under each hour. An hour with no chance breaks the line (no guessing).
+ * `card`: the SDP white card (blue line, grey labels, red-ringed Now). `sky`: white on the full-screen
+ * sky (blue to amber to orange line, white Now bubble).
  */
-export function RainCurve({ lang, rain, weather }: { lang: Lang; rain: StreetDetail['rain_next_12h']; weather: WeatherHour[] | null }) {
-  // One fill gradient per curve: several pager panels can be on the page at once.
+export function RainCurve({ lang, rain, weather, tone = 'card' }: { lang: Lang; rain: StreetDetail['rain_next_12h']; weather: WeatherHour[] | null; tone?: 'card' | 'sky' }) {
+  // Gradient ids per curve: several pager panels and the full view can be on the page at once.
   const fillId = useId();
+  const strokeId = useId();
   if (rain.length === 0) return <p className="tile-empty">{t(lang, 'noForecast')}</p>;
   const hours = rain.map((p) => weather?.find((h) => h.hour === p.time.slice(0, 13)) ?? null);
   const points = curvePoints(hours.map((h) => h?.rainChance ?? null));
@@ -27,6 +30,14 @@ export function RainCurve({ lang, rain, weather }: { lang: Lang; rain: StreetDet
   const width = CURVE.col * rain.length, H = CURVE.height;
   const mid = CURVE.top + 0.5 * (H - CURVE.top - CURVE.bottom);
   const now = points[0];
+  const sky = tone === 'sky';
+  const fill = sky ? '#fff' : BLUE;
+  const label = sky ? '#fff' : MUTED;
+  let last = chanceColor(0);
+  const stops = points.map((p, i) => {
+    if (p.chance !== null) last = chanceColor(p.chance);
+    return <stop key={i} offset={`${rain.length > 1 ? (i / (rain.length - 1)) * 100 : 0}%`} stopColor={last} />;
+  });
 
   return (
     <div className="curve-scroll">
@@ -34,23 +45,24 @@ export function RainCurve({ lang, rain, weather }: { lang: Lang; rain: StreetDet
         <svg width={width} height={H} viewBox={`0 0 ${width} ${H}`} aria-hidden="true" className="curve-svg">
           <defs>
             <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor={BLUE} stopOpacity="0.18" />
-              <stop offset="1" stopColor={BLUE} stopOpacity="0" />
+              <stop offset="0" stopColor={fill} stopOpacity="0.18" />
+              <stop offset="1" stopColor={fill} stopOpacity="0" />
             </linearGradient>
+            {sky && <linearGradient id={strokeId} x1="0" x2="1">{stops}</linearGradient>}
           </defs>
-          <line data-guide x1={0} x2={width} y1={mid} y2={mid} stroke={MUTED} strokeOpacity={0.35} strokeDasharray="3 5" />
+          <line data-guide x1={0} x2={width} y1={mid} y2={mid} stroke={label} strokeOpacity={sky ? 0.22 : 0.35} strokeDasharray={sky ? '4 5' : '3 5'} />
           {runs.map((run) => (
             <g key={run.d}>
               <path d={`${run.d} L${run.x1},${H} L${run.x0},${H} Z`} fill={`url(#${fillId})`} />
-              <path data-line d={run.d} fill="none" stroke={BLUE} strokeWidth={2.5} strokeLinecap="round" />
+              <path data-line d={run.d} fill="none" stroke={sky ? `url(#${strokeId})` : BLUE} strokeWidth={sky ? 3 : 2.5} strokeLinecap="round" />
             </g>
           ))}
           {points.slice(1).map((p, i) => p.y !== null && (
-            <text key={i} data-pct x={p.x} y={p.y - 8} textAnchor="middle" fontSize="11" fontWeight="700" fill={MUTED}>{`${p.chance}%`}</text>
+            <text key={i} data-pct x={p.x} y={p.y - 8} textAnchor="middle" fontSize="11" fontWeight="700" fill={label}>{`${p.chance}%`}</text>
           ))}
           {now.y !== null && (
             <g data-now>
-              <circle cx={now.x} cy={now.y} r={15} fill="#fff" stroke={RED} strokeWidth={2.5} />
+              <circle cx={now.x} cy={now.y} r={15} fill="#fff" stroke={sky ? chanceColor(now.chance!) : RED} strokeWidth={sky ? 3 : 2.5} />
               <text x={now.x} y={now.y + 4.5} textAnchor="middle" fontSize="12" fontWeight="800" fill={INK}>{`${now.chance}%`}</text>
             </g>
           )}
@@ -60,7 +72,7 @@ export function RainCurve({ lang, rain, weather }: { lang: Lang; rain: StreetDet
             const w = hours[i];
             return (
               <li key={p.time} className={i === 0 ? 'now' : undefined}>
-                <span className="curve-icon">{w ? <WeatherIcon kind={weatherKind(w.code, w.isDay)} tone="card" /> : null}</span>
+                <span className="curve-icon">{w ? <WeatherIcon kind={weatherKind(w.code, w.isDay)} tone={sky ? 'sky' : 'card'} /> : null}</span>
                 <span>{i === 0 ? t(lang, 'nowLabel') : hhmm(p.time)}</span>
                 <span className="curve-mm">{p.mm} mm</span>
               </li>

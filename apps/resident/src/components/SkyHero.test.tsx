@@ -11,6 +11,11 @@ describe('SkyBackdrop', () => {
     expect(container.querySelector('canvas')).toHaveAttribute('data-drops', drops);
   });
 
+  it.each([['drizzle', '45'], ['rain', '90'], ['storm', '170']] as const)('the full-screen view draws %s at full strength (%s drops)', (sky, drops) => {
+    const { container } = render(<SkyBackdrop sky={sky} full />);
+    expect(container.querySelector('canvas')).toHaveAttribute('data-drops', drops);
+  });
+
   it('sets the three gradient stops for the sky', () => {
     const { container } = render(<SkyBackdrop sky="rain" />);
     const style = (container.firstElementChild as HTMLElement).style;

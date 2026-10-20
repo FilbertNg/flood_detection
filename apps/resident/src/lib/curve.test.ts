@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CURVE, curvePaths, curvePoints } from './curve';
+import { CURVE, chanceColor, curvePaths, curvePoints } from './curve';
 
 describe('curvePoints', () => {
   it('puts one point per hour, 64 px apart, higher chance higher up', () => {
@@ -31,5 +31,13 @@ describe('curvePaths', () => {
 
   it('returns nothing when no hour has a chance', () => {
     expect(curvePaths(curvePoints([null, null]))).toEqual([]);
+  });
+});
+
+describe('chanceColor (full-screen sky curve)', () => {
+  it('goes blue, then amber from 40%, then orange from 70%', () => {
+    expect(chanceColor(10)).toBe('#a8dcff');
+    expect(chanceColor(40)).toBe('#ffd166');
+    expect(chanceColor(70)).toBe('#ff9f43');
   });
 });

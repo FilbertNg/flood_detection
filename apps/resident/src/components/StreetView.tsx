@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { useId, type CSSProperties, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useId, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { LEVEL_LABEL, type Lang, type Level, type Susceptibility } from '@floodready/shared';
 import { AlertHistory } from './AlertHistory';
 import { Icon, WeatherIcon } from './Icons';
 import { SkyBackdrop } from './SkyHero';
+import { SkyView } from './SkyView';
 import { RainCurve, RiverMeter, TideMini } from './StreetTiles';
 import { VerifySheet } from './VerifySheet';
 import { adviceSteps } from '../lib/advice';
@@ -48,10 +49,12 @@ export interface StreetViewProps {
   deviceId: string;
   /** False for pager panels off screen: the sky stops moving and the 10 s refresh pauses, to save battery. */
   active?: boolean;
-  /** Back link in the top row; the swipe home navigates with its bottom bar instead. */
+  /** Back link in the top row; the swipe home has the red map button instead. */
   showBack?: boolean;
   /** Extra control at the top left, e.g. "+ Add to my streets". */
   topLeft?: ReactNode;
+  /** Shown just under the hero card: the pager's page dots. */
+  belowHero?: ReactNode;
 }
 
 /**
@@ -60,9 +63,47 @@ export interface StreetViewProps {
  * The app header (with the language switch) and the live line sit above it; the replay label is
  * repeated inside the hero card so a replayed street is labelled even on its own.
  */
-export function StreetView({ id, lang, deviceId, active = true, showBack = true, topLeft }: StreetViewProps) {
+export function StreetView({ id, lang, deviceId, active = true, showBack = true, topLeft, belowHero }: StreetViewProps) {
   // Element ids are prefixed per view: up to three pager panels are on the page at once.
   const uid = useId();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  // The full-screen sky lives in the URL (?view=sky, a history entry), so Back closes it. Only the
+  // visible street opens it.
+  const open = active && params.get('view') === 'sky';
+  const pushed = useRef(false);
+  const opener = useRef<HTMLDivElement>(null);
+  const openFull = () => {
+    pushed.current = true;
+    setParams((p) => { p.set('view', 'sky'); return p; });
+  };
+  const closeFull = () => {
+    if (pushed.current) {
+      pushed.current = false;
+      navigate(-1);
+    } else {
+      setParams((p) => { p.delete('view'); return p; }, { replace: true });
+    }
+  };
+  const onOpenerKey = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFull(); }
+  };
+  // Escape closes the full view.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') closeFull(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  });
+  // Focus goes back to the hero card when the full view closes (by ×, Escape or Back).
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      pushed.current = false;
+      opener.current?.focus();
+    }
+    wasOpen.current = open;
+  }, [open]);
   const { data, isLoading, isError } = useQuery({
     queryKey: ['street', id],
     queryFn: () => api.street(id),
@@ -118,7 +159,8 @@ export function StreetView({ id, lang, deviceId, active = true, showBack = true,
       {topLeft && <div className="street-top">{topLeft}</div>}
 
       <section className={`hero hero-${sky}`} aria-labelledby={`${uid}-name`}>
-        <SkyBackdrop sky={sky} active={active} />
+        {/* While the full view is open its sky moves instead: only one canvas animates at a time. */}
+        <SkyBackdrop sky={sky} active={active && !open} />
         <div className="hero-top">
           <span className="hero-label">{t(lang, 'yourStreet')}</span>
           <span className="level-pill"><i aria-hidden="true" />{LEVEL_LABEL[lang][data.level]}</span>
@@ -133,7 +175,12 @@ export function StreetView({ id, lang, deviceId, active = true, showBack = true,
             <span>{weatherLine}</span>
           </p>
         )}
+        <span className="hero-more" aria-hidden="true">{t(lang, 'detailsChip')}</span>
+        {/* A layer over the whole card opens the full view. It is not the card itself, so the street
+            name stays a real heading for screen readers. */}
+        <div ref={opener} className="hero-open" role="button" tabIndex={0} aria-label={t(lang, 'heroOpen')} onClick={openFull} onKeyDown={onOpenerKey} />
       </section>
+      {belowHero}
 
       <div className="keys">
         {([['keyRain', keys.rain], ['keyRiver', keys.river], ['keyFlood', keys.flood]] as const).map(([label, value]) => (
@@ -236,6 +283,24 @@ export function StreetView({ id, lang, deviceId, active = true, showBack = true,
       )}
 
       <footer className="footer">{t(lang, 'footer')}</footer>
+
+      {open && (
+        <SkyView
+          lang={lang}
+          sky={sky}
+          name={data.name}
+          level={data.level}
+          word={word}
+          headline={headline(data.level, data.window, lang)}
+          kind={kind}
+          weatherLine={weatherLine}
+          keys={keys}
+          rain={data.rain_next_12h}
+          hours={hours}
+          vars={vars}
+          onClose={closeFull}
+        />
+      )}
     </article>
   );
 }
