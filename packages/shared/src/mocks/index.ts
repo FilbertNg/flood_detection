@@ -102,9 +102,9 @@ export const streetDetail: StreetDetail = {
     { time: T('12:00'), mm: 0.0 },
   ],
   tide: [
-    { time: T('10:00'), height_m: 1.9 },
-    { time: T('11:00'), height_m: 2.2 },
-    { time: T('12:00'), height_m: 2.0 },
+    { time: T('10:00'), height_m: 1.9, filled: false },
+    { time: T('11:00'), height_m: 2.2, filled: false },
+    { time: T('12:00'), height_m: 2.0, filled: false },
   ],
   river_forecast: {
     graph_id: 'PEKANMERU',

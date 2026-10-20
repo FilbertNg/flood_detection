@@ -192,7 +192,7 @@ def forecast_from_readings(bundle: dict, readings: pd.DataFrame, stations: pd.Da
 
 
 def pick_station(readings: pd.DataFrame, stations: pd.DataFrame, wl_ids: list[str], at: datetime) -> str | None:
-    """Stand-in until streets have their own station: among `wl_ids` with a level at most 30 min old, the one
+    """Fallback for a street with no river station of its own in the street_stations mapping: among `wl_ids` with a level at most 30 min old, the one
     closest to its own warning level (smallest warning - level), ties by the larger rise over the last hour."""
     at = pd.Timestamp(at)
     warn = stations[stations.kind == "wl"].drop_duplicates("graph_id").set_index("graph_id").wl_warning_m

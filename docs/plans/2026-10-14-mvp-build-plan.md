@@ -49,7 +49,7 @@
 - **Station rules (starting values, `config/rules.yaml`):**
   - rain: Watch at `st_rain_1h ≥ 31` mm or `st_rain_2to4h_max ≥ 40` mm; Warning at `st_rain_1h > 60` mm or `st_rain_2to4h_max ≥ 60` mm;
   - river: alert → Watch, warning → Warning, danger → Danger (the station's own thresholds).
-- **ML-first trigger with a rule floor (`config/ml.yaml`):** trigger level = max(ML level, rule level). ML level from the model probability: Watch at `p ≥ p_watch`, Warning at `p ≥ p_warning` (chosen on validation folds only; spike values 0.5 / 0.7). ML may raise a level, never lower one. ML drives alert levels only while `ml_drives_alerts: true`, set by the evaluation gate (task ML3); otherwise the probability is still shown but the rules decide.
+- **ML-first trigger with a rule floor (`config/ml.yaml`):** trigger level = the rule floor raised by ML = max(rule level, ML level). ML level from the model probability: Watch at `p ≥ p_watch` (chosen on validation folds only). **ML can raise a street to Watch only** (`ml_max_level: watch`, clamped in code in `levels.combine`); Warning and Danger come only from the JPS rules (`ml.predict` still labels `p ≥ p_warning` as Warning, but `combine` clamps it to Watch). ML may raise a level, never lower one. The trigger is per street: each street uses its own river station and rain gauges (`street_stations` in `config/rules.yaml`). Alerts carry `push` (level in `alerts.push_levels`, default Warning and Danger); Watch is in-app only. ML drives alert levels only while `ml_drives_alerts: true`, set by the evaluation gate (task ML3); otherwise the probability is still shown but the rules decide.
 - **Risk matrix (`config/risk_matrix.yaml`), susceptibility 1–5 × trigger level → street level:**
 
 | Susceptibility | normal | watch | warning | danger |
@@ -179,7 +179,7 @@ docs/api-contract.md         # §4.2 as a living document
   ],
   "data_time": "2024-11-12T09:00:00+08:00",
   "rain_next_12h": [{"time": "2024-11-12T10:00:00+08:00", "mm": 2.1}],
-  "tide": [{"time": "2024-11-12T10:00:00+08:00", "height_m": 1.9}],
+  "tide": [{"time": "2024-11-12T10:00:00+08:00", "height_m": 1.9, "filled": false}],   // filled: true = harmonic-fit gap fill, not Open-Meteo data
   "river_forecast": {"graph_id": "PEKANMERU", "name": "Sg. Binjai di Pekan Meru", "wl_now_m": 3.52, "wl_now_time": "2024-11-12T09:00:00+08:00", "warning_m": 4.0, "points": [{"time": "2024-11-12T10:00:00+08:00", "wl_m": 4.05, "wl_m_p10": 3.8, "wl_m_p90": 4.25}]},  // ML5 (shape updated by PR #18, see api-contract.md); null if unavailable
   "stations": ["26558", "PEKANMERU"],
   "active_alert": {"alert_id": "a_01", "level": "warning", "issued_at": "2024-11-12T09:00:00+08:00"},
@@ -246,7 +246,9 @@ features.station_features(readings: pd.DataFrame, at: datetime, stations: pd.Dat
     # returns one row per (graph_id, kind): st_rain_1h, st_rain_2to4h_max, st_rain_24h, wl_m, river_band ('normal'|'alert'|'warning'|'danger'|None), river_rising, is_stale
 rules.township_trigger(features: pd.DataFrame, station_ids: list[str], cfg: dict) -> TriggerResult
 ml.predict.township_probability(model, features: pd.DataFrame, wl_station_ids: list[str], at: datetime, cfg: dict) -> MLResult
-levels.combine(rule: TriggerResult, ml: MLResult | None, cfg: dict) -> TriggerResult   # max(rule, ML); rules only if ml is None or ml_drives_alerts is false
+levels.combine(rule: TriggerResult, ml: MLResult | None, cfg: dict) -> TriggerResult   # the rule floor raised by ML: max(rule, min(ML level, watch, ml_max_level)); rules only if ml is None or ml_drives_alerts is false. ML never lowers a rule level and never goes above Watch (clamped in code; config may only lower the cap): Warning and Danger come only from the JPS rules.
+# Per-street triggers: replay/live call rules.township_trigger + combine once per street station group (the street's river station + its rain gauges, config/rules.yaml `street_stations`, mapping in assets/geo/<township>_street_stations.json, floodready/engine/street_stations.py); a street missing from the mapping gets the township-wide trigger.
+# Alert.push: bool (alerts.push_levels in config/rules.yaml, default [warning, danger]); Watch alerts are stored and shown in-app but a notifier must not push them.
 matrix.street_level(susceptibility: int, trigger: Level, table: dict) -> Level
 levels.street_states(streets: pd.DataFrame, trigger: TriggerResult, cfg: dict) -> list[StreetState]
 alerts.issue(prev: dict[str, StreetState], new: list[StreetState], last_alerts: dict[str, Alert], cfg: dict) -> list[Alert]   # last alert or all-clear per street (its level is needed for "unless the level rises")
@@ -398,9 +400,9 @@ Each task lists: **Owner · Depends on · Files · Interfaces · Acceptance test
   - on the spike configuration (PEKANMERU, same archive snapshot) the harness reproduces the Watch-rule baseline: 23 / 50 detected, 4.9 false alarms per month.
 
 #### ML3. Gate and thresholds
-**Depends:** ML2 · **Files:** `config/ml.yaml` (`p_watch`, `p_warning`, `smoothing_min`, `ml_drives_alerts`), the ML section of `docs/evaluation-report.md`
-- Pick `p_watch` and `p_warning` on validation folds only.
-- **Gate:** (a) detection ≥ the Watch rule with false alarms ≤ the Watch rule, **or** (b) equal detection with ≥ 20 min more median lead and ≤ 1.2× false alarms. Pass → `ml_drives_alerts: true`. Fail → `false`, and the report says so plainly.
+**Depends:** ML2 · **Files:** `config/ml.yaml` (`p_watch`, `ml_max_level`, `smoothing_min`, `ml_drives_alerts`, `gate`), the ML section of `docs/evaluation-report.md`
+- Pick `p_watch` (the calibrated Watch threshold θ) by nested selection (gate v2, `docs/plans/2026-10-16-IMP-ml-data-street-improvements.md` §3): per outer fold, on the other folds only, the θ with the most detections whose false alarms stay within the gate criterion; ship the median. There is no Warning threshold to pick: ML raises to Watch at most (`ml_max_level: watch`).
+- **Gate (v1, superseded by gate v2 in `config/ml.yaml` `gate:`):** (a) detection ≥ the Watch rule with false alarms ≤ the Watch rule, **or** (b) equal detection with ≥ 20 min more median lead and ≤ 1.2× false alarms. Pass → `ml_drives_alerts: true`. Fail → `false`, and the report says so plainly.
 - **Done when:** the out-of-sample rules-vs-ML table is in the evaluation report and on the deck's evaluation slide.
 
 #### ML4. Inference in the engine

@@ -135,7 +135,8 @@ export interface StreetDetail {
   reasons: Reason[];
   data_time: ISODateTime;
   rain_next_12h: { time: ISODateTime; mm: number }[];
-  tide: { time: ISODateTime; height_m: number }[];
+  /** `filled`: true = harmonic-fit gap fill, not Open-Meteo data. */
+  tide: { time: ISODateTime; height_m: number; filled: boolean }[];
   /** River-level forecast (improvement #12); null when no model or no current level. */
   river_forecast: RiverForecast | null;
   /** graph_ids of the stations that decide this street (its river station first, then its rain gauges); the township's stations when no mapping is loaded. */

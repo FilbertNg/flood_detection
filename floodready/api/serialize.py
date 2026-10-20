@@ -46,12 +46,16 @@ def _tide(ctx: EngineContext, start: datetime) -> list[dict]:
         return []
     t = table[(table.time_local >= pd.Timestamp(start).floor("h")) &
               (table.time_local <= pd.Timestamp(start) + timedelta(hours=12))]
-    return [{"time": iso(x), "height_m": round(float(h), 2)} for x, h in zip(t.time_local, t.tide_height_m) if pd.notna(h)]
+    # `filled`: the hour came from the harmonic fit (tide.fill_gaps), not from Open-Meteo. A frame without
+    # the tide_filled column (older file) reports false.
+    filled = t["tide_filled"].fillna(False).astype(bool) if "tide_filled" in t else pd.Series(False, index=t.index)
+    return [{"time": iso(x), "height_m": round(float(h), 2), "filled": bool(f)}
+            for x, h, f in zip(t.time_local, t.tide_height_m, filled) if pd.notna(h)]
 
 
 def river_forecast_for(ctx: EngineContext, snap: Snapshot, at: datetime, graph_id: str | None = None) -> dict | None:
-    """+1 h / +2 h level with a range. `graph_id`: the street's own station (WP5); until then None picks,
-    among the township's river stations with a fresh level, the one closest to its warning level.
+    """+1 h / +2 h level with a range. `graph_id`: the street's own river station (street_stations mapping). Only when the street
+    has none (None) does it pick, among the township's river stations with a fresh level, the one closest to its warning level.
     Never raises: the forecast is informational and must not break the street page."""
     if ctx.river_forecast is None or snap.step is None or not len(snap.readings):
         return None
