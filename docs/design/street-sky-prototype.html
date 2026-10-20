@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flood-Ready Street Sky</title>
+
+<style>
+/* Layout: one phone-width column; animated sky canvas behind a weather-app hero, a rain curve, then glass cards. Single dark-sky look by choice. */
+:root {
+  color-scheme: dark;
+  --page: #0d1118;
+  --ink: #ffffff;
+  --ink-soft: rgba(255,255,255,.78);
+  --ink-faint: rgba(255,255,255,.55);
+  --glass: rgba(255,255,255,.12);
+  --glass-line: rgba(255,255,255,.18);
+  --ok: #7ee0a1;
+  --watch: #ffd166;
+  --warn: #ff9f43;
+  --danger: #ff5d5d;
+  --rain: #a8dcff;
+  --num: system-ui, -apple-system, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+}
+body { background: var(--page); color: var(--ink); font-family: var(--num); }
+.wrap { display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+.demo { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 420px; }
+.demo button { font: 600 13px var(--num); color: var(--ink-soft); background: transparent; border: 1px solid var(--glass-line);
+  border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.demo button[aria-pressed="true"] { background: var(--ink); color: #111; border-color: var(--ink); }
+.demo button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.hint { font-size: 12px; color: var(--ink-faint); margin: 0; text-align: center; max-width: 380px; }
+
+.phone { position: relative; width: 100%; max-width: 400px; border-radius: 34px; overflow: hidden; isolation: isolate;
+  background: var(--sky-bottom); transition: background .8s; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+.sky-grad { position: absolute; inset: 0; z-index: -2; background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 38%, var(--sky-bottom) 70%); transition: opacity .8s; }
+#sky { position: absolute; left: 0; top: 0; width: 100%; height: 640px; z-index: -1;
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%); mask-image: linear-gradient(180deg, #000 55%, transparent 100%); }
+
+.top { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 0; }
+.back { color: var(--ink); text-decoration: none; font-size: 15px; font-weight: 600; opacity: .9; }
+.lang { font-size: 12px; font-weight: 700; border: 1px solid var(--glass-line); border-radius: 999px; padding: 4px 10px; background: var(--glass); }
+
+.hero { text-align: center; padding: 18px 20px 6px; text-shadow: 0 1px 12px rgba(0,0,0,.18); }
+.place { font-size: 28px; font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.status { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 5px 14px 5px 10px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--glass-line); font-weight: 700; font-size: 15px;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lvl); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lvl) 30%, transparent); }
+.cond { font-size: 20px; font-weight: 600; margin: 16px 0 2px; }
+.range { font-size: 16px; color: var(--ink-soft); margin: 0; font-variant-numeric: tabular-nums; }
+.big { display: inline-flex; align-items: flex-start; font-weight: 200; font-size: 112px; line-height: 1; letter-spacing: -.04em; margin: 4px 0 0;
+  font-variant-numeric: tabular-nums; }
+.big small { font-size: 30px; font-weight: 300; letter-spacing: 0; margin: 14px 0 0 4px; color: var(--ink-soft); }
+.biglabel { font-size: 14px; color: var(--ink-soft); margin: 0; }
+.meter { position: relative; height: 6px; margin: 14px auto 0; max-width: 240px; border-radius: 3px;
+  background: linear-gradient(90deg, rgba(255,255,255,.35) 0 var(--a), var(--watch) var(--a) var(--w), var(--warn) var(--w) var(--d), var(--danger) var(--d)); }
+.meter i { position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transform: translateX(-50%);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.25); left: var(--now); transition: left .8s; }
+
+.curve { margin-top: 18px; }
+.curve h2, .card h2 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.curve h2 { padding: 0 20px 6px; }
+.scroll { overflow-x: auto; scrollbar-width: none; padding-bottom: 6px; }
+.scroll::-webkit-scrollbar { display: none; }
+.track { position: relative; }
+.track svg { display: block; overflow: visible; }
+.hours { display: flex; list-style: none; margin: 0; padding: 0; }
+.hours li { flex: 0 0 64px; display: grid; justify-items: center; gap: 4px; font-size: 14px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.hours li.now { color: var(--ink); font-weight: 700; }
+.hours svg { width: 26px; height: 26px; }
+.hours .mm { font-size: 11px; color: var(--ink-faint); }
+
+.cards { display: grid; gap: 12px; padding: 14px 14px 22px; }
+.card { background: var(--glass); border: 1px solid var(--glass-line); border-radius: 22px; padding: 14px 16px;
+  -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
+.rows { list-style: none; margin: 8px 0 0; padding: 0; }
+.rows li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid rgba(255,255,255,.12); align-items: baseline; }
+.rows li:first-child { border-top: 0; }
+.rows b { font-weight: 600; font-size: 16px; }
+.rows span { font-size: 13px; color: var(--ink-faint); grid-column: 1; }
+.rows em { font-style: normal; font-weight: 600; font-size: 17px; grid-row: 1; grid-column: 2; font-variant-numeric: tabular-nums; }
+.card p { margin: 8px 0 0; font-size: 15px; line-height: 1.5; color: var(--ink-soft); }
+.foot { font-size: 11px; color: var(--ink-faint); text-align: center; padding: 0 20px 20px; margin: 0; }
+
+@media (prefers-reduced-motion: reduce) { .phone, .sky-grad, .meter i { transition: none; } }
+.word { font-weight: 200; font-size: 88px; line-height: 1; letter-spacing: -.03em; margin: 10px 0 4px; color: var(--word, var(--ink)); }
+.headline { font-size: 19px; font-weight: 600; line-height: 1.35; margin: 0 auto; max-width: 30ch; text-wrap: balance; }
+.wx { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; color: var(--ink-soft); margin: 10px 0 0; }
+.wx svg { width: 22px; height: 22px; }
+.keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 16px 14px 0; }
+.key { background: var(--glass); border: 1px solid var(--glass-line); border-radius: 18px; padding: 10px 10px 12px; text-align: center;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); min-width: 0; }
+.key b { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.key span { display: block; font-size: 15px; font-weight: 600; margin-top: 4px; line-height: 1.25; }
+.do { border-color: color-mix(in srgb, var(--lvl) 55%, transparent); }
+.do h2 { color: var(--ink); font-size: 13px; }
+.steps { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.steps li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; font-size: 16px; line-height: 1.4; }
+.steps li::before { content: ""; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--lvl);
+  background: radial-gradient(circle, var(--lvl) 0 4px, transparent 5px); }
+.steps small { display: block; font-size: 13px; color: var(--ink-faint); margin-top: 2px; }
+.place-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,.18); margin-left: 4px; vertical-align: 1px; }
+details.card summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+details.card summary::-webkit-details-marker { display: none; }
+details.card summary::after { content: "Show"; font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--ink-soft); }
+details.card[open] summary::after { content: "Hide"; }
+details.card summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 6px; }
+.river { display: flex; align-items: baseline; gap: 6px; margin-top: 10px; }
+.river strong { font-size: 40px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.river span { font-size: 14px; color: var(--ink-faint); }
+.meter { margin: 10px 0 4px; max-width: none; }
+.ask h2 { color: var(--ink); font-size: 18px; letter-spacing: 0; text-transform: none; }
+.answers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.answers button { font: 600 15px var(--num); color: var(--ink); background: rgba(255,255,255,.16); border: 1px solid var(--glass-line); border-radius: 14px; padding: 12px 6px; cursor: pointer; }
+.answers button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ask .fine { font-size: 12px; color: var(--ink-faint); }
+.order { position: absolute; right: 12px; font-size: 10px; }
+</style>
+</head><body>
+
+<div class="wrap">
+  <div class="demo" role="group" aria-label="Try a condition">
+    <button type="button" data-s="dusk" aria-pressed="true">Normal, light rain</button>
+    <button type="button" data-s="day">Normal, sunny</button>
+    <button type="button" data-s="storm">Watch, storm</button>
+    <button type="button" data-s="warn">Warning</button>
+    <button type="button" data-s="danger">Danger</button>
+  </div>
+  <p class="hint">Prototype with sample numbers. Plain answer first, then what to do, then the rain, then the technical details. The report question sits at the very end.</p>
+
+  <article class="phone" id="phone">
+    <div class="sky-grad"></div>
+    <canvas id="sky" aria-hidden="true"></canvas>
+
+    <div class="top"><a class="back" href="#" onclick="return false">← Back</a><span class="lang">EN · BM</span></div>
+
+    <header class="hero">
+      <h1 class="place">Persiaran Batu Belah</h1>
+      <div class="status" title="Official level, JPS thresholds"><span class="dot"></span><span id="lvl">Normal</span></div>
+      <p class="word" id="word">Safe</p>
+      <p class="headline" id="headline"></p>
+      <p class="wx" id="wx"></p>
+    </header>
+
+    <div class="keys" id="keys"></div>
+
+    <div class="cards">
+      <section class="card do" aria-labelledby="do-h">
+        <h2 id="do-h">What to do now</h2>
+        <ul class="steps" id="steps"></ul>
+      </section>
+    </div>
+
+    <section class="curve" aria-labelledby="ch">
+      <h2 id="ch">Rain in the next 12 hours</h2>
+      <div class="scroll"><div class="track" id="track"></div></div>
+    </section>
+
+    <div class="cards">
+      <section class="card">
+        <h2>Right now on your street</h2>
+        <ul class="rows" id="rows"></ul>
+      </section>
+
+      <details class="card" open>
+        <summary>Technical details</summary>
+        <div class="river"><strong id="rv">3.02 m</strong><span id="rvname">Sg. Binjai di Pekan Meru</span></div>
+        <div class="meter" id="meter"><i></i></div>
+        <ul class="rows" id="tech"></ul>
+        <p class="fine" style="font-size:12px">Alert levels follow JPS thresholds. The flood model is shown for information only. Data as of 20 Oct 2026, 18:00 · JPS Infobanjir · Weather: Open-Meteo</p>
+      </details>
+
+      <section class="card ask" aria-labelledby="ask-h">
+        <h2 id="ask-h">Is it flooding here?</h2>
+        <p>Your answer helps check our alert and warn your neighbours.</p>
+        <div class="answers"><button type="button">Yes</button><button type="button">No</button><button type="button">Not sure</button></div>
+        <p class="fine">No account or name needed. We store a random device code and, if you allow it, a location rounded to about 100 m.</p>
+      </section>
+    </div>
+    <p class="foot">Flood-Ready · Bandar Bukit Raja</p>
+  </article>
+</div>
+
+<script>
+/* Plain-language copy per official level. Street facts (flood-prone rating, expected time) are filled in from the API. */
+const LVL = {
+  normal:  { label: 'Normal',  color: '--ok',     word: 'Safe' },
+  watch:   { label: 'Watch',   color: '--watch',  word: 'Be alert' },
+  warning: { label: 'Warning', color: '--warn',   word: 'Get ready' },
+  danger:  { label: 'Danger',  color: '--danger', word: 'Move now' },
+};
+const S = {
+  dusk: { level: 'normal', hour: 18, kind: 'drizzle', wx: 'Light rain now, easing by 8 pm',
+    headline: 'No flooding expected on this street in the next 12 hours.',
+    keys: [['Rain', 'Light, easing'], ['River', 'Low'], ['Flood', 'Not expected']],
+    river: 3.02, chances: [62,41,24,14,7,2,0,0,0,3,8,12,15], mm: [0,0,0,0,0,0,0,0,0,0,0,0.2,0.3],
+    sky: ['#2c3a57', '#5d6688', '#8c8299'], clouds: .5, rain: 45, ml: 0, tide: 'Falling, next high 01:40',
+    steps: [
+      ['Nothing to do right now.', 'We will send you a notification if this street changes.'],
+      ['Good time to pack a go-bag.', 'IC and documents in a plastic bag, medicine, phone charger, power bank, cash, torch.'],
+      ['Save the emergency numbers.', '999 for emergencies, 994 for Bomba.'],
+    ] },
+  day: { level: 'normal', hour: 11, kind: 'sun', wx: 'Partly sunny, showers likely 3 to 5 pm',
+    headline: 'No flooding expected today. Afternoon showers are likely.',
+    keys: [['Rain', 'Showers 3–5 pm'], ['River', 'Low'], ['Flood', 'Not expected']],
+    river: 2.61, chances: [10,12,18,30,45,52,40,22,10,5,3,2,2], mm: [0,0,0,0.2,1.1,1.6,0.6,0,0,0,0,0,0],
+    sky: ['#2f7fd0', '#6aa9e3', '#9cc8ef'], clouds: .9, rain: 0, ml: 0, tide: 'Rising, high at 14:20',
+    steps: [
+      ['Nothing to do right now.', 'We will send you a notification if this street changes.'],
+      ['This street is flood-prone (4 of 5).', 'If you park on the road, plan where to move your car if a storm comes.'],
+    ] },
+  storm: { level: 'watch', hour: 16, kind: 'storm', wx: 'Thunderstorm, heavy until about 6 pm',
+    headline: 'Heavy rain is raising the river. Flooding is possible this evening.',
+    keys: [['Rain', 'Heavy now'], ['River', 'Rising'], ['Flood', 'Possible']],
+    river: 3.61, chances: [92,95,88,70,55,40,30,22,15,10,8,6,5], mm: [18,22,14,8,4,2,1,0.5,0,0,0,0,0],
+    sky: ['#161c2a', '#2b3448', '#465068'], clouds: 1, rain: 170, ml: 34, tide: 'Rising, high at 19:10',
+    steps: [
+      ['Charge your phone and power bank.', ''],
+      ['Put your go-bag by the door.', 'IC and documents, medicine, charger, cash, torch.'],
+      ['Move your car if you park on this street.', 'This street floods early (flood-prone 4 of 5).'],
+      ['Check on elderly neighbours.', ''],
+    ] },
+  warn: { level: 'warning', hour: 20, kind: 'rain', wx: 'Heavy rain',
+    headline: 'Flooding is expected on this street from about 9 pm.',
+    keys: [['Rain', 'Heavy'], ['River', 'Above alert'], ['Flood', 'From ~9 pm']],
+    river: 4.12, chances: [88,80,64,50,35,20,12,8,5,3,2,2,2], mm: [31,20,12,6,2,1,0,0,0,0,0,0,0],
+    sky: ['#15171d', '#22252e', '#2c2f39'], clouds: .35, rain: 0, ml: 71, tide: 'High at 21:30',
+    steps: [
+      ['Move your car to higher ground now.', 'Example: a multi-storey car park or a road that did not flood last time.'],
+      ['Lift valuables and electrical items off the floor.', ''],
+      ['Get ready to leave.', 'Go-bag by the door, check where your family is.'],
+      ['Do not drive through water.', '30 cm of moving water can float a car.'],
+    ] },
+  danger: { level: 'danger', hour: 22, kind: 'rain', wx: 'Heavy rain',
+    headline: 'This street is flooding now. Leave if water is entering your home.',
+    keys: [['Rain', 'Heavy'], ['River', 'Above danger'], ['Flood', 'Now']],
+    river: 4.71, chances: [90,85,70,50,30,20,10,5,3,2,2,2,2], mm: [42,30,18,8,3,1,0,0,0,0,0,0,0],
+    sky: ['#15171d', '#22252e', '#2c2f39'], clouds: .3, rain: 0, ml: 93, tide: 'High at 23:10',
+    steps: [
+      ['Go upstairs or to the nearest relief centre (PPS).', 'Example: nearest PPS from the official JKM list, with distance and a map link.'],
+      ['Switch off the electricity at the main switch.', 'Only if you can reach it without touching water.'],
+      ['Do not walk or drive through flood water.', '15 cm of moving water can knock you over.'],
+      ['Call 999 if you are trapped.', ''],
+    ] },
+};
+const ALERT = 3.80, WARN = 4.20, DANGER = 4.60, MIN = 2.0, MAX = 5.0;
+const pct = (v) => ((v - MIN) / (MAX - MIN) * 100).toFixed(1) + '%';
+const ICON = {
+  sun: '<circle cx="13" cy="13" r="5" fill="#ffd34d"/><g stroke="#ffd34d" stroke-width="2" stroke-linecap="round"><path d="M13 2v3M13 21v3M2 13h3M21 13h3M5 5l2 2M19 19l2 2M5 21l2-2M19 7l2-2"/></g>',
+  moon: '<path d="M17 4a9 9 0 1 0 5 13A7 7 0 0 1 17 4z" fill="#ffe7a3"/>',
+  cloud: '<path d="M8 20h11a4.5 4.5 0 0 0 .4-9A6 6 0 0 0 8 10.5 4.8 4.8 0 0 0 8 20z" fill="#fff"/>',
+  rain: '<path d="M8 15h11a4 4 0 0 0 .4-8A6 6 0 0 0 8 6.5 4.3 4.3 0 0 0 8 15z" fill="#fff"/><g stroke="#a8dcff" stroke-width="2" stroke-linecap="round"><path d="M9 18l-1 3M13 18l-1 3M17 18l-1 3"/></g>',
+  storm: '<path d="M8 14h11a4 4 0 0 0 .4-8A6 6 0 0 0 8 5.5 4.3 4.3 0 0 0 8 14z" fill="#e6e9f0"/><path d="M14 15l-3 5h3l-2 5 5-7h-3l2-3z" fill="#ffd34d"/>',
+};
+const KIND_ICON = { sun: ICON.sun, drizzle: ICON.rain, rain: ICON.rain, storm: ICON.storm };
+function iconFor(chance, hour) {
+  const night = hour >= 19 || hour < 7;
+  if (chance >= 85) return ICON.storm;
+  if (chance >= 40) return ICON.rain;
+  if (chance >= 15) return ICON.cloud;
+  return night ? ICON.moon : ICON.sun;
+}
+function getVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function sevColor(c) { return c >= 70 ? getVar('--warn') : c >= 40 ? getVar('--watch') : getVar('--rain'); }
+const plainRain = (mm) => mm === 0 ? 'No rain' : mm < 2.5 ? 'Light rain' : mm < 10 ? 'Moderate rain' : 'Heavy rain';
+const plainRiver = (v) => v >= DANGER ? 'Above the danger line' : v >= WARN ? 'Above the warning line' : v >= ALERT ? 'Above the alert line' : v >= ALERT - .3 ? 'Close to the alert line' : 'Low, well below the alert line';
+
+function drawCurve(s) {
+  const W = 64, H = 92, top = 26, bot = 14, n = s.chances.length, width = W * n;
+  const pts = s.chances.map((c, i) => [i * W + W / 2, top + (1 - c / 100) * (H - top - bot)]);
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [p0, p1, p2, p3] = [pts[i - 1] || pts[i], pts[i], pts[i + 1], pts[i + 2] || pts[i + 1]];
+    d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+  }
+  const stops = s.chances.map((c, i) => `<stop offset="${(i / (n - 1) * 100).toFixed(1)}%" stop-color="${sevColor(c)}"/>`).join('');
+  const area = `${d} L${pts[n - 1][0]},${H} L${pts[0][0]},${H} Z`;
+  const [nx, ny] = pts[0], mid = top + .5 * (H - top - bot);
+  const svg = `<svg width="${width}" height="${H}" viewBox="0 0 ${width} ${H}" aria-hidden="true">
+    <defs><linearGradient id="lg" x1="0" x2="1">${stops}</linearGradient>
+      <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+    <line x1="0" x2="${width}" y1="${mid}" y2="${mid}" stroke="#fff" stroke-opacity=".22" stroke-dasharray="4 5"/>
+    <path d="${area}" fill="url(#fill)"/>
+    <path d="${d}" fill="none" stroke="url(#lg)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="${nx}" x2="${nx}" y1="${ny}" y2="${H}" stroke="#fff" stroke-opacity=".5" stroke-dasharray="2 3"/>
+    <circle cx="${nx}" cy="${ny}" r="17" fill="#fff" stroke="${sevColor(s.chances[0])}" stroke-width="3"/>
+    <text x="${nx}" y="${ny + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="#111">${s.chances[0]}%</text>
+    ${pts.slice(1).map(([x, y], i) => `<text x="${x}" y="${y - 9}" text-anchor="middle" font-size="12" font-weight="600" fill="#fff" fill-opacity=".85">${s.chances[i + 1]}%</text>`).join('')}
+  </svg>`;
+  const hours = s.chances.map((c, i) => {
+    const h = (s.hour + i) % 24;
+    return `<li class="${i === 0 ? 'now' : ''}"><svg viewBox="0 0 26 26">${iconFor(c, h)}</svg>${i === 0 ? 'Now' : `${String(h).padStart(2, '0')}:00`}<span class="mm">${s.mm[i]} mm</span></li>`;
+  }).join('');
+  document.getElementById('track').innerHTML = svg + `<ul class="hours" style="width:${width}px">${hours}</ul>`;
+}
+
+const rowsHtml = (rows) => rows.map(([b, sp, em]) => `<li><b>${b}</b><span>${sp}</span>${em ? `<em>${em}</em>` : ''}</li>`).join('');
+
+function render(key) {
+  const s = S[key], L = LVL[s.level], root = document.getElementById('phone').style;
+  root.setProperty('--sky-top', s.sky[0]); root.setProperty('--sky-mid', s.sky[1]); root.setProperty('--sky-bottom', s.sky[2]);
+  root.setProperty('--lvl', `var(${L.color})`);
+  root.setProperty('--word', s.level === 'warning' || s.level === 'danger' ? `var(${L.color})` : 'var(--ink)');
+  document.getElementById('lvl').textContent = L.label;
+  document.getElementById('word').textContent = L.word;
+  document.getElementById('headline').textContent = s.headline;
+  document.getElementById('wx').innerHTML = `<svg viewBox="0 0 26 26" aria-hidden="true">${KIND_ICON[s.kind]}</svg>${s.wx}`;
+  document.getElementById('keys').innerHTML = s.keys.map(([b, v]) => `<div class="key"><b>${b}</b><span>${v}</span></div>`).join('');
+  document.getElementById('steps').innerHTML = s.steps.map(([a, b]) => `<li><span>${a}${b ? `<small>${b}</small>` : ''}</span></li>`).join('');
+  document.getElementById('rows').innerHTML = rowsHtml([
+    ['Rain', `${plainRain(s.mm[0])} at the nearest gauge`, ''],
+    ['River nearby', plainRiver(s.river), ''],
+    ['This street', 'Floods earlier than most streets in BBR', '4 / 5'],
+  ]);
+  document.getElementById('rv').textContent = `${s.river.toFixed(2)} m`;
+  const m = document.getElementById('meter').style;
+  m.setProperty('--a', pct(ALERT)); m.setProperty('--w', pct(WARN)); m.setProperty('--d', pct(DANGER)); m.setProperty('--now', pct(s.river));
+  document.getElementById('tech').innerHTML = rowsHtml([
+    ['JPS marks', `Alert ${ALERT.toFixed(2)} · Warning ${WARN.toFixed(2)} · Danger ${DANGER.toFixed(2)} m`, ''],
+    ['Rain last hour', 'Nearest JPS rain gauge', `${s.mm[0]} mm`],
+    ['Flood model', 'Chance the river crosses Warning in 2 h', `${s.ml}%`],
+    ['Tide', `Port Klang · ${s.tide}`, ''],
+  ]);
+  drawCurve(s);
+  sky.set(s);
+  document.querySelectorAll('.demo button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.s === key)));
+}
+
+/* Sky: soft drifting clouds and sparse, short rain on a canvas. Stops moving for reduced motion. */
+const sky = (() => {
+  const cv = document.getElementById('sky'), ctx = cv.getContext('2d');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W = 0, H = 0, clouds = [], drops = [], cfg = { clouds: .5, rain: 0, kind: '' }, flash = 0;
+  function size() {
+    const r = cv.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+    W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function makeCloud(x) {
+    const puffs = Array.from({ length: 5 + (Math.random() * 4 | 0) }, () => [Math.random() * 120 - 60, Math.random() * 30 - 15, 30 + Math.random() * 40]);
+    return { x: x ?? Math.random() * W, y: 20 + Math.random() * 200, s: .5 + Math.random() * .8, v: .06 + Math.random() * .12, puffs };
+  }
+  function makeDrop() { return { x: Math.random() * (W + 80), y: Math.random() * H, l: 8 + Math.random() * 10, v: 7 + Math.random() * 6, a: .12 + Math.random() * .25 }; }
+  function set(s) {
+    cfg = { clouds: s.clouds, rain: s.rain, kind: s.kind };
+    clouds = Array.from({ length: Math.round(3 + s.clouds * 6) }, () => makeCloud());
+    drops = Array.from({ length: s.rain }, makeDrop);
+    if (still) frame();
+  }
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    for (const c of clouds) {
+      if (!still) { c.x += c.v; if (c.x - 120 * c.s > W) Object.assign(c, makeCloud(-140 * c.s)); }
+      for (const [dx, dy, r] of c.puffs) {
+        const R = r * c.s, g = ctx.createRadialGradient(c.x + dx * c.s, c.y + dy * c.s, 0, c.x + dx * c.s, c.y + dy * c.s, R);
+        const a = cfg.kind === 'sun' ? .55 : .22;
+        g.addColorStop(0, `rgba(255,255,255,${a * cfg.clouds})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x + dx * c.s, c.y + dy * c.s, R, 0, 7); ctx.fill();
+      }
+    }
+    ctx.lineCap = 'round';
+    for (const d of drops) {
+      if (!still) { d.y += d.v; d.x -= d.v * .18; if (d.y > H) { d.y = -d.l; d.x = Math.random() * (W + 80); } }
+      ctx.strokeStyle = `rgba(220,235,255,${d.a})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.l * .18, d.y + d.l); ctx.stroke();
+    }
+    if (cfg.kind === 'storm' && !still) {
+      if (Math.random() < .003) flash = .18;
+      if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash})`; ctx.fillRect(0, 0, W, H); flash -= .01; }
+    }
+    if (!still) requestAnimationFrame(frame);
+  }
+  size(); addEventListener('resize', () => { size(); if (still) frame(); });
+  if (!still) requestAnimationFrame(frame);
+  return { set };
+})();
+
+document.querySelectorAll('.demo button').forEach((b) => b.addEventListener('click', () => render(b.dataset.s)));
+render('dusk');
+</script>
+
+</body></html>
