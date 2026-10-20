@@ -27,6 +27,10 @@ describe('headline', () => {
   it('says flooding is likely soon at Warning without a window', () => {
     expect(headline('warning', null, 'en')).toBe('Flooding is likely on this street soon.');
   });
+  it('gives the expected start time at Danger too when there is a window', () => {
+    expect(headline('danger', { start: T('14:30'), end: T('15:30') }, 'en')).toBe('Flooding is expected on this street from about 14:30. Leave if water is entering your home.');
+    expect(headline('danger', { start: T('14:30'), end: T('15:30') }, 'ms')).toBe('Banjir dijangka di jalan ini dari kira-kira 14:30. Keluar jika air masuk ke rumah anda.');
+  });
   it('says the street may be flooding at Danger, not that it is', () => {
     expect(headline('danger', null, 'en')).toBe('This street may be flooding now. Leave if water is entering your home.');
   });
@@ -71,6 +75,9 @@ describe('keyPoints', () => {
   it('says heavy now and shows the window start at Warning', () => {
     const k = keyPoints({ ...base, level: 'warning', gauge: { mm: 31, station: 'X' }, hours: hours([88, 80]), window: { start: T('21:00'), end: T('22:00') }, river: { wl: 4.1, th } });
     expect(k).toEqual({ rain: 'Heavy now', river: 'Above warning', flood: 'From ~21:00' });
+  });
+  it('shows the window start at Danger when there is one', () => {
+    expect(keyPoints({ ...base, level: 'danger', window: { start: T('14:30'), end: T('15:30') } }).flood).toBe('From ~14:30');
   });
   it('is honest when there is no river reading', () => {
     expect(keyPoints({ ...base, level: 'danger' }).river).toBe('No reading');

@@ -21,7 +21,7 @@ export function headline(level: Level, window: TimeWindow | null, lang: Lang): s
   if (level === 'normal') return t(lang, 'headNormal');
   if (level === 'watch') return t(lang, 'headWatch');
   if (level === 'warning') return window ? tf(lang, 'headWarningAt', { time: hhmm(window.start) }) : t(lang, 'headWarning');
-  return t(lang, 'headDanger');
+  return window ? tf(lang, 'headDangerAt', { time: hhmm(window.start) }) : t(lang, 'headDanger');
 }
 
 export type RainStrength = 'none' | 'light' | 'moderate' | 'heavy';
@@ -104,8 +104,8 @@ export function keyPoints({ lang, level, window, gauge, hours, dataTime, river }
   const flood =
     level === 'normal' ? t(lang, 'floodNo')
       : level === 'watch' ? t(lang, 'floodPossible')
-        : level === 'warning' ? (window ? tf(lang, 'floodFrom', { time: hhmm(window.start) }) : t(lang, 'floodLikely'))
-          : t(lang, 'floodNowLikely');
+        : window ? tf(lang, 'floodFrom', { time: hhmm(window.start) })
+          : level === 'warning' ? t(lang, 'floodLikely') : t(lang, 'floodNowLikely');
 
   return { rain, river: riverText, flood };
 }
