@@ -41,46 +41,46 @@ export function FindStreetPage({ lang, onSave }: { lang: Lang; onSave: (ids: str
     }
   };
 
-  const list = <Link to="/streets" className="find-secondary">{t(lang, 'findList')}</Link>;
+  const list = <Link to="/streets" className="secondary">{t(lang, 'findList')}</Link>;
 
   return (
-    <article className="sky-page find-page">
-      <SkyBackdrop sky="none" />
-      <div className="sky-content find-content">
-        <h1>{t(lang, 'findTitle')}</h1>
-        <p className="find-why">{t(lang, 'findWhy')}</p>
+    <div className="find">
+      <section className="hero hero-none find-hero">
+        <SkyBackdrop sky="none" />
+        <h1 className="hero-name">{t(lang, 'findTitle')}</h1>
+        <p className="hero-headline">{t(lang, 'findWhy')}</p>
+      </section>
 
-        {state.k === 'idle' && (
+      {state.k === 'idle' && (
+        <div className="find-actions">
+          <button type="button" className="primary" onClick={locate}>{t(lang, 'findUseLocation')}</button>
+          {list}
+          <p className="find-note">{t(lang, 'findPrivacy')}</p>
+        </div>
+      )}
+      {state.k === 'busy' && <p role="status" className="find-note">{t(lang, 'findLocating')}</p>}
+      {state.k === 'found' && (
+        <div className="card find-confirm">
+          <p>{t(lang, 'findConfirm')}</p>
+          <strong className="find-street">{state.street.name}</strong>
           <div className="find-actions">
-            <button type="button" className="find-primary" onClick={locate}>{t(lang, 'findUseLocation')}</button>
-            {list}
-            <p className="find-note">{t(lang, 'findPrivacy')}</p>
+            <button type="button" className="primary" onClick={() => onSave([state.street.street_id])}>{t(lang, 'ansYes')}</button>
+            <Link to="/streets" className="secondary">{t(lang, 'findAnother')}</Link>
           </div>
-        )}
-        {state.k === 'busy' && <p role="status" className="find-note">{t(lang, 'findLocating')}</p>}
-        {state.k === 'found' && (
-          <div className="glass find-confirm">
-            <p>{t(lang, 'findConfirm')}</p>
-            <strong className="find-street">{state.street.name}</strong>
-            <div className="find-actions">
-              <button type="button" className="find-primary" onClick={() => onSave([state.street.street_id])}>{t(lang, 'ansYes')}</button>
-              <Link to="/streets" className="find-secondary">{t(lang, 'findAnother')}</Link>
-            </div>
-          </div>
-        )}
-        {state.k === 'outside' && (
-          <div className="find-actions">
-            <p role="status">{t(lang, 'findOutside')}</p>
-            {list}
-          </div>
-        )}
-        {state.k === 'failed' && (
-          <div className="find-actions">
-            <p role="alert">{t(lang, 'findFailed')}</p>
-            {list}
-          </div>
-        )}
-      </div>
-    </article>
+        </div>
+      )}
+      {state.k === 'outside' && (
+        <div className="find-actions">
+          <p role="status">{t(lang, 'findOutside')}</p>
+          {list}
+        </div>
+      )}
+      {state.k === 'failed' && (
+        <div className="find-actions">
+          <p role="alert">{t(lang, 'findFailed')}</p>
+          {list}
+        </div>
+      )}
+    </div>
   );
 }

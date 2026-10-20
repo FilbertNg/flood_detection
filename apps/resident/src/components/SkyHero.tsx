@@ -1,8 +1,8 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { skyGradient, type Sky } from '../lib/weather';
 
-/** Rain drops per sky: sparse and short, like the prototype. */
-const DROPS: Partial<Record<Sky, number>> = { drizzle: 45, rain: 90, storm: 170 };
+/** Rain drops per sky: sparse and short; about half the old full-screen counts, now that the sky fills one card. */
+const DROPS: Partial<Record<Sky, number>> = { drizzle: 22, rain: 45, storm: 85 };
 
 /** Cloud cover per sky, 0 (none) to 1 (full). */
 const CLOUDS: Record<Sky, number> = {
@@ -14,7 +14,7 @@ interface Cloud { x: number; y: number; s: number; v: number; puffs: [number, nu
 interface Drop { x: number; y: number; l: number; v: number; a: number }
 
 /**
- * Weather backdrop behind the street page: a 3-stop gradient plus a canvas of soft drifting clouds
+ * Weather sky inside the street hero card: a 3-stop gradient plus a canvas of soft drifting clouds
  * and sparse rain. Decoration only (aria-hidden). Reduced motion draws one still frame; the loop stops
  * when the tab is hidden, on unmount, and while `active` is false (an off-screen pager panel). Warning and Danger ("alert") get no canvas: no rain, no motion.
  */
@@ -56,13 +56,13 @@ function SkyCanvas({ clouds: cover, drops: dropCount, flash: storm, paused }: { 
 
     const makeCloud = (x?: number): Cloud => ({
       x: x ?? Math.random() * W,
-      y: 20 + Math.random() * 200,
-      s: 0.5 + Math.random() * 0.8,
-      v: 0.06 + Math.random() * 0.12,
+      y: 10 + Math.random() * H * 0.6,
+      s: 0.4 + Math.random() * 0.6,
+      v: 0.05 + Math.random() * 0.1,
       puffs: Array.from({ length: 5 + Math.floor(Math.random() * 4) }, () => [Math.random() * 120 - 60, Math.random() * 30 - 15, 30 + Math.random() * 40]),
     });
-    const makeDrop = (): Drop => ({ x: Math.random() * (W + 80), y: Math.random() * H, l: 8 + Math.random() * 10, v: 7 + Math.random() * 6, a: 0.12 + Math.random() * 0.25 });
-    const clouds = Array.from({ length: Math.round(3 + cover * 6) }, () => makeCloud());
+    const makeDrop = (): Drop => ({ x: Math.random() * (W + 60), y: Math.random() * H, l: 7 + Math.random() * 8, v: 6 + Math.random() * 5, a: 0.15 + Math.random() * 0.25 });
+    const clouds = Array.from({ length: Math.round(2 + cover * 4) }, () => makeCloud());
     const drops = Array.from({ length: dropCount }, makeDrop);
 
     const frame = () => {
@@ -86,7 +86,7 @@ function SkyCanvas({ clouds: cover, drops: dropCount, flash: storm, paused }: { 
       for (const d of drops) {
         if (!still) {
           d.y += d.v; d.x -= d.v * 0.18;
-          if (d.y > H) { d.y = -d.l; d.x = Math.random() * (W + 80); }
+          if (d.y > H) { d.y = -d.l; d.x = Math.random() * (W + 60); }
         }
         c2d.strokeStyle = `rgba(220,235,255,${d.a})`;
         c2d.beginPath(); c2d.moveTo(d.x, d.y); c2d.lineTo(d.x - d.l * 0.18, d.y + d.l); c2d.stroke();
@@ -104,8 +104,12 @@ function SkyCanvas({ clouds: cover, drops: dropCount, flash: storm, paused }: { 
     const onResize = () => { size(); if (still) frame(); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('resize', onResize);
+    // The hero card grows when the weather line arrives; follow the card, not only the window.
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(onResize) : null;
+    ro?.observe(cv);
     start();
     return () => {
+      ro?.disconnect();
       cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('resize', onResize);

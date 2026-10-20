@@ -114,9 +114,9 @@ export function skyFor(level: Level, kind: WeatherKind | null, gauge: GaugeRain 
 }
 
 /**
- * Three vertical stops (top, middle, bottom) per sky. Every stop keeps white text at >= 4.5:1,
- * also under the street page's 12 % white glass cards, so the prototype's light day blue is
- * darkened. The canvas adds the clouds and rain on top.
+ * Three vertical stops (top, middle, bottom) per sky, for the street hero card. Every stop keeps
+ * white text at >= 4.5:1, also with 12 % white over it: a margin for the soft clouds the canvas draws
+ * behind the text. So the proposal's light day blue is darkened.
  */
 const SKY_STOPS: Record<Sky, [string, string, string]> = {
   'clear-day': ['#174f86', '#1f5f9e', '#2b679c'],

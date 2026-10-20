@@ -30,7 +30,7 @@ function renderShell(at: string, saved: string[], onSave = vi.fn()) {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[at]}>
         <Routes>
-          <Route element={<SwipeShell lang="en" deviceId="dev_1" saved={saved} onSave={onSave} onLang={() => {}} />}>
+          <Route element={<SwipeShell lang="en" deviceId="dev_1" saved={saved} onSave={onSave} />}>
             <Route index element={null} />
             <Route path="street/:id" element={null} />
           </Route>
@@ -88,8 +88,8 @@ describe('SwipeShell', () => {
     await screen.findByRole('heading', { level: 1, name: 'Jalan Makyong' }, slow);
     const panels = document.querySelectorAll('.pager-panel');
     expect(panels).toHaveLength(4);
-    expect(panels[0].querySelector('.sky-page')).not.toBeNull();
-    await waitFor(() => expect(panels[1].querySelector('.sky-page')).not.toBeNull());
+    expect(panels[0].querySelector('.street')).not.toBeNull();
+    await waitFor(() => expect(panels[1].querySelector('.street')).not.toBeNull());
     expect(panels[2].children).toHaveLength(0);
     expect(panels[3].children).toHaveLength(0);
   });
@@ -113,7 +113,7 @@ describe('SwipeShell', () => {
   it('has no Back link on the full-screen pages; the bottom bar navigates', async () => {
     renderShell('/', ['BBR-jalan-makyong']);
     const page = await screen.findByRole('heading', { level: 1, name: 'Jalan Makyong' }, slow);
-    expect(within(page.closest('.sky-page') as HTMLElement).queryByRole('link', { name: /Back/ })).toBeNull();
+    expect(within(page.closest('.street') as HTMLElement).queryByRole('link', { name: /Back/ })).toBeNull();
     expect(screen.getByRole('link', { name: 'My streets' })).toHaveAttribute('href', '/streets');
   });
 });

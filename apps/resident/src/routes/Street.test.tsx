@@ -90,20 +90,16 @@ describe('StreetPage', () => {
     expect(screen.getByText('Weather: Open-Meteo')).toBeInTheDocument();
   });
 
-  it('labels replayed data inside the full-screen page and offers the language switch', async () => {
-    const onLang = vi.fn();
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...streetDetail, is_replay: true }), { status: 200 })));
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/street/BBR-jalan-makyong']}>
-          <Routes><Route path="/street/:id" element={<StreetPage lang="en" deviceId="dev_1" onLang={onLang} />} /></Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
+  it('labels replayed data inside the hero card', async () => {
+    renderStreet('en', { ...streetDetail, is_replay: true });
     expect(await screen.findByText('Replay of a past flood')).toBeInTheDocument();
-    screen.getByRole('button', { name: 'Bahasa Melayu' }).click();
-    expect(onLang).toHaveBeenCalledWith('ms');
+    expect(screen.getByText('Replay of a past flood').closest('.hero')).not.toBeNull();
+  });
+
+  it('describes a flood-prone street in plain words', async () => {
+    renderStreet('en', { ...streetDetail, susceptibility: 5 });
+    expect(await screen.findByText('Low-lying: floods more easily than most')).toBeInTheDocument();
+    expect(screen.getByText('5 / 5')).toBeInTheDocument();
   });
 
   it('shows no replay label for live data', async () => {
@@ -141,7 +137,7 @@ describe('StreetPage', () => {
   it('ends with the "Is it flooding here?" question, after the alert history', async () => {
     renderStreet('en');
     const ask = await screen.findByRole('heading', { name: 'Is it flooding here?' });
-    const sections = [...document.querySelectorAll('.sky-content > section, .sky-content > a, .sky-content > details')];
+    const sections = [...document.querySelectorAll('.street > section, .street > a, .street > details')];
     expect(sections[sections.length - 1]).toContainElement(ask);
     const history = screen.getByRole('heading', { name: 'Past alerts on this street' });
     expect(history.compareDocumentPosition(ask) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -150,7 +146,7 @@ describe('StreetPage', () => {
   it('ends with the report card when no alert is active', async () => {
     renderStreet('en', { ...streetDetail, level: 'normal', active_alert: null });
     const link = await screen.findByRole('link', { name: 'Report a flood' });
-    const sections = [...document.querySelectorAll('.sky-content > section, .sky-content > a, .sky-content > details')];
+    const sections = [...document.querySelectorAll('.street > section, .street > a, .street > details')];
     expect(sections[sections.length - 1]).toBe(link);
   });
 

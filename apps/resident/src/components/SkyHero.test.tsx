@@ -5,7 +5,8 @@ import { SkyBackdrop } from './SkyHero';
 afterEach(cleanup);
 
 describe('SkyBackdrop', () => {
-  it.each([['drizzle', '45'], ['rain', '90'], ['storm', '170'], ['cloudy', '0']] as const)('%s draws %s rain drops on the canvas', (sky, drops) => {
+  // About half the drops of the old full-screen sky, now that it lives inside the hero card.
+  it.each([['drizzle', '22'], ['rain', '45'], ['storm', '85'], ['cloudy', '0']] as const)('%s draws %s rain drops on the canvas', (sky, drops) => {
     const { container } = render(<SkyBackdrop sky={sky} />);
     expect(container.querySelector('canvas')).toHaveAttribute('data-drops', drops);
   });

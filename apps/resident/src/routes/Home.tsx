@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router';
 import type { Lang, StreetProperties } from '@floodready/shared';
+import { BottomBar } from '../components/BottomBar';
 import { Credits } from '../components/Credits';
 import { LevelBadge } from '../components/LevelBadge';
 import { StreetMap } from '../components/StreetMap';
@@ -55,6 +56,7 @@ export function HomePage({ lang, mine }: { lang: Lang; mine: string[] }) {
         {alerting.length === 0 && <Link to="/report" className="secondary report-link">{t(lang, 'reportLink')}</Link>}
         <Credits lang={lang} />
       </section>
+      <BottomBar lang={lang} />
     </div>
   );
 }

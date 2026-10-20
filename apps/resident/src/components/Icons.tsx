@@ -9,47 +9,54 @@ import type { WeatherKind } from '../lib/weather';
 const box = { width: 28, height: 28, viewBox: '0 0 32 32', 'aria-hidden': true } as const;
 
 const cloud = 'M9 25h14.5a5.5 5.5 0 0 0 .6-10.97A8 8 0 0 0 8.6 15.1 5 5 0 0 0 9 25z';
-const sun = (cx: number, cy: number, r: number) => (
-  <g fill="#ffcf3f">
+const sun = (cx: number, cy: number, r: number, fill: string) => (
+  <g fill={fill}>
     <circle cx={cx} cy={cy} r={r} />
     {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
       <rect key={a} x={cx - 1.2} y={cy - r - 5} width={2.4} height={3.4} rx={1.2} transform={`rotate(${a} ${cx} ${cy})`} />
     ))}
   </g>
 );
-const moon = (cx: number, cy: number) => (
-  <path fill="#f1f3f8" d={`M${cx + 3} ${cy - 7}a8 8 0 1 0 6 11.5 6.5 6.5 0 0 1-6-11.5z`} />
+const moon = (cx: number, cy: number, fill: string) => (
+  <path fill={fill} d={`M${cx + 3} ${cy - 7}a8 8 0 1 0 6 11.5 6.5 6.5 0 0 1-6-11.5z`} />
 );
-const drops = (n: number) => (
-  <g fill="#7cc4ff">
+const drops = (n: number, fill: string) => (
+  <g fill={fill}>
     {Array.from({ length: n }, (_, i) => (
       <path key={i} d={`M${10 + i * 5} 27.5l-1.6 3.2a1.8 1.8 0 1 0 3.2 0z`} />
     ))}
   </g>
 );
 
-export function WeatherIcon({ kind }: { kind: WeatherKind }) {
+/** Colours per surface: white shapes on the dark hero sky, greys on the white cards (SDP style). */
+const TONE = {
+  sky: { cloud: '#fff', moon: '#f1f3f8', drop: '#7cc4ff', sun: '#ffcf3f' },
+  card: { cloud: '#b8bec8', moon: '#8a94a6', drop: '#3b82c4', sun: '#f5b400' },
+};
+
+export function WeatherIcon({ kind, tone = 'sky' }: { kind: WeatherKind; tone?: keyof typeof TONE }) {
+  const c = TONE[tone];
   return (
     <svg {...box} data-icon={kind} className="icon">
-      {kind === 'clear-day' && sun(16, 16, 6.5)}
-      {kind === 'clear-night' && moon(14, 16)}
-      {kind === 'partly-day' && <>{sun(12, 11, 5)}<path fill="#fff" d={cloud} /></>}
-      {kind === 'partly-night' && <>{moon(10, 11)}<path fill="#fff" d={cloud} /></>}
-      {kind === 'cloudy' && <path fill="#fff" d={cloud} transform="translate(0 -2)" />}
+      {kind === 'clear-day' && sun(16, 16, 6.5, c.sun)}
+      {kind === 'clear-night' && moon(14, 16, c.moon)}
+      {kind === 'partly-day' && <>{sun(12, 11, 5, c.sun)}<path fill={c.cloud} d={cloud} /></>}
+      {kind === 'partly-night' && <>{moon(10, 11, c.moon)}<path fill={c.cloud} d={cloud} /></>}
+      {kind === 'cloudy' && <path fill={c.cloud} d={cloud} transform="translate(0 -2)" />}
       {kind === 'fog' && (
-        <g fill="#fff"><path d={cloud} transform="translate(0 -5)" opacity={0.9} /><rect x="5" y="23" width="22" height="2.4" rx="1.2" /><rect x="8" y="27" width="16" height="2.4" rx="1.2" /></g>
+        <g fill={c.cloud}><path d={cloud} transform="translate(0 -5)" opacity={0.9} /><rect x="5" y="23" width="22" height="2.4" rx="1.2" /><rect x="8" y="27" width="16" height="2.4" rx="1.2" /></g>
       )}
       {(kind === 'drizzle' || kind === 'rain' || kind === 'storm') && (
         <>
-          <path fill="#fff" d={cloud} transform="translate(0 -5)" />
-          {kind === 'storm' ? <path fill="#ffcf3f" d="M17 19l-4.5 6.5h3.5L14 31l6-8h-3.6l2-4z" /> : drops(kind === 'rain' ? 3 : 2)}
+          <path fill={c.cloud} d={cloud} transform="translate(0 -5)" />
+          {kind === 'storm' ? <path fill={c.sun} d="M17 19l-4.5 6.5h3.5L14 31l6-8h-3.6l2-4z" /> : drops(kind === 'rain' ? 3 : 2, c.drop)}
         </>
       )}
     </svg>
   );
 }
 
-type Glyph = 'drop' | 'river' | 'tide' | 'home' | 'why' | 'todo' | 'report' | 'clock' | 'map' | 'list';
+type Glyph = 'drop' | 'river' | 'tide' | 'home' | 'why' | 'todo' | 'report' | 'clock' | 'map' | 'list' | 'check';
 
 const GLYPHS: Record<Glyph, ReactElement> = {
   drop: <path d="M16 4c4.5 6 8 10.4 8 14.5a8 8 0 0 1-16 0C8 14.4 11.5 10 16 4z" />,
@@ -61,6 +68,7 @@ const GLYPHS: Record<Glyph, ReactElement> = {
   report: <path d="M6 4h20a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H13l-6 5v-5H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zm8.4 4v8h3.2V8zm0 10v3.2h3.2V18z" />,
   clock: <path d="M16 3a13 13 0 1 1 0 26 13 13 0 0 1 0-26zm-1.5 6v8.2l6.4 3.8 1.5-2.5-4.9-2.9V9z" />,
   map: <path d="M3 7l8-3 10 3 8-3v21l-8 3-10-3-8 3zm8 .2v17.2l10 3V10.2z" />,
+  check: <path d="M16 3a13 13 0 1 1 0 26 13 13 0 0 1 0-26zm0 2.6a10.4 10.4 0 1 0 0 20.8 10.4 10.4 0 0 0 0-20.8zm5.2 5.6l1.9 1.8-8.5 8.8-5-5 1.9-1.9 3.1 3.1z" />,
   list: <path d="M5 7h3v3H5zm6 .2h16v2.6H11zM5 14.5h3v3H5zm6 .2h16v2.6H11zM5 22h3v3H5zm6 .2h16v2.6H11z" />,
 };
 

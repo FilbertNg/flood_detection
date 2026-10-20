@@ -52,10 +52,3 @@ export function curveRuns(points: CurvePoint[]): CurveRun[] {
     return { d, x0: pts[0].x, x1: pts[pts.length - 1].x };
   });
 }
-
-/** Stroke colour by chance: blue, amber from 40 %, orange from 70 %. */
-export function chanceColor(chance: number): string {
-  if (chance >= 70) return '#ff9f43';
-  if (chance >= 40) return '#ffd166';
-  return '#a8dcff';
-}

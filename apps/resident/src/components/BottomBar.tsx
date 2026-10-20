@@ -9,8 +9,8 @@ export interface Dot {
   level: Level;
 }
 
-/** Dot colour for a street in trouble, so an alert on another page shows from any page. */
-const ALERT_TINT: Partial<Record<Level, string>> = { warning: '#ff9f43', danger: '#ff5d5d' };
+/** Dot colour for a street in trouble (solid level colours on the white bar), so an alert on another page shows from any page. */
+const ALERT_TINT: Partial<Record<Level, string>> = { warning: '#e65100', danger: '#c62828' };
 
 /**
  * Bottom bar of the swipe home, like the iOS weather app: flood map on the left, one dot per saved

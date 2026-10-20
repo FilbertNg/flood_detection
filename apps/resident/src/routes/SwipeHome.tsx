@@ -34,7 +34,6 @@ interface ShellProps {
   deviceId: string;
   saved: string[];
   onSave: (ids: string[]) => void;
-  onLang: (lang: Lang) => void;
 }
 
 /**
@@ -42,7 +41,7 @@ interface ShellProps {
  * No saved street: the start screen. A street that is not saved: that street alone, with an Add button.
  * Otherwise: the pager over the saved streets.
  */
-export function SwipeShell({ lang, deviceId, saved, onSave, onLang }: ShellProps) {
+export function SwipeShell({ lang, deviceId, saved, onSave }: ShellProps) {
   const { id } = useParams();
   if (!id && saved.length === 0) return <FindStreetPage lang={lang} onSave={onSave} />;
   if (id && !saved.includes(id)) {
@@ -52,7 +51,6 @@ export function SwipeShell({ lang, deviceId, saved, onSave, onLang }: ShellProps
           id={id}
           lang={lang}
           deviceId={deviceId}
-          onLang={onLang}
           showBack={false}
           topLeft={<button type="button" className="add-street" onClick={() => onSave([...saved, id])}>{t(lang, 'addStreet')}</button>}
         />
@@ -61,12 +59,12 @@ export function SwipeShell({ lang, deviceId, saved, onSave, onLang }: ShellProps
     );
   }
   // A new saved list (a street added or removed) starts a fresh pager with a fresh order.
-  return <Pager key={saved.join(',')} lang={lang} deviceId={deviceId} saved={saved} openId={id} onLang={onLang} />;
+  return <Pager key={saved.join(',')} lang={lang} deviceId={deviceId} saved={saved} openId={id} />;
 }
 
 const ALERTING: Level[] = ['danger', 'warning'];
 
-function Pager({ lang, deviceId, saved, openId, onLang }: { lang: Lang; deviceId: string; saved: string[]; openId?: string; onLang: (lang: Lang) => void }) {
+function Pager({ lang, deviceId, saved, openId }: { lang: Lang; deviceId: string; saved: string[]; openId?: string }) {
   const navigate = useNavigate();
   const streets = useQuery({ queryKey: ['streets'], queryFn: () => api.streets(), refetchInterval: 10_000 });
   const props = useMemo(() => new Map((streets.data?.features ?? []).map((f) => [f.properties.street_id, f.properties])), [streets.data]);
@@ -159,7 +157,7 @@ function Pager({ lang, deviceId, saved, openId, onLang }: { lang: Lang; deviceId
             aria-hidden={i !== active ? 'true' : undefined}
           >
             {Math.abs(i - active) <= 1 && (
-              <StreetView id={id} lang={lang} deviceId={deviceId} onLang={onLang} active={i === active} showBack={false} />
+              <StreetView id={id} lang={lang} deviceId={deviceId} active={i === active} showBack={false} />
             )}
           </section>
         ))}

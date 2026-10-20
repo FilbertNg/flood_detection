@@ -76,6 +76,14 @@ describe('VerifySheet (verify)', () => {
     for (const k of ['depth', 'photo', 'lat', 'lon']) expect(body.has(k)).toBe(false);
   });
 
+  it('gives Yes, No and Not sure the same style, with none highlighted, so the design does not nudge the answer', () => {
+    respond(201);
+    render(<VerifySheet lang="en" mode="verify" alertId="a_01" {...props} />);
+    const answers = ['Yes', 'No', 'Not sure'].map((name) => screen.getByRole('button', { name }));
+    expect(new Set(answers.map((b) => b.className)).size).toBe(1);
+    for (const b of answers) expect(b).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('disables Send until an answer is chosen', () => {
     respond(201);
     render(<VerifySheet lang="en" mode="verify" alertId="a_01" {...props} />);
