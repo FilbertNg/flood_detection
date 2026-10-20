@@ -8,6 +8,7 @@ import { ReviewPage } from './routes/Review';
 import { StatisticsPage } from './routes/Statistics';
 import { StreetDetailPage } from './routes/StreetDetail';
 import { SuggestionsPage } from './routes/Suggestions';
+import { LogoMark } from './components/Logo';
 
 /** Grouped by the job the officer is doing: watch now, look back, act on findings. */
 const NAV: { group: string; links: { to: string; label: string; end?: boolean }[] }[] = [
@@ -23,7 +24,13 @@ export function App() {
   return (
     <div className="shell">
       <aside className="side">
-        <span className="brand">Flood-Ready Admin</span>
+        <span className="brand">
+          <LogoMark size={34} />
+          <span className="brand-text">
+            <span className="brand-name">Flood-Ready</span>
+            <span className="brand-tag">Admin</span>
+          </span>
+        </span>
         <nav aria-label="Main">
           {NAV.map((g) => {
             const id = `nav-${g.group.toLowerCase().replace(' ', '-')}`;

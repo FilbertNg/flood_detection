@@ -1,16 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, REPLAY_EVENT } from '../lib/api';
-import { dayTime } from '../lib/chart';
+import { hhmm } from '../lib/chart';
+import { dateLabel } from '../lib/format';
 
-/** Ribbon showing live or replay mode (from GET /status). */
-export function ModeRibbon() {
+/**
+ * Small live / replay chip (from GET /status): floats on the ops map, sits inline on the street page.
+ * A replay names the flood it replays; its clock is shown only on the flood's day, so a replay never
+ * shows today's date as if it were the flood (as in the resident app).
+ */
+export function ModeChip() {
   const { data: status } = useQuery({ queryKey: ['status'], queryFn: api.status, refetchInterval: 10_000 });
   if (!status) return null;
-  return status.mode === 'replay' ? (
-    <div className="ribbon replay">▶ Replay: {dayTime(status.data_time)}. Alerts and answers are flagged as replay and excluded from statistics.</div>
-  ) : (
-    <div className="ribbon live">● Live · data time {dayTime(status.data_time)}</div>
+  if (status.mode === 'replay') {
+    const event = status.replay?.event ?? status.data_time.slice(0, 10);
+    const onDay = status.data_time.slice(0, 10) === event;
+    return (
+      <p className="mode-chip replay">
+        <span className="mode-tag">Replay</span>
+        <span>{`${dateLabel(event)} flood`}</span>
+        {onDay && <time dateTime={status.data_time}>{hhmm(status.data_time)}</time>}
+      </p>
+    );
+  }
+  return (
+    <p className="mode-chip live"><i aria-hidden="true" />Live · {hhmm(status.data_time)}</p>
   );
 }
 
@@ -43,6 +57,7 @@ export function ReplayControl() {
         {replaying ? 'Stop replay' : 'Start replay: 12 Nov 2024'}
       </button>
       )}
+      {replaying && <p className="muted small">Replaying now. Alerts and answers are flagged as replay and excluded from statistics.</p>}
       {toggle.isError && <p role="alert" className="error small">{toggle.error.message}</p>}
     </div>
   );

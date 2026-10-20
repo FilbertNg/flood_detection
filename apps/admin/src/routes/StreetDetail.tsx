@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router';
 import { LEVEL_LABEL, LEVEL_STYLE, type RiverForecast } from '@floodready/shared';
 import { Credits } from '../components/Credits';
 import { StationChart } from '../components/StationChart';
-import { ModeRibbon } from '../components/ReplayControl';
+import { ModeChip } from '../components/ReplayControl';
 import { api } from '../lib/api';
 import { dayTime, hhmm, shiftIso } from '../lib/chart';
 
@@ -40,9 +40,11 @@ export function StreetDetailPage() {
 
   return (
     <>
-      <ModeRibbon />
       <main className="detail">
-        <Link to="/" className="back">← Map</Link>
+        <div className="detail-top">
+          <Link to="/" className="back">← Map</Link>
+          <ModeChip />
+        </div>
         <header className="detail-head">
           <h1>{detail.name}</h1>
           <span className="badge badge-large" style={{ background: style.bg, color: style.fg }}>{LEVEL_LABEL.en[detail.level]}</span>

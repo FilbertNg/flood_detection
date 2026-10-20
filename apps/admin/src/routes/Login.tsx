@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { auth } from '../auth';
 import { api } from '../lib/api';
+import { LogoMark } from '../components/Logo';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -25,8 +26,11 @@ export function LoginPage() {
   return (
     <main className="login">
       <form className="card login-card" onSubmit={onSubmit}>
-        <h1>Flood-Ready Admin</h1>
-        <p className="muted small">Operations console for township staff.</p>
+        <div className="login-brand">
+          <LogoMark size={40} />
+          <h1>Flood-Ready</h1>
+        </div>
+        <p className="muted small login-desc">Admin console for township staff.</p>
         <label>
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />
