@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bigWord, headline, keyPoints, rainStrength, riverStatus, weatherPhrase } from './plain';
+import { bigWord, headline, keyPoints, keyTones, rainStrength, riverStatus, weatherPhrase } from './plain';
 import type { WeatherHour } from './weather';
 
 const T = (hm: string) => `2024-11-12T${hm}:00+08:00`;
@@ -85,5 +85,34 @@ describe('keyPoints', () => {
   });
   it('says rain is likely soon when no gauge has rain but the chance is high', () => {
     expect(keyPoints({ ...base, level: 'watch', hours: hours([55]) })).toMatchObject({ rain: 'Likely soon', flood: 'Possible' });
+  });
+});
+
+describe('keyTones (colour of the Rain / River / Flood boxes)', () => {
+  const base = { level: 'normal' as const, gauge: null, hours: null, dataTime: '2026-10-20T18:00:00+08:00', river: null };
+
+  it('is calm green on a quiet Normal street, grey with no river reading', () => {
+    expect(keyTones({ ...base, river: { wl: 3.0, th } })).toEqual({ rain: 'ok', river: 'ok', flood: 'ok' });
+    expect(keyTones(base).river).toBe('none');
+  });
+
+  it('turns rain amber for moderate or likely rain and orange for heavy rain', () => {
+    expect(keyTones({ ...base, gauge: { mm: 0.5, station: 'X' } }).rain).toBe('ok');
+    expect(keyTones({ ...base, gauge: { mm: 4, station: 'X' } }).rain).toBe('watch');
+    expect(keyTones({ ...base, hours: hours([55], 18) }).rain).toBe('watch');
+    expect(keyTones({ ...base, gauge: { mm: 12, station: 'X' } }).rain).toBe('warn');
+  });
+
+  it('follows the river against its JPS marks', () => {
+    expect(keyTones({ ...base, river: { wl: 3.6, th } }).river).toBe('watch');
+    expect(keyTones({ ...base, river: { wl: 3.9, th } }).river).toBe('watch');
+    expect(keyTones({ ...base, river: { wl: 4.1, th } }).river).toBe('warn');
+    expect(keyTones({ ...base, river: { wl: 4.3, th } }).river).toBe('danger');
+  });
+
+  it('follows the official level for Flood', () => {
+    expect(keyTones({ ...base, level: 'watch' }).flood).toBe('watch');
+    expect(keyTones({ ...base, level: 'warning' }).flood).toBe('warn');
+    expect(keyTones({ ...base, level: 'danger' }).flood).toBe('danger');
   });
 });

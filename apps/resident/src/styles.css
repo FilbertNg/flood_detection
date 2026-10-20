@@ -204,9 +204,19 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 
 /* Key points, What to do, rows. */
 .keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.key { min-width: 0; padding: 10px 12px; border-radius: var(--r-tile); background: var(--surface); }
-.key b { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.key span { display: block; margin-top: 3px; font-size: 15px; font-weight: 700; line-height: 1.25; }
+/* Coloured by what each box says (lib/plain.ts keyTones): tinted background, darker text of the same
+   hue (each pair >= 5.7:1), a matching edge and icon. Grey when there is no reading. */
+.key { min-width: 0; padding: 10px 12px 12px; border-radius: var(--r-tile); border: 1.5px solid var(--key-edge, var(--line));
+  background: var(--key-bg, var(--surface)); color: var(--key-ink, var(--ink)); }
+.key .glyph { display: block; width: 20px; height: 20px; margin-bottom: 4px; color: var(--key-ink, var(--muted)); }
+.key b { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.key span { display: block; margin-top: 3px; font-size: 15px; font-weight: 800; line-height: 1.25; }
+.key[data-tone="ok"] { --key-bg: #e8f5e9; --key-ink: #1b5e20; --key-edge: #a5d6a7; }
+.key[data-tone="watch"] { --key-bg: #fff3dc; --key-ink: #8a4b00; --key-edge: #f5c97a; }
+.key[data-tone="warn"] { --key-bg: #ffeadd; --key-ink: #a33a00; --key-edge: #f4a77a; }
+.key[data-tone="danger"] { --key-bg: #fdecec; --key-ink: #b71c1c; --key-edge: #ef9a9a; }
+.key[data-tone="none"] { --key-bg: var(--surface); --key-ink: var(--ink); --key-edge: var(--line); }
+.key[data-tone="none"] .glyph { color: var(--muted); }
 .card.do { position: relative; overflow: hidden; border: 0; background: var(--surface); }
 .card.do::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--lvl); }
 .card.do h2 { color: var(--ink); }

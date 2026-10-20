@@ -109,3 +109,24 @@ export function keyPoints({ lang, level, window, gauge, hours, dataTime, river }
 
   return { rain, river: riverText, flood };
 }
+
+/** Colour of a key-point box. Describes the value shown in it; it never changes a level. */
+export type Tone = 'ok' | 'watch' | 'warn' | 'danger' | 'none';
+
+const RIVER_TONE: Record<RiverStatus, Tone> = { low: 'ok', near: 'watch', alert: 'watch', warning: 'warn', danger: 'danger' };
+const LEVEL_TONE: Record<Level, Tone> = { normal: 'ok', watch: 'watch', warning: 'warn', danger: 'danger' };
+
+/** Tones for the Rain / River / Flood boxes: green calm, amber watch, orange warning, red danger, grey unknown. */
+export function keyTones({ level, gauge, hours, dataTime, river }: Omit<KeyPointInput, 'lang' | 'window'>): { rain: Tone; river: Tone; flood: Tone } {
+  const strength = gauge ? rainStrength(gauge.mm) : 'none';
+  const c = chancesFrom(hours, dataTime);
+  const rain: Tone =
+    strength === 'heavy' ? 'warn'
+      : strength === 'moderate' || (strength === 'none' && c[0] && c[0].chance >= LIKELY) ? 'watch'
+        : 'ok';
+  return {
+    rain,
+    river: river ? RIVER_TONE[riverStatus(river.wl, river.th)] : 'none',
+    flood: LEVEL_TONE[level],
+  };
+}

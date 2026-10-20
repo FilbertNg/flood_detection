@@ -114,6 +114,9 @@ describe('StreetPage', () => {
     expect(screen.getByText('Flooding is expected on this street from about 09:30.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'What to do now' })).toBeInTheDocument();
     expect(screen.getByText('Flood').nextElementSibling).toHaveTextContent('From ~09:30');
+    // The boxes are coloured by what they say: the mock street is at Warning.
+    expect(screen.getByText('Flood').closest('.key')).toHaveAttribute('data-tone', 'warn');
+    expect(screen.getByText('River').closest('.key')).toHaveAttribute('data-tone', 'none');
   });
 
   it('keeps technical words and numbers inside the closed Technical details card', async () => {

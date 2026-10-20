@@ -12,7 +12,7 @@ import { adviceSteps } from '../lib/advice';
 import { api } from '../lib/api';
 import { dayTime, metres, percent, riverForecastText } from '../lib/format';
 import { t, type StringKey } from '../lib/i18n';
-import { bigWord, headline, keyPoints, rainStrength, riverStatus, weatherPhrase, type RiverStatus } from '../lib/plain';
+import { bigWord, headline, keyPoints, keyTones, rainStrength, riverStatus, weatherPhrase, type RiverStatus } from '../lib/plain';
 import { streetRiver } from '../lib/river';
 import { gaugeRain, hourAt, parseWeather, skyFor, weatherKind, weatherUrl, type WeatherKind } from '../lib/weather';
 
@@ -139,6 +139,7 @@ export function StreetView({ id, lang, deviceId, active = true, showBack = true,
   const th = station?.thresholds ?? null;
   const river = wl !== null && th ? { wl, th } : null;
   const keys = keyPoints({ lang, level: data.level, window: data.window, gauge, hours, dataTime: data.data_time, river });
+  const tones = keyTones({ level: data.level, gauge, hours, dataTime: data.data_time, river });
   const steps = adviceSteps(data.level, data.susceptibility, data.window, lang);
   const forecast = riverForecastText(data.river_forecast, lang);
   const verify = !!data.active_alert && (data.active_alert.level === 'warning' || data.active_alert.level === 'danger');
@@ -183,8 +184,12 @@ export function StreetView({ id, lang, deviceId, active = true, showBack = true,
       {belowHero}
 
       <div className="keys">
-        {([['keyRain', keys.rain], ['keyRiver', keys.river], ['keyFlood', keys.flood]] as const).map(([label, value]) => (
-          <div key={label} className="key"><b>{t(lang, label)}</b><span>{value}</span></div>
+        {([['keyRain', keys.rain, tones.rain, 'drop'], ['keyRiver', keys.river, tones.river, 'river'], ['keyFlood', keys.flood, tones.flood, 'home']] as const).map(([label, value, tone, icon]) => (
+          <div key={label} className="key" data-tone={tone}>
+            <Icon name={icon} />
+            <b>{t(lang, label)}</b>
+            <span>{value}</span>
+          </div>
         ))}
       </div>
 
