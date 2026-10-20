@@ -178,7 +178,7 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .outcome-unverified { color: #5d4037; }
 .tag-replay { background: #333333; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
 
-/* Street page (each pager panel). */
+/* Street page. */
 .street { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 12px var(--gap) calc(96px + env(safe-area-inset-bottom)); }
 .street > .card { margin: 0; }
 .street > .back { margin-bottom: -6px; }
@@ -231,7 +231,7 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .rows span { grid-column: 1; font-size: 13px; color: var(--muted); }
 .rows em { grid-row: 1; grid-column: 2; font-style: normal; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
-/* Rain curve. Dragging it scrolls the curve, never flips the pager. */
+/* Rain curve: scrolls sideways inside its card without dragging the page or the browser's swipe-back. */
 .curve-scroll { overflow-x: auto; scrollbar-width: none; margin: 10px -16px 0; padding: 0 16px 4px; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
 .curve-scroll::-webkit-scrollbar { display: none; }
 .curve-svg { display: block; overflow: visible; }
@@ -268,24 +268,6 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .report-card strong { display: block; font-size: 18px; }
 .report-card:hover { border-color: var(--brand); }
 .report-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--brand-soft); color: var(--brand); }
-
-/* Swipe home: header, live line, then the pager fills the screen; each panel scrolls on its own. */
-.app-swipe { display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0; }
-.app-swipe > .pager, .app-swipe > .find { flex: 1; min-height: 0; }
-.pager { position: relative; overflow: hidden; }
-.pager.single { overflow-y: auto; }
-.pager-track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
-  overscroll-behavior-x: contain; scrollbar-width: none; scroll-behavior: smooth; }
-.pager-track::-webkit-scrollbar { display: none; }
-.pager-track:focus-visible { outline: none; }
-.pager-panel { flex: 0 0 100%; height: 100%; overflow-y: auto; overscroll-behavior-y: contain; scroll-snap-align: start; scroll-snap-stop: always; }
-@media (prefers-reduced-motion: reduce) { .pager-track { scroll-behavior: auto; } }
-
-/* Page dots just under the hero card: the active one a short red pill. */
-.page-dots { display: flex; justify-content: center; margin: -8px 0 -6px; }
-.page-dot { display: grid; place-items: center; min-width: 22px; height: 32px; padding: 0 3px; border: 0; background: transparent; cursor: pointer; }
-.page-dot span { width: 6px; height: 6px; border-radius: 50%; background: var(--dot, #cfcfcf); }
-.page-dot[aria-current="true"] span { width: 18px; border-radius: 3px; background: var(--dot, var(--brand)); }
 
 /* Red floating map button, bottom right above the safe area; pages keep room below their last card. */
 .fab { position: fixed; z-index: 20; right: max(18px, calc((100vw - 640px) / 2 + 18px)); bottom: calc(20px + env(safe-area-inset-bottom));
@@ -334,7 +316,7 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 @media (prefers-reduced-motion: reduce) { .sky-view { animation: none; } .hero { transition: none; } }
 
 /* Start screen when no street is saved. */
-.find { display: grid; align-content: start; gap: 14px; padding: 12px var(--gap) 24px; overflow-y: auto; }
+.find { display: grid; align-content: start; gap: 14px; padding: 12px var(--gap) 24px; }
 .find-hero { padding: 28px 20px 26px; }
 .find-hero .hero-name { margin-top: 0; font-size: 26px; }
 .find-actions { display: grid; gap: 10px; }

@@ -11,7 +11,6 @@ import { StreetMap } from '../components/StreetMap';
 import { api } from '../lib/api';
 import { currentPosition, nearestStreet } from '../lib/geo';
 import { t } from '../lib/i18n';
-import { readLastStreet } from '../lib/lastStreet';
 import { PickStreetsPage } from './PickStreets';
 
 /** Further than this from every BBR street means the phone is outside the township. */
@@ -28,10 +27,10 @@ interface Props {
 }
 
 /**
- * Flood map (/map): the township map with a floating "My location" card. The card shows the current
- * street (last viewed, else the first saved); "Use my location" finds the nearest street on the phone;
- * "Choose another" opens the street picker as a sheet; tapping a street line puts it in the card.
- * Choosing a street goes back to the pager on it.
+ * Flood map (/map): the township map with a floating "My location" card. The card shows my street;
+ * "Use my location" finds the nearest street on the phone; "Choose another" opens the street picker as
+ * a sheet; tapping a street line puts it in the card. "Set as my street" replaces my street (the app
+ * keeps one) and opens it.
  */
 export function HomePage({ lang, mine, deviceId, onSave, onLang }: Props) {
   const navigate = useNavigate();
@@ -71,12 +70,11 @@ export function HomePage({ lang, mine, deviceId, onSave, onLang }: Props) {
   const alerting = followed.filter((p) => p.level === 'warning' || p.level === 'danger');
   const watching = followed.filter((p) => p.level === 'watch');
 
-  const last = readLastStreet();
-  const current = byId(picked) ?? byId(last && mine.includes(last) ? last : null) ?? followed[0] ?? null;
-  const saved = !!current && mine.includes(current.street_id);
+  const current = byId(picked) ?? followed[0] ?? null;
+  const isMine = !!current && current.street_id === mine[0];
 
   const choose = (street: StreetProperties) => {
-    if (!mine.includes(street.street_id)) onSave([...mine, street.street_id]);
+    if (street.street_id !== mine[0]) onSave([street.street_id]);
     navigate(`/street/${encodeURIComponent(street.street_id)}`);
   };
 
@@ -127,12 +125,10 @@ export function HomePage({ lang, mine, deviceId, onSave, onLang }: Props) {
           {locate === 'busy' && <p role="status" className="loc-note">{t(lang, 'findLocating')}</p>}
           {locate === 'outside' && <p role="status" className="loc-note">{t(lang, 'findOutside')}</p>}
           {locate === 'failed' && <p role="alert" className="loc-note">{t(lang, 'findFailed')}</p>}
-          {current && !saved && (
-            <button type="button" className="primary" onClick={() => choose(current)}>
-              {t(lang, mine.length === 0 ? 'setStreet' : 'addStreetPlain')}
-            </button>
+          {current && !isMine && (
+            <button type="button" className="primary" onClick={() => choose(current)}>{t(lang, 'setStreet')}</button>
           )}
-          {current && saved && picked && (
+          {current && isMine && picked && (
             <button type="button" className="primary" onClick={() => choose(current)}>{t(lang, 'showStreet')}</button>
           )}
           <div className="loc-btns">

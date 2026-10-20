@@ -20,7 +20,7 @@ const INK = '#121212';
  * sky (blue to amber to orange line, white Now bubble).
  */
 export function RainCurve({ lang, rain, weather, tone = 'card' }: { lang: Lang; rain: StreetDetail['rain_next_12h']; weather: WeatherHour[] | null; tone?: 'card' | 'sky' }) {
-  // Gradient ids per curve: several pager panels and the full view can be on the page at once.
+  // Gradient ids per curve: the card and the full view can be on the page at once.
   const fillId = useId();
   const strokeId = useId();
   if (rain.length === 0) return <p className="tile-empty">{t(lang, 'noForecast')}</p>;

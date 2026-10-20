@@ -122,14 +122,14 @@ describe('HomePage at /map', () => {
     expect(within(card).getByRole('button', { name: 'Choose another' })).toBeInTheDocument();
   });
 
-  it('puts a tapped street line in the card; saving it opens the pager on that street', async () => {
+  it('puts a tapped street line in the card; "Set as my street" replaces my street and opens it', async () => {
     const onSave = renderHome('en', ['BBR-persiaran-batu-belah']);
     fireEvent.click(await screen.findByRole('button', { name: 'line Jalan Makyong' }));
     const card = screen.getByRole('region', { name: 'My location' });
     expect(within(card).getByText('Jalan Makyong')).toBeInTheDocument();
     expect(within(card).getByText('Warning')).toBeInTheDocument();
-    fireEvent.click(within(card).getByRole('button', { name: 'Add to my streets' }));
-    expect(onSave).toHaveBeenCalledWith(['BBR-persiaran-batu-belah', 'BBR-jalan-makyong']);
+    fireEvent.click(within(card).getByRole('button', { name: 'Set as my street' }));
+    expect(onSave).toHaveBeenCalledWith(['BBR-jalan-makyong']);
     expect(path).toBe('/street/BBR-jalan-makyong');
   });
 
@@ -147,7 +147,7 @@ describe('HomePage at /map', () => {
     const card = await screen.findByRole('region', { name: 'My location' });
     fireEvent.click(within(card).getByRole('button', { name: 'Use my location' }));
     expect(await within(card).findByText('Jalan Makyong')).toBeInTheDocument();
-    expect(within(card).getByRole('button', { name: 'Add to my streets' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Set as my street' })).toBeInTheDocument();
   });
 
   it('opens the street picker as a sheet over the map from "Choose another"', async () => {

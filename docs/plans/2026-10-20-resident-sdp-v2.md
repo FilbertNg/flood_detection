@@ -13,3 +13,7 @@ Branch `feat/resident-sdp-v2`. **Checkpoint before this work: `e8f5848`** (`git 
 ## Tests (written first)
 
 No bottom bar; the FAB links to `/map`; dots render under the hero; the hero opens the full view by click and Enter and closes by ×, Escape and Back, restoring focus; the map's location card shows the current street and both buttons; picking a street on the map and saving it goes to `/street/:id`; "Use my location" fills the card.
+
+## Change after review (owner, 20 Oct 2026): one street, no swiping
+
+The pager, page dots and street ordering are removed; the app keeps a single street. `/` shows my street (the start screen when none is saved); `/street/:id` for another street shows it with "Set as my street", which replaces mine; the picker is a single choice; the map card's "Set as my street" replaces too. An older phone that saved several streets is not changed behind the resident's back: it shows the first, and becomes one street the next time the resident chooses one (notifications keep covering the saved streets until then).

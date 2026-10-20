@@ -47,14 +47,10 @@ export interface StreetViewProps {
   id: string;
   lang: Lang;
   deviceId: string;
-  /** False for pager panels off screen: the sky stops moving and the 10 s refresh pauses, to save battery. */
-  active?: boolean;
-  /** Back link in the top row; the swipe home has the red map button instead. */
+  /** Back link in the top row; the home page has the red map button instead. */
   showBack?: boolean;
   /** Extra control at the top left, e.g. "+ Add to my streets". */
   topLeft?: ReactNode;
-  /** Shown just under the hero card: the pager's page dots. */
-  belowHero?: ReactNode;
 }
 
 /**
@@ -63,14 +59,13 @@ export interface StreetViewProps {
  * The app header (with the language switch) and the live line sit above it; the replay label is
  * repeated inside the hero card so a replayed street is labelled even on its own.
  */
-export function StreetView({ id, lang, deviceId, active = true, showBack = true, topLeft, belowHero }: StreetViewProps) {
-  // Element ids are prefixed per view: up to three pager panels are on the page at once.
+export function StreetView({ id, lang, deviceId, showBack = true, topLeft }: StreetViewProps) {
+  // Element ids are prefixed per view, in case two views are ever on one page.
   const uid = useId();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  // The full-screen sky lives in the URL (?view=sky, a history entry), so Back closes it. Only the
-  // visible street opens it.
-  const open = active && params.get('view') === 'sky';
+  // The full-screen sky lives in the URL (?view=sky, a history entry), so Back closes it.
+  const open = params.get('view') === 'sky';
   const pushed = useRef(false);
   const opener = useRef<HTMLDivElement>(null);
   const openFull = () => {
@@ -107,7 +102,7 @@ export function StreetView({ id, lang, deviceId, active = true, showBack = true,
   const { data, isLoading, isError } = useQuery({
     queryKey: ['street', id],
     queryFn: () => api.street(id),
-    refetchInterval: active ? 10_000 : false,
+    refetchInterval: 10_000,
   });
   const day = data?.data_time.slice(0, 10);
   const weather = useQuery({
@@ -121,7 +116,7 @@ export function StreetView({ id, lang, deviceId, active = true, showBack = true,
     queryKey: ['stations'],
     queryFn: () => api.stations().catch(() => null),
     enabled: !!data,
-    refetchInterval: active ? 60_000 : false,
+    refetchInterval: 60_000,
   });
 
   if (isLoading) return <p className="pad">{t(lang, 'loading')}</p>;
@@ -161,7 +156,7 @@ export function StreetView({ id, lang, deviceId, active = true, showBack = true,
 
       <section className={`hero hero-${sky}`} aria-labelledby={`${uid}-name`}>
         {/* While the full view is open its sky moves instead: only one canvas animates at a time. */}
-        <SkyBackdrop sky={sky} active={active && !open} />
+        <SkyBackdrop sky={sky} active={!open} />
         <div className="hero-top">
           <span className="hero-label">{t(lang, 'yourStreet')}</span>
           <span className="level-pill"><i aria-hidden="true" />{LEVEL_LABEL[lang][data.level]}</span>
@@ -181,7 +176,6 @@ export function StreetView({ id, lang, deviceId, active = true, showBack = true,
             name stays a real heading for screen readers. */}
         <div ref={opener} className="hero-open" role="button" tabIndex={0} aria-label={t(lang, 'heroOpen')} onClick={openFull} onKeyDown={onOpenerKey} />
       </section>
-      {belowHero}
 
       <div className="keys">
         {([['keyRain', keys.rain, tones.rain, 'drop'], ['keyRiver', keys.river, tones.river, 'river'], ['keyFlood', keys.flood, tones.flood, 'home']] as const).map(([label, value, tone, icon]) => (

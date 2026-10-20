@@ -17,7 +17,7 @@ interface Drop { x: number; y: number; l: number; v: number; a: number }
 /**
  * Weather sky for the street hero card, or (full) the full-screen sky view: a 3-stop gradient plus a canvas of soft drifting clouds
  * and sparse rain. Decoration only (aria-hidden). Reduced motion draws one still frame; the loop stops
- * when the tab is hidden, on unmount, and while `active` is false (an off-screen pager panel). Warning and Danger ("alert") get no canvas: no rain, no motion.
+ * when the tab is hidden, on unmount, and while `active` is false (the hero card while the full-screen sky is open). Warning and Danger ("alert") get no canvas: no rain, no motion.
  */
 export function SkyBackdrop({ sky, active = true, full = false }: { sky: Sky; active?: boolean; full?: boolean }) {
   const [top, mid, bottom] = skyGradient(sky);
@@ -42,7 +42,7 @@ function SkyCanvas({ clouds: cover, drops: dropCount, flash: storm, paused }: { 
     }
     if (!cv || !ctx) return;
     const c2d = ctx;
-    // Reduced motion, or a pager panel that is off screen: draw one still frame and no loop.
+    // Reduced motion, or a sky that is covered (the hero under the full view): draw one still frame and no loop.
     const still = paused || (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     let W = 0, H = 0, raf = 0, flash = 0;
 
