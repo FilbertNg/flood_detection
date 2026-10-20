@@ -5,23 +5,30 @@ import { SkyBackdrop } from './SkyHero';
 afterEach(cleanup);
 
 describe('SkyBackdrop', () => {
-  it('draws moving rain for rainy skies', () => {
+  it.each([['drizzle', '45'], ['rain', '90'], ['storm', '170'], ['cloudy', '0']] as const)('%s draws %s rain drops on the canvas', (sky, drops) => {
+    const { container } = render(<SkyBackdrop sky={sky} />);
+    expect(container.querySelector('canvas')).toHaveAttribute('data-drops', drops);
+  });
+
+  it('sets the three gradient stops for the sky', () => {
     const { container } = render(<SkyBackdrop sky="rain" />);
-    expect(container.querySelector('.sky-rain')).not.toBeNull();
-    expect(container.querySelectorAll('.rain-layer').length).toBeGreaterThan(0);
+    const style = (container.firstElementChild as HTMLElement).style;
+    expect(style.getPropertyValue('--sky-top')).not.toBe('');
+    expect(style.getPropertyValue('--sky-mid')).not.toBe('');
+    expect(style.getPropertyValue('--sky-bottom')).not.toBe('');
   });
 
-  it('adds the soft flash only for a storm', () => {
+  it('allows the soft flash only for a storm', () => {
     const { container, rerender } = render(<SkyBackdrop sky="storm" />);
-    expect(container.querySelector('.flash')).not.toBeNull();
-    rerender(<SkyBackdrop sky="drizzle" />);
-    expect(container.querySelector('.flash')).toBeNull();
+    expect(container.querySelector('canvas')).toHaveAttribute('data-flash', 'true');
+    rerender(<SkyBackdrop sky="rain" />);
+    expect(container.querySelector('canvas')).toHaveAttribute('data-flash', 'false');
   });
 
-  it('keeps the alert sky still, with no rain', () => {
+  it('keeps the alert sky still: no canvas, no rain, no motion', () => {
     const { container } = render(<SkyBackdrop sky="alert" />);
     expect(container.querySelector('.sky-alert')).not.toBeNull();
-    expect(container.querySelector('.rain-layer')).toBeNull();
+    expect(container.querySelector('canvas')).toBeNull();
   });
 
   it('is decoration only, hidden from screen readers', () => {

@@ -1,26 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
+import type { CSSProperties } from 'react';
 import { Link, useParams } from 'react-router';
-import type { Lang, Level } from '@floodready/shared';
+import { LEVEL_LABEL, type Lang, type Level, type Susceptibility } from '@floodready/shared';
 import { AlertHistory } from '../components/AlertHistory';
 import { Icon, WeatherIcon } from '../components/Icons';
 import { LangSwitch } from '../components/LangSwitch';
-import { LevelBadge } from '../components/LevelBadge';
 import { SkyBackdrop } from '../components/SkyHero';
-import { HourlyStrip, ProneTile, RainNowTile, RiverTile, TideTile } from '../components/StreetTiles';
+import { RainCurve, RiverMeter, TideMini } from '../components/StreetTiles';
 import { VerifySheet } from '../components/VerifySheet';
+import { adviceSteps } from '../lib/advice';
 import { api } from '../lib/api';
-import { dayTime, percent, riverForecastText, windowText } from '../lib/format';
+import { dayTime, metres, percent, riverForecastText } from '../lib/format';
 import { t, type StringKey } from '../lib/i18n';
+import { bigWord, headline, keyPoints, rainStrength, riverStatus, weatherPhrase, type RiverStatus } from '../lib/plain';
+import { streetRiver } from '../lib/river';
 import { gaugeRain, hourAt, parseWeather, skyFor, weatherKind, weatherUrl, type WeatherKind } from '../lib/weather';
-
-const ADVICE: Record<Level, StringKey> = {
-  normal: 'adviceNormal', watch: 'adviceWatch', warning: 'adviceWarning', danger: 'adviceDanger',
-};
 
 const WX_LABEL: Record<WeatherKind, StringKey> = {
   'clear-day': 'wxClearDay', 'clear-night': 'wxClearNight', 'partly-day': 'wxPartly', 'partly-night': 'wxPartly',
   cloudy: 'wxCloudy', fog: 'wxFog', drizzle: 'wxDrizzle', rain: 'wxRain', storm: 'wxStorm',
 };
+
+/** Level tints for the dot and big word on the dark sky (the text label stays the official level). */
+const TINT: Record<Level, string> = { normal: '#7ee0a1', watch: '#ffd166', warning: '#ff9f43', danger: '#ff5d5d' };
+
+const GAUGE_TEXT = { none: 'gNone', light: 'gLight', moderate: 'gModerate', heavy: 'gHeavy' } as const satisfies Record<string, StringKey>;
+const RIVER_TEXT: Record<RiverStatus, StringKey> = { low: 'rLow', near: 'rNear', alert: 'rAlert', warning: 'rWarning', danger: 'rDanger' };
+
+const proneText = (s: Susceptibility): StringKey => (s >= 4 ? 'streetProne' : s === 3 ? 'streetMid' : 'streetLow');
 
 const FIFTEEN_MIN = 15 * 60_000;
 
@@ -34,7 +41,12 @@ async function fetchWeather(dataTime: string) {
   }
 }
 
-/** Full screen: the app header and live strip are hidden here, so this page carries Back, language and the replay label. */
+/**
+ * Street page, laid out like a phone weather app: the plain answer first (what it means, what to do,
+ * when the rain comes), the numbers last in "Technical details", and the report question at the end.
+ * Full screen: the app header and live strip are hidden here, so this page carries Back, language and
+ * the replay label.
+ */
 export function StreetPage({ lang, deviceId, onLang }: { lang: Lang; deviceId: string; onLang?: (lang: Lang) => void }) {
   const { id = '' } = useParams();
   const { data, isLoading, isError } = useQuery({
@@ -57,9 +69,6 @@ export function StreetPage({ lang, deviceId, onLang }: { lang: Lang; deviceId: s
     refetchInterval: 60_000,
   });
 
-  const river = data ? riverForecastText(data.river_forecast, lang) : null;
-  const verify = !!data?.active_alert && (data.active_alert.level === 'warning' || data.active_alert.level === 'danger');
-
   if (isLoading) return <p className="pad">{t(lang, 'loading')}</p>;
   if (isError || !data) return <p className="pad">{t(lang, 'error')}</p>;
 
@@ -69,9 +78,28 @@ export function StreetPage({ lang, deviceId, onLang }: { lang: Lang; deviceId: s
   const gauge = gaugeRain(stations.data, data.stations);
   const sky = skyFor(data.level, kind, gauge);
   const chance = nowHour?.rainChance;
+  const phrase = weatherPhrase(hours, data.data_time, lang);
+  const station = streetRiver(stations.data, data.stations);
+  const wl = station?.latest?.wl_m ?? null;
+  const th = station?.thresholds ?? null;
+  const river = wl !== null && th ? { wl, th } : null;
+  const keys = keyPoints({ lang, level: data.level, window: data.window, gauge, hours, dataTime: data.data_time, river });
+  const steps = adviceSteps(data.level, data.susceptibility, data.window, lang);
+  const forecast = riverForecastText(data.river_forecast, lang);
+  const verify = !!data.active_alert && (data.active_alert.level === 'warning' || data.active_alert.level === 'danger');
+  const alerting = data.level === 'warning' || data.level === 'danger';
+  const word = bigWord(data.level, lang);
+  // 88 px like the prototype, smaller for long words ("Berwaspada") so one word never overflows a phone.
+  const longest = Math.max(...word.split(' ').map((w) => w.length));
+  const wordSize = Math.min(88, Math.floor(330 / (longest * 0.55)));
+  const vars = { '--lvl': TINT[data.level], '--word': alerting ? TINT[data.level] : '#fff', '--word-size': `${wordSize}px` } as CSSProperties;
+
+  const weatherLine = kind
+    ? [t(lang, WX_LABEL[kind]), chance != null ? `${chance}% ${t(lang, 'wxChance')}` : null, phrase].filter(Boolean).join(' · ')
+    : null;
 
   return (
-    <article className={`street sky-page sky-page-${sky}`}>
+    <article className={`street sky-page sky-page-${sky}`} style={vars}>
       <SkyBackdrop sky={sky} />
       <div className="sky-content">
         <div className="sky-top">
@@ -82,42 +110,72 @@ export function StreetPage({ lang, deviceId, onLang }: { lang: Lang; deviceId: s
 
         <header className="sky-hero">
           <h1>{data.name}</h1>
-          <div className="sky-level"><LevelBadge level={data.level} lang={lang} large /></div>
-          {kind && (
+          <div className="sky-status"><span className="sky-dot" aria-hidden="true" />{LEVEL_LABEL[lang][data.level]}</div>
+          <p className="sky-word">{word}</p>
+          <p className="sky-headline">{headline(data.level, data.window, lang)}</p>
+          {kind && weatherLine && (
             <p className="sky-weather">
               <WeatherIcon kind={kind} />
-              <span>{`${t(lang, WX_LABEL[kind])}${chance != null ? ` · ${chance}% ${t(lang, 'wxChance')}` : ''}`}</span>
+              <span>{weatherLine}</span>
             </p>
           )}
-          {gauge && <p className="sky-line">{`${t(lang, 'rainAt')} ${gauge.station}: ${gauge.mm} mm ${t(lang, 'inLastHour')}`}</p>}
-          {data.window && <p className="window">{t(lang, 'expected')} {windowText(data.window, lang)}</p>}
-          {data.flood_probability !== null && (
-            <p className="ml">
-              <strong>{percent(data.flood_probability)}</strong> {t(lang, 'chance')}
-              <br />
-              <span className="sky-small">{t(lang, 'mlNote')}</span>
-            </p>
-          )}
-          <p className="sky-small">
-            {t(lang, 'dataTime')} {dayTime(data.data_time)}
-            {kind && <> · <span>{t(lang, 'wxCredit')}</span></>}
-          </p>
         </header>
 
-        <section className="tile" aria-labelledby="rain-next">
-          <h2 className="tile-title" id="rain-next"><Icon name="clock" />{t(lang, 'rainNext')}</h2>
-          <HourlyStrip lang={lang} rain={data.rain_next_12h} weather={hours} />
-        </section>
-
-        <div className="tile-grid">
-          <RainNowTile lang={lang} gauge={gauge} />
-          <RiverTile lang={lang} stations={stations.data} ids={data.stations} />
-          <TideTile lang={lang} tide={data.tide} dataTime={data.data_time} />
-          <ProneTile lang={lang} rating={data.susceptibility} />
+        <div className="sky-keys">
+          {([['keyRain', keys.rain], ['keyRiver', keys.river], ['keyFlood', keys.flood]] as const).map(([label, value]) => (
+            <div key={label} className="sky-key"><b>{t(lang, label)}</b><span>{value}</span></div>
+          ))}
         </div>
 
-        <section className="tile">
-          <h2 className="tile-title"><Icon name="why" />{t(lang, 'why')}</h2>
+        <section className="glass do" aria-labelledby="do-now">
+          <h2 id="do-now">{t(lang, 'doTitle')}</h2>
+          <ul className="steps">
+            {steps.map((s) => (
+              <li key={s.title}><span>{s.title}{s.note && <small>{s.note}</small>}</span></li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="sky-curve" aria-labelledby="rain-curve">
+          <h2 id="rain-curve">{t(lang, 'curveTitle')}</h2>
+          <RainCurve lang={lang} rain={data.rain_next_12h} weather={hours} />
+        </section>
+
+        <section className="glass" aria-labelledby="street-now">
+          <h2 id="street-now">{t(lang, 'streetNow')}</h2>
+          <ul className="rows">
+            <li><b>{t(lang, 'rowRain')}</b><span>{t(lang, GAUGE_TEXT[gauge ? rainStrength(gauge.mm) : 'none'])}</span></li>
+            <li><b>{t(lang, 'rowRiver')}</b><span>{river ? t(lang, RIVER_TEXT[riverStatus(river.wl, river.th)]) : t(lang, 'rNone')}</span></li>
+            <li><b>{t(lang, 'rowStreet')}</b><span>{t(lang, proneText(data.susceptibility))}</span><em>{data.susceptibility} / 5</em></li>
+          </ul>
+        </section>
+
+        <details className="glass tech">
+          <summary>
+            <span>{t(lang, 'techTitle')}</span>
+            <span className="tech-toggle"><span className="tech-show">{t(lang, 'techShow')}</span><span className="tech-hide">{t(lang, 'techHide')}</span></span>
+          </summary>
+          {station && wl !== null && (
+            <>
+              <div className="tech-river"><strong>{metres(wl)}</strong><span>{station.name}</span></div>
+              {th && <RiverMeter wl={wl} th={th} />}
+            </>
+          )}
+          <ul className="rows">
+            {th && (
+              <li><b>{t(lang, 'techMarks')}</b><span>{`${t(lang, 'markAlert')} ${th.alert.toFixed(2)} · ${t(lang, 'markWarning')} ${th.warning.toFixed(2)} · ${t(lang, 'markDanger')} ${th.danger.toFixed(2)} m`}</span></li>
+            )}
+            <li><b>{t(lang, 'techRainHour')}</b><span>{gauge ? gauge.station : t(lang, 'techGauge')}</span><em>{gauge ? `${gauge.mm} mm` : '0 mm'}</em></li>
+            {data.flood_probability !== null && (
+              <li><b>{t(lang, 'techModel')}</b><span>{t(lang, 'chance')}</span><em>{percent(data.flood_probability)}</em></li>
+            )}
+          </ul>
+          {data.flood_probability !== null && <p className="fine">{t(lang, 'mlNote')}</p>}
+
+          <h3>{t(lang, 'tide')}</h3>
+          <TideMini lang={lang} tide={data.tide} dataTime={data.data_time} />
+
+          <h3>{t(lang, 'why')}</h3>
           {data.reasons.length ? (
             <ul className="reasons">
               {data.reasons.map((r) => (
@@ -125,34 +183,36 @@ export function StreetPage({ lang, deviceId, onLang }: { lang: Lang; deviceId: s
               ))}
             </ul>
           ) : (
-            <p className="tile-empty">{t(lang, 'noReasons')}</p>
+            <p className="fine">{t(lang, 'noReasons')}</p>
           )}
-        </section>
 
-        <section className="tile">
-          <h2 className="tile-title"><Icon name="todo" />{t(lang, 'whatToDo')}</h2>
-          <p className="tile-text">{t(lang, ADVICE[data.level])}</p>
-        </section>
+          {forecast && (
+            <section aria-labelledby="river-forecast">
+              <h3 id="river-forecast">{t(lang, 'riverForecast')}</h3>
+              <p className="fine">{forecast.now}</p>
+              <ul className="reasons">
+                {forecast.points.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+              {forecast.warning && <p className="fine">{forecast.warning}</p>}
+              {forecast.mayReachWarning && <p className="fine"><strong>{t(lang, 'riverMayReach')}</strong></p>}
+              <p className="fine">{t(lang, 'riverNote')}</p>
+            </section>
+          )}
 
-        {river && (
-          <section className="tile" aria-labelledby="river-forecast">
-            <h2 className="tile-title" id="river-forecast"><Icon name="river" />{t(lang, 'riverForecast')}</h2>
-            <p className="tile-text">{river.now}</p>
-            <ul className="reasons">
-              {river.points.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-            {river.warning && <p className="tile-note">{river.warning}</p>}
-            {river.mayReachWarning && <p className="tile-text"><strong>{t(lang, 'riverMayReach')}</strong></p>}
-            <p className="tile-note">{t(lang, 'riverNote')}</p>
-          </section>
-        )}
+          <p className="fine">
+            {t(lang, 'dataTime')} {dayTime(data.data_time)} · {t(lang, 'techSources')}
+            {kind && <> · <span>{t(lang, 'wxCredit')}</span></>}
+          </p>
+        </details>
+
+        <AlertHistory history={data.history} lang={lang} />
 
         {verify ? (
           <VerifySheet key={data.active_alert!.alert_id} lang={lang} deviceId={deviceId} streetId={data.street_id} alertId={data.active_alert!.alert_id} mode="verify" />
         ) : (
-          <Link to={`/report?street=${encodeURIComponent(data.street_id)}`} className="tile report-card" aria-label={t(lang, 'reportLink')}>
+          <Link to={`/report?street=${encodeURIComponent(data.street_id)}`} className="glass report-card" aria-label={t(lang, 'reportLink')}>
             <span className="report-icon"><Icon name="report" /></span>
             <span>
               <strong>{t(lang, 'reportLink')}</strong>
@@ -160,8 +220,6 @@ export function StreetPage({ lang, deviceId, onLang }: { lang: Lang; deviceId: s
             </span>
           </Link>
         )}
-
-        <AlertHistory history={data.history} lang={lang} />
 
         <footer className="footer sky-footer">{t(lang, 'footer')}</footer>
       </div>

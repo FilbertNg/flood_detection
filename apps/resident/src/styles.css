@@ -161,96 +161,126 @@ select.search:hover { border-color: var(--ink); }
   * { transition: none !important; animation: none !important; }
 }
 
+
 /*
- * Street page: weather sky (owner request, 20 Oct 2026). The sky shows the Open-Meteo condition,
- * or rain when the street's own JPS gauge measured rain. Warning and Danger get a still, dark
- * sky so the alert stays the focus. Every sky's lightest stop keeps white text at >= 5:1.
- * Tiles are solid dark tints (no blur), in the same rounded style as the rest of the app.
+ * Street page: a phone weather app (target: docs/design/street-sky-prototype.html).
+ *
+ * DESIGN EXCEPTION (owner decision, 20 Oct 2026): this section uses glass cards, backdrop blur and
+ * sky gradients, which the rest of the app does not ("no glass, no blur, no glow, no gradients").
+ * Every rule here is scoped under .sky-page; the rest of the app stays flat.
+ *
+ * Readability: every sky stop keeps white text at >= 4.5:1, also under a 12 % white glass card
+ * (tested in lib/weather.test.ts). Text is solid white; hierarchy comes from size and weight, because
+ * faded white (even 90 %) drops below 4.5:1 on the lightest glass. Warning and Danger get a still,
+ * dark sky so the alert stays the focus.
  */
-.sky-page { position: relative; overflow: hidden; min-height: 100vh; min-height: 100dvh; color: #fff; }
-.sky-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: env(safe-area-inset-top); }
-.sky-replay { display: inline-block; margin: 4px 0 0; padding: 4px 12px; border-radius: 999px; background: #333333; color: #fff; font-size: 0.85rem; font-weight: 700; }
-.sky { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-.sky-content { position: relative; z-index: 1; padding: 10px var(--gap) 8px; }
+.sky-page { position: relative; overflow: hidden; isolation: isolate; min-height: 100vh; min-height: 100dvh; color: #fff; }
+.sky-page .sky { position: absolute; inset: 0; z-index: -2; pointer-events: none;
+  background: linear-gradient(180deg, var(--sky-top) 0, var(--sky-mid) 240px, var(--sky-bottom) 450px); }
+.sky-page .sky-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 640px;
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%); mask-image: linear-gradient(180deg, #000 55%, transparent 100%); }
+.sky-content { position: relative; padding: 10px 14px 8px; }
 
-.sky-clear-day { background: linear-gradient(180deg, #1c5f9e, #2f6fa8 60%); }
-.sky-clear-night { background: linear-gradient(180deg, #0b1430, #1e2d55); }
-.sky-partly-day { background: linear-gradient(180deg, #2c5f8f, #4c6f93); }
-.sky-partly-night { background: linear-gradient(180deg, #141d36, #2b3858); }
-.sky-cloudy { background: linear-gradient(180deg, #4f5e70, #616e80); }
-.sky-fog { background: linear-gradient(180deg, #5b6672, #646f7b); }
-.sky-drizzle { background: linear-gradient(180deg, #3d4b5c, #56637a); }
-.sky-rain { background: linear-gradient(180deg, #2b3746, #414f62); }
-.sky-storm { background: linear-gradient(180deg, #1d2230, #323a4d); }
-.sky-alert { background: linear-gradient(180deg, #1a1d24, #2a2e38); }
-.sky-none { background: linear-gradient(180deg, #4a5566, #5f6a7a); }
+.sky-page .sky-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: env(safe-area-inset-top) 6px 0; }
+.sky-page .back { color: #fff; font-size: 15px; }
+.sky-page .sky-replay { display: inline-block; margin: 6px 6px 0; padding: 4px 12px; border-radius: 999px; background: #333333; color: #fff; font-size: 0.85rem; font-weight: 700; }
 
-/* Moving rain: two tiled streak layers falling at different speeds give depth without a video. */
-.rain-layer { position: absolute; inset: -200px -60px 0; background-repeat: repeat; will-change: background-position; }
-.rain-far {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='120'%3E%3Cg stroke='white' stroke-opacity='.32' stroke-width='1' stroke-linecap='round'%3E%3Cpath d='M10 4l-2 12M38 40l-2 12M66 18l-2 12M24 78l-2 12M80 66l-2 12M52 98l-2 12'/%3E%3C/g%3E%3C/svg%3E");
-  animation: rain-fall-far 1.5s linear infinite;
-}
-.rain-near {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='160'%3E%3Cg stroke='white' stroke-opacity='.55' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M18 8l-3 20M70 52l-3 20M110 20l-3 20M44 108l-3 20M96 120l-3 20'/%3E%3C/g%3E%3C/svg%3E");
-  animation: rain-fall-near 0.9s linear infinite;
-}
-.sky-drizzle .rain-near { opacity: 0.45; animation-duration: 1.3s; }
-.sky-drizzle .rain-far { opacity: 0.7; animation-duration: 2.1s; }
-.sky-storm .rain-near { animation-duration: 0.6s; }
-.sky-storm .rain-far { animation-duration: 1s; }
-@keyframes rain-fall-far { to { background-position: -15px 120px; } }
-@keyframes rain-fall-near { to { background-position: -24px 160px; } }
+/* Hero: the plain answer. */
+.sky-hero { text-align: center; padding: 14px 6px 4px; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.18); }
+.sky-hero h1 { font-size: 28px; font-weight: 600; line-height: 1.2; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.sky-status { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 5px 14px 5px 10px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.18); font-weight: 700; font-size: 15px;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.sky-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lvl); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lvl) 30%, transparent); }
+.sky-word { font-weight: 200; font-size: var(--word-size, 88px); line-height: 1; letter-spacing: -0.03em; margin: 10px 0 6px; color: var(--word); }
+.sky-headline { font-size: 19px; font-weight: 600; line-height: 1.35; margin: 0 auto; max-width: 30ch; text-wrap: balance; }
+.sky-weather { display: flex; justify-content: center; align-items: center; gap: 8px; max-width: 34ch; margin: 10px auto 0; font-size: 15px; }
+.sky-weather span { text-align: left; }
+.sky-weather .icon { flex: none; }
+.sky-weather .icon { width: 22px; height: 22px; }
 
-/* Storm: a soft, slow glow every 9 s; never a strobe. */
-.flash { position: absolute; inset: 0; background: #fff; opacity: 0; animation: storm-flash 9s ease-out infinite; }
-@keyframes storm-flash { 0%, 90%, 100% { opacity: 0; } 92% { opacity: 0.16; } 95% { opacity: 0.04; } 97% { opacity: 0.1; } }
+/* Three key points. */
+.sky-keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 16px; }
+.sky-key { min-width: 0; padding: 10px 10px 12px; text-align: center; border-radius: 18px;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.sky-key b { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.sky-key span { display: block; margin-top: 4px; font-size: 15px; font-weight: 600; line-height: 1.25; }
 
-.sky-page .back { color: #fff; }
-.sky-hero { text-align: center; padding: 6px 0 16px; }
-.sky-hero h1 { font-size: 1.9rem; margin: 4px 0 12px; }
-.sky-level .badge-large { font-size: 1.6rem; padding: 8px 26px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); }
-.sky-weather { display: inline-flex; align-items: center; gap: 8px; margin: 14px 0 4px; font-size: 1.1rem; font-weight: 600; }
-.sky-line, .sky-hero .window, .sky-hero .ml { margin: 6px 0 0; }
-.sky-small { display: block; font-size: 0.85rem; margin: 10px 0 0; }
+/* Glass cards. */
+.sky-page .glass, .sky-page .card { margin: 12px 0 0; padding: 14px 16px; border-radius: 22px; color: #fff;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
+.sky-page .glass h2, .sky-page .card h2, .sky-curve h2, .tech summary {
+  display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.sky-page h3 { margin: 14px 0 4px; font-size: 13px; font-weight: 700; }
 
-.tile, .sky-page .card:not(.sheet) { background: rgba(8, 16, 28, 0.24); color: #fff; border-radius: var(--r-lg); padding: 14px 16px; margin: 12px 0; }
-.tile-title { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.02em; }
-.tile-value { font-size: 1.8rem; font-weight: 700; line-height: 1.1; margin: 0 0 6px; }
-.tile-note { display: block; font-size: 0.85rem; margin: 4px 0 0; }
-.tile-empty, .tile-text { margin: 0; }
-.tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
-.tile-grid .tile { margin: 0; }
-@media (max-width: 340px) { .tile-grid { grid-template-columns: minmax(0, 1fr); } }
+/* What to do now: the first card, its edge tinted with the level. */
+.sky-page .do { border-color: color-mix(in srgb, var(--lvl) 55%, transparent); }
+.sky-page .do h2 { font-size: 13px; }
+.steps { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
+.steps li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; font-size: 16px; line-height: 1.4; }
+.steps li::before { content: ""; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--lvl);
+  background: radial-gradient(circle, var(--lvl) 0 4px, transparent 5px); }
+.steps small { display: block; margin-top: 2px; font-size: 13px; }
 
-.hourly { list-style: none; display: flex; gap: 2px; overflow-x: auto; padding: 0 0 4px; margin: 0; scrollbar-width: none; }
-.hourly li { flex: 0 0 58px; display: grid; justify-items: center; gap: 4px; font-size: 0.85rem; }
-.hourly-time { font-weight: 700; }
-.hourly-icon { height: 28px; }
-.hourly-chance { min-height: 1.2em; color: #a8dcff; font-weight: 700; }
+/* Rain curve. */
+.sky-curve { margin-top: 18px; }
+.sky-curve h2 { padding: 0 6px 6px; }
+.curve-scroll { overflow-x: auto; scrollbar-width: none; padding-bottom: 6px; margin: 0 -14px; padding-left: 0; }
+.curve-scroll::-webkit-scrollbar { display: none; }
+.curve-svg { display: block; overflow: visible; }
+.curve-hours { display: flex; list-style: none; margin: 0; padding: 0; }
+.curve-hours li { flex: 0 0 64px; display: grid; justify-items: center; gap: 4px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.curve-hours li.now { font-weight: 700; }
+.curve-icon { height: 26px; }
+.curve-icon .icon { width: 26px; height: 26px; }
+.curve-mm { font-size: 11px; }
+.sky-curve .tile-empty { padding: 0 6px; }
 
-.river-gauge { position: relative; height: 10px; margin: 8px 0 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.25); }
+/* Rows: label left, value right. */
+.rows { list-style: none; margin: 8px 0 0; padding: 0; }
+.rows li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); align-items: baseline; }
+.rows li:first-child { border-top: 0; }
+.rows b { font-size: 16px; font-weight: 600; }
+.rows span { grid-column: 1; font-size: 13px; }
+.rows em { grid-row: 1; grid-column: 2; font-style: normal; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Technical details (closed by default). */
+.tech summary { justify-content: space-between; cursor: pointer; list-style: none; min-height: 32px; }
+.tech summary::-webkit-details-marker { display: none; }
+.tech-toggle { font-size: 12px; letter-spacing: 0; text-transform: none; font-weight: 600; }
+.tech .tech-hide, .tech[open] .tech-show { display: none; }
+.tech[open] .tech-hide { display: inline; }
+.tech-river { display: flex; align-items: baseline; gap: 6px; margin-top: 10px; }
+.tech-river strong { font-size: 40px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.tech-river span { font-size: 14px; }
+.sky-page .fine { margin: 8px 0 0; font-size: 12px; line-height: 1.5; }
+.sky-page .reasons { margin: 0; padding-left: 1.1rem; font-size: 14px; }
+.sky-page .reasons li { margin-bottom: 4px; }
+
+.river-gauge { position: relative; height: 6px; margin: 10px 0 4px; border-radius: 3px; background: rgba(255, 255, 255, 0.35); }
 .river-band { position: absolute; top: 0; bottom: 0; }
-.band-alert { background: #fbc02d; }
-.band-warning { background: #ef6c00; }
-.band-danger { background: #d32f2f; border-radius: 0 5px 5px 0; }
-.river-now { position: absolute; top: -4px; width: 5px; height: 18px; border-radius: 3px; background: #fff; transform: translateX(-50%); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35); }
-.tide-mini { display: block; width: 100%; height: 44px; color: #fff; }
-.prone-meter { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-.prone-meter span { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.25); }
-.prone-meter [data-on="true"] { background: #fff; }
+.band-alert { background: #ffd166; }
+.band-warning { background: #ff9f43; }
+.band-danger { background: #ff5d5d; border-radius: 0 3px 3px 0; }
+.river-now { position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transform: translateX(-50%); box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.25); }
+.tide-mini { display: block; width: 100%; max-width: 280px; height: 44px; color: #fff; }
+.tile-note { display: block; font-size: 13px; margin: 4px 0 0; }
+.tile-empty { margin: 0; }
 
-.sky-page .reasons li { margin-bottom: 6px; }
+/* History and the closing question, as glass. */
+.sky-page .history li { border-bottom-color: rgba(255, 255, 255, 0.12); }
+.sky-page .outcome, .sky-page .muted, .sky-page .footer { color: #fff; }
+.sky-page .card.sheet h2 { font-size: 18px; letter-spacing: 0; text-transform: none; }
+.sky-page .sheet .choice { background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.18); color: #fff; border-radius: 14px; }
+.sky-page .sheet .choice[aria-pressed="true"] { background: #fff; color: #121212; }
+.sky-page .sheet .file-input { color: #fff; }
+.sky-page .sheet .file-input::file-selector-button { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.5); color: #fff; }
+.sky-page .sheet .form-error, .sky-page .sheet [role="alert"] { color: #ffd0d0; }
 .report-card { display: flex; align-items: center; gap: 14px; min-height: 64px; }
-.report-card strong { display: block; font-size: 1.05rem; }
-.report-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--r-sm); background: rgba(255, 255, 255, 0.18); }
-.report-card:hover { background: rgba(8, 16, 28, 0.34); }
-.report-card:focus-visible { outline-color: #fff; }
-
-.sky-page .muted, .sky-page .footer { color: #fff; }
-.sky-page .history li { border-bottom-color: rgba(255, 255, 255, 0.2); }
-.sky-page .outcome { color: #fff; }
-.sky-page .card.sheet { background: #fff; color: var(--ink); }
-.sky-page .card.sheet .muted { color: var(--muted); }
+.report-card strong { display: block; font-size: 18px; }
+.report-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.18); }
+.sky-page .report-card:hover { background: rgba(255, 255, 255, 0.18); }
 .sky-page :focus-visible { outline-color: #fff; }
-.sky-page .card.sheet :focus-visible { outline-color: var(--focus); }
+.sky-page .footer { padding: 16px 6px 24px; font-size: 12px; text-align: center; }

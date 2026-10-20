@@ -1,52 +1,52 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { stations } from '@floodready/shared/mocks';
-import { HourlyStrip, ProneTile, RiverTile, TideTile } from './StreetTiles';
+import { RainCurve, RiverMeter, TideMini } from './StreetTiles';
 
 afterEach(cleanup);
 
 const T = (hm: string) => `2024-11-12T${hm}:00+08:00`;
 
-describe('HourlyStrip', () => {
-  it('shows each hour with our rain forecast, the weather icon and chance of rain when known', () => {
-    render(
-      <HourlyStrip
-        lang="en"
-        rain={[{ time: T('10:00'), mm: 2.1 }, { time: T('11:00'), mm: 0 }]}
-        weather={[{ hour: '2024-11-12T10', code: 63, isDay: true, rainChance: 80 }]}
-      />,
-    );
+describe('RainCurve', () => {
+  const rain = [{ time: T('10:00'), mm: 2.1 }, { time: T('11:00'), mm: 0 }, { time: T('12:00'), mm: 0 }];
+  const weather = [
+    { hour: '2024-11-12T10', code: 63, isDay: true, rainChance: 80 },
+    { hour: '2024-11-12T11', code: 3, isDay: true, rainChance: 30 },
+  ];
+
+  it('labels the first hour "Now" with its chance in the bubble, then time, icon and our mm per hour', () => {
+    const { container } = render(<RainCurve lang="en" rain={rain} weather={weather} />);
     const items = screen.getAllByRole('listitem');
-    expect(items).toHaveLength(2);
-    expect(items[0]).toHaveTextContent('10:00');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('Now');
     expect(items[0]).toHaveTextContent('2.1 mm');
-    expect(items[0]).toHaveTextContent('80%');
     expect(items[0].querySelector('[data-icon="rain"]')).not.toBeNull();
-    expect(items[1]).toHaveTextContent('0 mm');
-    expect(items[1].querySelector('[data-icon]')).toBeNull();
+    expect(items[1]).toHaveTextContent('11:00');
+    expect(container.querySelector('[data-now]')).toHaveTextContent('80%');
+    expect(container.querySelector('[data-guide]')).not.toBeNull();
   });
 
-  it('says so when there is no forecast', () => {
-    render(<HourlyStrip lang="ms" rain={[]} weather={null} />);
+  it('breaks the line where Open-Meteo has no chance for an hour', () => {
+    const { container } = render(<RainCurve lang="en" rain={rain} weather={weather} />);
+    // 12:00 has no weather hour, so only the 10:00 to 11:00 stretch is drawn and no % label for 12:00.
+    expect(container.querySelectorAll('[data-line]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-pct]')).toHaveLength(1);
+  });
+
+  it('keeps the empty state when there is no forecast', () => {
+    render(<RainCurve lang="ms" rain={[]} weather={null} />);
     expect(screen.getByText('Tiada ramalan hujan.')).toBeInTheDocument();
   });
 });
 
-describe('RiverTile', () => {
-  it('shows the street’s river station level against its JPS marks', () => {
-    render(<RiverTile lang="en" stations={stations} ids={['26558', 'PEKANMERU']} />);
-    expect(screen.getByText('3.52 m')).toBeInTheDocument();
-    expect(screen.getByText('Sg. Binjai di Pekan Meru')).toBeInTheDocument();
-    expect(screen.getByText('Alert 3.80 · Warning 4.00 · Danger 4.20 m')).toBeInTheDocument();
-  });
-
-  it('shows an honest empty state when no river reading is available', () => {
-    render(<RiverTile lang="en" stations={{ bad: true }} ids={['PEKANMERU']} />);
-    expect(screen.getByText('No river reading right now.')).toBeInTheDocument();
+describe('RiverMeter', () => {
+  it('places the marker for the level between the JPS marks', () => {
+    const { container } = render(<RiverMeter wl={3.8} th={{ alert: 3.8, warning: 4.0, danger: 4.2 }} />);
+    const now = container.querySelector('.river-now') as HTMLElement;
+    expect(parseFloat(now.style.left)).toBeCloseTo((1.2 / 1.9) * 100);
   });
 });
 
-describe('TideTile', () => {
+describe('TideMini', () => {
   it('names the next high tide after the data time', () => {
     const tide = [
       { time: T('08:00'), height_m: 0.4, filled: false },
@@ -55,15 +55,7 @@ describe('TideTile', () => {
       { time: T('11:00'), height_m: 1.3, filled: false },
       { time: T('12:00'), height_m: 1.1, filled: false },
     ];
-    render(<TideTile lang="en" tide={tide} dataTime={T('09:00')} />);
+    render(<TideMini lang="en" tide={tide} dataTime={T('09:00')} />);
     expect(screen.getByText('High tide 11:00 · 1.3 m')).toBeInTheDocument();
-  });
-});
-
-describe('ProneTile', () => {
-  it('fills the meter to the rating', () => {
-    const { container } = render(<ProneTile lang="en" rating={4} />);
-    expect(screen.getByText('4 of 5')).toBeInTheDocument();
-    expect(container.querySelectorAll('[data-on="true"]')).toHaveLength(4);
   });
 });

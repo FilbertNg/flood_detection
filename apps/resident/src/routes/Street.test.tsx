@@ -112,6 +112,48 @@ describe('StreetPage', () => {
     expect(screen.queryByText('Replay of a past flood')).not.toBeInTheDocument();
   });
 
+  it('puts the plain answer first: big word, headline, key points, then what to do', async () => {
+    renderStreet('en');
+    expect(await screen.findByText('Get ready')).toBeInTheDocument();
+    expect(screen.getByText('Flooding is expected on this street from about 09:30.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'What to do now' })).toBeInTheDocument();
+    expect(screen.getByText('Flood').nextElementSibling).toHaveTextContent('From ~09:30');
+  });
+
+  it('keeps technical words and numbers inside the closed Technical details card', async () => {
+    renderStreet('en');
+    await screen.findByText('Jalan Makyong');
+    const details = document.querySelector('details.tech') as HTMLDetailsElement;
+    expect(details).not.toBeNull();
+    expect(details.open).toBe(false);
+    expect(details).toHaveTextContent('62%');
+    expect(details).toHaveTextContent('61.5 mm of rain in 1 h at Kg. Perepat, Kapar');
+    // Everything above the Technical details card reads without jargon.
+    const above: string[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (details.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_PRECEDING) above.push(n.textContent ?? '');
+    }
+    const text = above.join(' ');
+    expect(text).not.toMatch(/JPS|ML|model|\d\.\d\d m|Open-Meteo/);
+  });
+
+  it('ends with the "Is it flooding here?" question, after the alert history', async () => {
+    renderStreet('en');
+    const ask = await screen.findByRole('heading', { name: 'Is it flooding here?' });
+    const sections = [...document.querySelectorAll('.sky-content > section, .sky-content > a, .sky-content > details')];
+    expect(sections[sections.length - 1]).toContainElement(ask);
+    const history = screen.getByRole('heading', { name: 'Past alerts on this street' });
+    expect(history.compareDocumentPosition(ask) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('ends with the report card when no alert is active', async () => {
+    renderStreet('en', { ...streetDetail, level: 'normal', active_alert: null });
+    const link = await screen.findByRole('link', { name: 'Report a flood' });
+    const sections = [...document.querySelectorAll('.sky-content > section, .sky-content > a, .sky-content > details')];
+    expect(sections[sections.length - 1]).toBe(link);
+  });
+
   it('lists the alert history with outcome and keeps the footer', async () => {
     renderStreet('ms');
     expect(await screen.findByRole('heading', { name: 'Amaran lepas di jalan ini' })).toBeInTheDocument();
