@@ -25,6 +25,13 @@ describe('SkyBackdrop', () => {
     expect(container.querySelector('canvas')).toHaveAttribute('data-flash', 'false');
   });
 
+  it('does not animate an off-screen pager panel', () => {
+    const { container, rerender } = render(<SkyBackdrop sky="rain" active={false} />);
+    expect(container.querySelector('canvas')).toHaveAttribute('data-still', 'true');
+    rerender(<SkyBackdrop sky="rain" />);
+    expect(container.querySelector('canvas')).toHaveAttribute('data-still', 'false');
+  });
+
   it('keeps the alert sky still: no canvas, no rain, no motion', () => {
     const { container } = render(<SkyBackdrop sky="alert" />);
     expect(container.querySelector('.sky-alert')).not.toBeNull();

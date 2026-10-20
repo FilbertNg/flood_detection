@@ -16,19 +16,19 @@ interface Drop { x: number; y: number; l: number; v: number; a: number }
 /**
  * Weather backdrop behind the street page: a 3-stop gradient plus a canvas of soft drifting clouds
  * and sparse rain. Decoration only (aria-hidden). Reduced motion draws one still frame; the loop stops
- * when the tab is hidden and on unmount. Warning and Danger ("alert") get no canvas: no rain, no motion.
+ * when the tab is hidden, on unmount, and while `active` is false (an off-screen pager panel). Warning and Danger ("alert") get no canvas: no rain, no motion.
  */
-export function SkyBackdrop({ sky }: { sky: Sky }) {
+export function SkyBackdrop({ sky, active = true }: { sky: Sky; active?: boolean }) {
   const [top, mid, bottom] = skyGradient(sky);
   const style = { '--sky-top': top, '--sky-mid': mid, '--sky-bottom': bottom } as CSSProperties;
   return (
     <div className={`sky sky-${sky}`} style={style} aria-hidden="true">
-      {sky !== 'alert' && <SkyCanvas key={sky} clouds={CLOUDS[sky]} drops={DROPS[sky] ?? 0} flash={sky === 'storm'} />}
+      {sky !== 'alert' && <SkyCanvas key={sky} clouds={CLOUDS[sky]} drops={DROPS[sky] ?? 0} flash={sky === 'storm'} paused={!active} />}
     </div>
   );
 }
 
-function SkyCanvas({ clouds: cover, drops: dropCount, flash: storm }: { clouds: number; drops: number; flash: boolean }) {
+function SkyCanvas({ clouds: cover, drops: dropCount, flash: storm, paused }: { clouds: number; drops: number; flash: boolean; paused: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -41,7 +41,8 @@ function SkyCanvas({ clouds: cover, drops: dropCount, flash: storm }: { clouds: 
     }
     if (!cv || !ctx) return;
     const c2d = ctx;
-    const still = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Reduced motion, or a pager panel that is off screen: draw one still frame and no loop.
+    const still = paused || (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     let W = 0, H = 0, raf = 0, flash = 0;
 
     const size = () => {
@@ -109,7 +110,7 @@ function SkyCanvas({ clouds: cover, drops: dropCount, flash: storm }: { clouds: 
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('resize', onResize);
     };
-  }, [cover, dropCount, storm]);
+  }, [cover, dropCount, storm, paused]);
 
-  return <canvas ref={ref} className="sky-canvas" data-drops={dropCount} data-flash={storm} />;
+  return <canvas ref={ref} className="sky-canvas" data-drops={dropCount} data-flash={storm} data-still={paused} />;
 }
