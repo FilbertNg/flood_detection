@@ -74,6 +74,44 @@ describe('StreetPage', () => {
     expect(screen.queryByRole('heading', { name: 'Is it flooding here?' })).not.toBeInTheDocument();
   });
 
+  it('shows the Open-Meteo weather for the data hour and credits it', async () => {
+    const weather = { hourly: { time: ['2024-11-12T09:00'], weather_code: [3], is_day: [1], precipitation_probability: [70] } };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) =>
+      new Response(JSON.stringify(url.includes('open-meteo') ? weather : url.includes('/stations') ? [] : { ...streetDetail, level: 'normal', active_alert: null }), { status: 200 })));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/street/BBR-jalan-makyong']}>
+          <Routes><Route path="/street/:id" element={<StreetPage lang="en" deviceId="dev_1" />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText('Cloudy · 70% chance of rain')).toBeInTheDocument();
+    expect(screen.getByText('Weather: Open-Meteo')).toBeInTheDocument();
+  });
+
+  it('labels replayed data inside the full-screen page and offers the language switch', async () => {
+    const onLang = vi.fn();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...streetDetail, is_replay: true }), { status: 200 })));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/street/BBR-jalan-makyong']}>
+          <Routes><Route path="/street/:id" element={<StreetPage lang="en" deviceId="dev_1" onLang={onLang} />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText('Replay of a past flood')).toBeInTheDocument();
+    screen.getByRole('button', { name: 'Bahasa Melayu' }).click();
+    expect(onLang).toHaveBeenCalledWith('ms');
+  });
+
+  it('shows no replay label for live data', async () => {
+    renderStreet('en', { ...streetDetail, is_replay: false });
+    expect(await screen.findByText('Jalan Makyong')).toBeInTheDocument();
+    expect(screen.queryByText('Replay of a past flood')).not.toBeInTheDocument();
+  });
+
   it('lists the alert history with outcome and keeps the footer', async () => {
     renderStreet('ms');
     expect(await screen.findByRole('heading', { name: 'Amaran lepas di jalan ini' })).toBeInTheDocument();

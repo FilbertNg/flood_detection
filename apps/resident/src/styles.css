@@ -93,11 +93,6 @@ p { margin: 0 0 0.5rem; }
 .reasons li { margin-bottom: 6px; }
 .back { display: inline-flex; align-items: center; min-height: 44px; padding-right: 12px; color: var(--brand); font-weight: 700; }
 
-/* Street hero: the level fills the card, so it is the one focal point of the page. */
-.hero { box-shadow: 0 4px 12px rgba(20, 33, 46, 0.12); }
-.hero h2 { color: inherit; }
-.hero .badge-large { background: rgba(255, 255, 255, 0.92) !important; color: #14212e !important; }
-.hero .muted { color: inherit; }
 
 .bars { display: flex; align-items: flex-end; gap: 4px; height: 76px; margin-bottom: 16px; }
 .bar-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; align-items: center; }
@@ -165,3 +160,97 @@ select.search:hover { border-color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/*
+ * Street page: weather sky (owner request, 20 Oct 2026). The sky shows the Open-Meteo condition,
+ * or rain when the street's own JPS gauge measured rain. Warning and Danger get a still, dark
+ * sky so the alert stays the focus. Every sky's lightest stop keeps white text at >= 5:1.
+ * Tiles are solid dark tints (no blur), in the same rounded style as the rest of the app.
+ */
+.sky-page { position: relative; overflow: hidden; min-height: 100vh; min-height: 100dvh; color: #fff; }
+.sky-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: env(safe-area-inset-top); }
+.sky-replay { display: inline-block; margin: 4px 0 0; padding: 4px 12px; border-radius: 999px; background: #333333; color: #fff; font-size: 0.85rem; font-weight: 700; }
+.sky { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.sky-content { position: relative; z-index: 1; padding: 10px var(--gap) 8px; }
+
+.sky-clear-day { background: linear-gradient(180deg, #1c5f9e, #2f6fa8 60%); }
+.sky-clear-night { background: linear-gradient(180deg, #0b1430, #1e2d55); }
+.sky-partly-day { background: linear-gradient(180deg, #2c5f8f, #4c6f93); }
+.sky-partly-night { background: linear-gradient(180deg, #141d36, #2b3858); }
+.sky-cloudy { background: linear-gradient(180deg, #4f5e70, #616e80); }
+.sky-fog { background: linear-gradient(180deg, #5b6672, #646f7b); }
+.sky-drizzle { background: linear-gradient(180deg, #3d4b5c, #56637a); }
+.sky-rain { background: linear-gradient(180deg, #2b3746, #414f62); }
+.sky-storm { background: linear-gradient(180deg, #1d2230, #323a4d); }
+.sky-alert { background: linear-gradient(180deg, #1a1d24, #2a2e38); }
+.sky-none { background: linear-gradient(180deg, #4a5566, #5f6a7a); }
+
+/* Moving rain: two tiled streak layers falling at different speeds give depth without a video. */
+.rain-layer { position: absolute; inset: -200px -60px 0; background-repeat: repeat; will-change: background-position; }
+.rain-far {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='120'%3E%3Cg stroke='white' stroke-opacity='.32' stroke-width='1' stroke-linecap='round'%3E%3Cpath d='M10 4l-2 12M38 40l-2 12M66 18l-2 12M24 78l-2 12M80 66l-2 12M52 98l-2 12'/%3E%3C/g%3E%3C/svg%3E");
+  animation: rain-fall-far 1.5s linear infinite;
+}
+.rain-near {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='160'%3E%3Cg stroke='white' stroke-opacity='.55' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M18 8l-3 20M70 52l-3 20M110 20l-3 20M44 108l-3 20M96 120l-3 20'/%3E%3C/g%3E%3C/svg%3E");
+  animation: rain-fall-near 0.9s linear infinite;
+}
+.sky-drizzle .rain-near { opacity: 0.45; animation-duration: 1.3s; }
+.sky-drizzle .rain-far { opacity: 0.7; animation-duration: 2.1s; }
+.sky-storm .rain-near { animation-duration: 0.6s; }
+.sky-storm .rain-far { animation-duration: 1s; }
+@keyframes rain-fall-far { to { background-position: -15px 120px; } }
+@keyframes rain-fall-near { to { background-position: -24px 160px; } }
+
+/* Storm: a soft, slow glow every 9 s; never a strobe. */
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; animation: storm-flash 9s ease-out infinite; }
+@keyframes storm-flash { 0%, 90%, 100% { opacity: 0; } 92% { opacity: 0.16; } 95% { opacity: 0.04; } 97% { opacity: 0.1; } }
+
+.sky-page .back { color: #fff; }
+.sky-hero { text-align: center; padding: 6px 0 16px; }
+.sky-hero h1 { font-size: 1.9rem; margin: 4px 0 12px; }
+.sky-level .badge-large { font-size: 1.6rem; padding: 8px 26px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); }
+.sky-weather { display: inline-flex; align-items: center; gap: 8px; margin: 14px 0 4px; font-size: 1.1rem; font-weight: 600; }
+.sky-line, .sky-hero .window, .sky-hero .ml { margin: 6px 0 0; }
+.sky-small { display: block; font-size: 0.85rem; margin: 10px 0 0; }
+
+.tile, .sky-page .card:not(.sheet) { background: rgba(8, 16, 28, 0.24); color: #fff; border-radius: var(--r-lg); padding: 14px 16px; margin: 12px 0; }
+.tile-title { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.02em; }
+.tile-value { font-size: 1.8rem; font-weight: 700; line-height: 1.1; margin: 0 0 6px; }
+.tile-note { display: block; font-size: 0.85rem; margin: 4px 0 0; }
+.tile-empty, .tile-text { margin: 0; }
+.tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+.tile-grid .tile { margin: 0; }
+@media (max-width: 340px) { .tile-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.hourly { list-style: none; display: flex; gap: 2px; overflow-x: auto; padding: 0 0 4px; margin: 0; scrollbar-width: none; }
+.hourly li { flex: 0 0 58px; display: grid; justify-items: center; gap: 4px; font-size: 0.85rem; }
+.hourly-time { font-weight: 700; }
+.hourly-icon { height: 28px; }
+.hourly-chance { min-height: 1.2em; color: #a8dcff; font-weight: 700; }
+
+.river-gauge { position: relative; height: 10px; margin: 8px 0 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.25); }
+.river-band { position: absolute; top: 0; bottom: 0; }
+.band-alert { background: #fbc02d; }
+.band-warning { background: #ef6c00; }
+.band-danger { background: #d32f2f; border-radius: 0 5px 5px 0; }
+.river-now { position: absolute; top: -4px; width: 5px; height: 18px; border-radius: 3px; background: #fff; transform: translateX(-50%); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35); }
+.tide-mini { display: block; width: 100%; height: 44px; color: #fff; }
+.prone-meter { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.prone-meter span { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.25); }
+.prone-meter [data-on="true"] { background: #fff; }
+
+.sky-page .reasons li { margin-bottom: 6px; }
+.report-card { display: flex; align-items: center; gap: 14px; min-height: 64px; }
+.report-card strong { display: block; font-size: 1.05rem; }
+.report-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--r-sm); background: rgba(255, 255, 255, 0.18); }
+.report-card:hover { background: rgba(8, 16, 28, 0.34); }
+.report-card:focus-visible { outline-color: #fff; }
+
+.sky-page .muted, .sky-page .footer { color: #fff; }
+.sky-page .history li { border-bottom-color: rgba(255, 255, 255, 0.2); }
+.sky-page .outcome { color: #fff; }
+.sky-page .card.sheet { background: #fff; color: var(--ink); }
+.sky-page .card.sheet .muted { color: var(--muted); }
+.sky-page :focus-visible { outline-color: #fff; }
+.sky-page .card.sheet :focus-visible { outline-color: var(--focus); }
