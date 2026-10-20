@@ -12,6 +12,7 @@ import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pyarrow as pa
 
@@ -142,5 +143,31 @@ def load_live_readings(live_dir: Path, since: datetime, graph_ids: set[str] | No
     both = both.assign(_nan=missing).sort_values(["_nan", "_src"], kind="stable")      # real values first, archive before live
     both = both.drop_duplicates(["graph_id", "kind", "time_local"], keep="first").drop(columns=["_src", "_nan"])
     both = both.sort_values(["graph_id", "time_local"], kind="stable")[COLUMNS]
+    both = _drop_zero_placeholders(both)
     out, _ = qc.clean_readings(both, stations=stations if stations is not None else stations_mod.load_default())  # on the full span, then cut
     return out[out.time_local >= since_ts].reset_index(drop=True)
+
+
+ZERO_PLACEHOLDER_LOOKBACK = pd.Timedelta(hours=6)
+ZERO_PLACEHOLDER_MIN_PREV_M = 0.10
+
+
+def _drop_zero_placeholders(df: pd.DataFrame) -> pd.DataFrame:
+    """A river level of exactly 0.00 right after a real level of >= 0.10 m (within 6 h) is JPS's placeholder for a
+    reading that has not arrived, not a dry river: it becomes missing, so the station reads stale instead of low.
+    A gauge that really sits at 0.00, or falls to it gently, keeps its zeros. `df` is sorted by graph_id, time_local."""
+    wl = df.kind == "wl"
+    if not (wl & (df.wl_m == 0.0)).any():
+        return df
+    out = df.copy()
+    for _, g in out[wl].groupby("graph_id"):
+        last_t, last_v = None, None
+        for idx, t, v in zip(g.index, g.time_local, g.wl_m):
+            if pd.isna(v):
+                continue
+            if v == 0.0:
+                if last_v is not None and last_v >= ZERO_PLACEHOLDER_MIN_PREV_M and t - last_t <= ZERO_PLACEHOLDER_LOOKBACK:
+                    out.at[idx, "wl_m"] = np.nan          # keep last_t/last_v: the next zero is judged against the real level
+                    continue
+            last_t, last_v = t, v
+    return out

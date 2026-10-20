@@ -223,3 +223,31 @@ def test_missing_archive_warning_is_logged_once_per_process(tmp_path, caplog, mo
 def test_tail_covers_the_longest_rule_history():
     from floodready import qc
     assert live.ARCHIVE_TAIL_DAYS == qc.QC_HISTORY_DAYS and live._TAIL_CACHE_DAYS >= live.ARCHIVE_TAIL_DAYS + 5
+
+
+def _live_wl(tmp_path, gid, times, values):
+    live_dir = tmp_path / "jps_live"
+    (live_dir / "wl").mkdir(parents=True, exist_ok=True)
+    pd.DataFrame({"graph_id": gid, "source_time": times, "wl_m": values}).to_parquet(live_dir / "wl" / "2026-10-14.parquet")
+    return live_dir
+
+
+def test_a_newest_zero_after_a_real_level_is_a_placeholder_even_without_the_archive(tmp_path):
+    """JPS shows 0.00 for a gauge whose newest reading has not arrived (20 Oct 2026: Pekan Meru 3.02 m at 16:30,
+    then 0.00 at 17:00 and 17:15). Nothing corrects it yet, so it must read as missing, not as a low river."""
+    live_dir = _live_wl(tmp_path, "PEKANMERU", [T("16:30"), T("17:00"), T("17:15")], [3.02, 0.0, 0.0])
+    out = live.load_live_readings(live_dir, T("16:00"), {"PEKANMERU"}, stations=None).set_index("time_local")
+    assert out.loc[T("16:30"), "wl_m"] == 3.02
+    assert out.loc[[T("17:00"), T("17:15")], "wl_m"].isna().all()
+
+
+def test_a_gauge_that_really_reads_zero_keeps_its_zero(tmp_path):
+    live_dir = _live_wl(tmp_path, "DRAIN", [T("16:30"), T("16:45"), T("17:00")], [0.0, 0.0, 0.0])
+    out = live.load_live_readings(live_dir, T("16:00"), {"DRAIN"}, stations=None)
+    assert (out.wl_m == 0.0).all() and len(out) == 3
+
+
+def test_a_level_that_falls_gently_to_zero_keeps_its_zero(tmp_path):
+    live_dir = _live_wl(tmp_path, "DRAIN", [T("16:30"), T("16:45"), T("17:00")], [0.08, 0.04, 0.0])
+    out = live.load_live_readings(live_dir, T("16:00"), {"DRAIN"}, stations=None).set_index("time_local")
+    assert out.loc[T("17:00"), "wl_m"] == 0.0
