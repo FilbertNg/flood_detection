@@ -22,7 +22,7 @@ export function showPushNotification(registration: Notifier, payload: PushPayloa
     tag: payload.alert_id,
     data: { url: payload.url },
     icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    badge: '/badge-96.png',
   });
 }
 

@@ -52,6 +52,22 @@ describe('StreetView full-screen sky', () => {
     expect(within(view).getByRole('button', { name: 'Close' })).toHaveFocus();
   });
 
+  it('shows everything from the street page inside: the panels, the tide and the technical details, open', async () => {
+    renderView();
+    fireEvent.click(await opener());
+    const view = dialog()!;
+    for (const name of ['Rain', 'River level', 'This street', 'Tide']) {
+      expect(within(view).getByRole('heading', { name })).toBeInTheDocument();
+    }
+    expect(within(view).getByText('High tide 11:00 · 2.2 m')).toBeInTheDocument();
+    // Technical details are shown open, with the model chance and the reasons.
+    expect(within(view).getByText('62%')).toBeVisible();
+    expect(within(view).getByText('61.5 mm of rain in 1 h at Kg. Perepat, Kapar')).toBeInTheDocument();
+    // Ids stay unique although the page and the full view show the same panels.
+    const ids = [...document.querySelectorAll('[id]')].map((n) => n.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it('opens with Enter or Space on the hero card', async () => {
     renderView();
     fireEvent.keyDown(await opener(), { key: 'Enter' });

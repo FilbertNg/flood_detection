@@ -59,8 +59,11 @@ p { margin: 0 0 0.5rem; }
 /* Header: SDP red with a thin orange edge, on every screen. */
 .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: calc(12px + env(safe-area-inset-top)) 18px 12px;
   background: var(--head); color: #fff; border-bottom: 3px solid var(--edge); }
-.brand { display: flex; flex-direction: column; justify-content: center; min-height: 44px; font-weight: 800; font-size: 15px; line-height: 1.2; letter-spacing: -0.01em; }
-.brand small { font-weight: 500; font-size: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 44px; font-weight: 800; font-size: 15px; line-height: 1.2; letter-spacing: -0.01em; }
+.brand > span { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+/* A long street name under the logo is cut with "…" rather than pushing the language switch off screen. */
+.brand small { font-weight: 500; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand .logo { flex: none; }
 .top :focus-visible { outline-color: #fff; }
 
 /* Language: a white pill on the red header; the current language is the red chip. */
@@ -71,9 +74,16 @@ p { margin: 0 0 0.5rem; }
 .top .lang-switch button:focus-visible { outline: 3px solid var(--ink); outline-offset: 1px; }
 
 /* Live line or replay label, small and grey under the header. A replay is always labelled. */
-.ribbon { display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 18px 0; font-size: 12px; color: var(--muted); }
-.ribbon.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
-.ribbon.replay { margin: 10px 14px 0; padding: 6px 12px; border-radius: 999px; background: #333333; color: #fff; font-weight: 700; width: fit-content; }
+/* Live / replay chip, floating at the top of the flood map. Slate for a replay (not a flood level
+   colour), green dot for live. */
+.status-chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; margin: 0; padding: 5px 12px; border-radius: 999px; background: #fff;
+  border: 1px solid var(--line); color: var(--ink); font-size: 12px; font-weight: 700; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); white-space: nowrap; }
+.status-chip.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.18); }
+.status-chip.replay { background: #eef1f5; border-color: #d6dce4; color: #2f3b4c; }
+.replay-icon { flex: none; color: #44546a; }
+.replay-tag { flex: none; padding: 1px 7px; border-radius: 999px; background: #44546a; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.replay-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.status-chip time { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* Buttons and links. */
 .primary { width: 100%; min-height: 48px; padding: 12px 24px; border: 0; border-radius: 999px; background: var(--brand); color: #fff; font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; text-align: center; }
@@ -82,7 +92,13 @@ p { margin: 0 0 0.5rem; }
 .secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 24px; border: 1.5px solid var(--brand); border-radius: 999px; background: var(--bg); color: var(--brand); font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; text-align: center; }
 .secondary:hover { background: var(--brand-soft); }
 .link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--brand); font: inherit; font-weight: 700; cursor: pointer; }
-.back { display: inline-flex; align-items: center; min-height: 44px; padding-right: 12px; color: var(--brand); font-weight: 700; }
+/* Round back button: a red arrow on a white circle. On the red header it stands out on its own; on white
+   pages a hairline and a soft shadow give it an edge. */
+.back-btn { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: var(--brand);
+  border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+.back-btn:hover { background: var(--brand-soft); }
+.top .back-btn { border-color: #fff; box-shadow: none; }
+.top .back-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 
 /* Cards. */
@@ -97,38 +113,84 @@ p { margin: 0 0 0.5rem; }
 .badge-large { font-size: 1.3rem; padding: 6px 18px; }
 
 /* Map screen. */
-.home { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.home { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; padding-bottom: env(safe-area-inset-bottom); }
 .map-head h1 { flex: 1; margin: 0; font-size: 15px; font-weight: 800; }
-.map-back { display: inline-flex; align-items: center; min-height: 44px; padding-right: 6px; color: #fff; font-weight: 700; font-size: 15px; }
-.map-wrap { position: relative; margin: 12px var(--gap) 0; }
-.map { height: 62vh; min-height: 380px; width: 100%; border-radius: var(--r-card); overflow: hidden; border: 1px solid var(--line); }
-/* The "My location" card floats on the bottom of the map (Leaflet's panes sit at z-index 400 to 700),
-   above the attribution line, which must stay readable on every map. */
-.loc-card { position: absolute; left: 10px; right: 10px; bottom: 40px; z-index: 800; display: grid; gap: 10px;
-  padding: 14px 16px; border-radius: var(--r-card); background: var(--bg); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); }
-.loc-card small { font-size: 11px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
-.loc-row { display: flex; align-items: center; gap: 10px; }
-.loc-row strong { flex: 1; min-width: 0; font-size: 17px; }
-.loc-pin { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); }
-.loc-pin .glyph { width: 18px; height: 18px; }
-.loc-level { border: 1px solid var(--line); }
-.loc-note { margin: 0; font-size: 13px; color: var(--muted); }
-.loc-card [role="alert"] { color: var(--brand-dark); font-weight: 600; }
-.loc-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.loc-btns .primary, .loc-btns .secondary { min-height: 44px; padding: 10px 8px; font-size: 14px; }
+/* One screen, no scrolling: the map takes whatever height the header and the footer leave. */
+.map-wrap { position: relative; flex: 1; min-height: 0; margin: 10px var(--gap) 0; }
+.map-wrap .map-box { height: 100%; }
+.map { height: 100%; width: 100%; border-radius: var(--r-card); overflow: hidden; border: 1px solid var(--line); }
+/* Full-screen map: the map covers the whole screen; the replay label floats on top. */
+.map-wrap.is-full { position: fixed; inset: 0; z-index: 1200; margin: 0; background: var(--bg); }
+.map-wrap.is-full .map { border: 0; border-radius: 0; }
+/* Centred in the room right of the zoom buttons (top left), so the whole label fits on a narrow phone. */
+.map-chip { position: absolute; top: 10px; left: 56px; right: 10px; z-index: 850; display: flex; justify-content: center; pointer-events: none; }
+.is-full .map-chip { top: calc(10px + env(safe-area-inset-top)); }
+.map-full-btn { position: absolute; right: 10px; bottom: 48px; z-index: 850; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); }
+.map-full-btn .glyph { width: 20px; height: 20px; }
+.map-full-btn:hover { color: var(--brand); }
+.is-full .map-full-btn { bottom: calc(48px + env(safe-area-inset-bottom)); }
+/* Compact footer under the map: counts, report link and credits in as little height as they need. */
+.map-foot { flex: none; display: grid; gap: 8px; padding: 10px var(--gap) 6px; }
+.map-foot .summary-pair { margin: 0; gap: 8px; }
+.map-foot .summary-box { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; }
+.map-foot .summary-box strong { font-size: 22px; }
+.map-foot .summary-box span { margin: 0; font-size: 12px; }
+.map-foot .report-link { min-height: 40px; margin: 0; padding: 8px 16px; font-size: 15px; }
+.map-foot .credits { margin: 0; font-size: 11px; line-height: 1.4; }
+.map-foot .credits summary { min-height: 32px; padding: 6px 0 0; }
+/* Zoomed in on a street: a small panel at the bottom of the map (Leaflet's panes sit at z-index 400 to
+   700), above the attribution line, which must stay readable on every map. Zoomed out: a hint chip. */
+.map-box { position: relative; }
+.focus-card { display: grid; gap: 6px; }
+.focus-name { display: block; font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+.focus-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.focus-row .level-pill { border: 1px solid var(--line); font-size: 11px; padding: 2px 8px 2px 6px; }
+.focus-row .level-pill i { width: 7px; height: 7px; }
+.focus-view { width: auto; flex: none; min-height: 32px; padding: 5px 14px; font-size: 13px; }
+/* The street card as a speech bubble on the map: Leaflet's popup, restyled as an SDP card whose tail
+   points at the focused street. The spacing is padding on the bubble, not margin on its content:
+   a margin would collapse through the bubble and leave the button on its bottom edge. */
+.focus-popup .leaflet-popup-content-wrapper { padding: 10px 12px 12px 14px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); }
+.focus-popup .leaflet-popup-content { width: auto !important; min-width: 196px; margin: 0; font: inherit; font-size: 14px; line-height: 1.35; }
+.focus-popup .leaflet-popup-tip { box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); }
+.focus-popup a.focus-view { color: #fff; }
+.map-hint { position: absolute; left: 50%; bottom: 40px; z-index: 800; transform: translateX(-50%); margin: 0; padding: 7px 14px; border-radius: 999px;
+  background: rgba(18, 18, 18, 0.78); color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; pointer-events: none; }
+/* Crosshair at the map centre once zoomed in: the street under it is the one in the panel. */
+.map-cross { position: absolute; left: 50%; top: 50%; z-index: 790; width: 26px; height: 26px; transform: translate(-50%, -50%); pointer-events: none;
+  border: 2.5px solid var(--brand); border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
+.map-cross::after { content: ""; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; border-radius: 50%; background: var(--brand); transform: translate(-50%, -50%); }
 /* The street picker as a bottom sheet over the map. */
-.sheet-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, 0.35); }
+.sheet-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, 0.5); }
 .pick-sheet { width: 100%; max-width: 640px; max-height: 88dvh; overflow-y: auto; background: var(--bg); border-radius: 24px 24px 0 0; padding-bottom: env(safe-area-inset-bottom); }
 .pick-sheet .pick-list { max-height: 45dvh; }
+/* A count panel's street list in the bottom sheet: a coloured top edge for the kind, one row per street. */
+.list-sheet { border-top: 5px solid var(--danger); }
+.list-sheet[data-kind="watch"] { border-top-color: #f9a825; }
+.list-sheet h1 { margin: 6px 0; font-size: 18px; }
+.level-list { list-style: none; margin: 8px 0 16px; padding: 0; border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden; }
+.level-list li + li { border-top: 1px solid var(--line); }
+.level-list a { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 52px; padding: 10px 16px; font-weight: 600; }
+.level-list a:hover { background: var(--surface); }
+.level-list .level-pill { flex: none; border: 1px solid var(--line); font-size: 12px; }
 .sheet-close { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--brand); font: inherit; font-weight: 700; cursor: pointer; }
-.summary { margin: 4px 0 12px; padding: 12px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-tile); }
+/* Township counts: two boxes, red accent for Warning or Danger, yellow for Watch (the number is the
+   accent colour's dark ink, >= 4.5:1 on the tint). */
+.summary-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 4px 0 14px; }
+.summary-box { position: relative; overflow: hidden; margin: 0; padding: 12px 30px 12px 18px; border-radius: var(--r-tile);
+  background: var(--sum-bg); border: 1.5px solid var(--sum-edge); font: inherit; text-align: left; cursor: pointer; }
+/* Each count opens its street list: a chevron says so. */
+.summary-box::after { content: ""; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; border-right: 2px solid var(--sum-ink); border-bottom: 2px solid var(--sum-ink);
+  transform: translateY(-50%) rotate(-45deg); }
+.summary-box:hover { filter: brightness(0.97); }
+.summary-box::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--sum-bar); }
+.summary-box strong { display: block; font-size: 30px; font-weight: 800; line-height: 1.1; color: var(--sum-ink); font-variant-numeric: tabular-nums; }
+.summary-box span { display: block; margin-top: 2px; font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--ink); }
+.summary-box[data-kind="risk"] { --sum-bg: #fdecec; --sum-edge: #ef9a9a; --sum-bar: var(--danger); --sum-ink: #b71c1c; }
+.summary-box[data-kind="watch"] { --sum-bg: #fff8e1; --sum-edge: #f5d77a; --sum-bar: #f9a825; --sum-ink: #8a4b00; }
 .alert-banner { display: block; margin: 12px var(--gap) 0; background: #b71c1c; color: #fff; padding: 14px 18px; font-weight: 700; border-radius: var(--r-card); }
 .alert-banner.watch { background: #f9a825; color: #1a1a1a; }
-.my-streets { list-style: none; padding: 0; margin: 0 0 12px; border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden; }
-.my-streets li + li { border-top: 1px solid var(--line); }
-.my-streets a { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 56px; padding: 10px 16px; font-weight: 600; }
-.my-streets a:hover { background: var(--surface); }
-.my-streets:empty { display: none; }
 .credits { font-size: 0.8rem; color: var(--muted); margin-top: 16px; }
 .credits details { margin-top: 4px; }
 .credits summary { display: block; min-height: 44px; padding: 12px 0; cursor: pointer; text-decoration: underline; }
@@ -181,8 +243,14 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 /* Street page. */
 .street { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 12px var(--gap) calc(96px + env(safe-area-inset-bottom)); }
 .street > .card { margin: 0; }
-.street > .back { margin-bottom: -6px; }
-.street-top { display: flex; justify-content: flex-start; }
+.street > .back-btn { margin-bottom: -6px; }
+.street-top { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+.change-loc { display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 16px; border: 1.5px solid var(--line); border-radius: 999px;
+  background: var(--bg); color: var(--ink); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.change-loc .glyph { width: 18px; height: 18px; color: var(--brand); }
+.change-loc:hover { border-color: var(--brand); }
+.change-sheet h1 { margin-top: 0; }
+.change-sheet .find-actions { padding-bottom: 12px; }
 .add-street { min-height: 40px; padding: 6px 16px; border: 1.5px solid var(--brand); border-radius: 999px; background: var(--bg); color: var(--brand); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 
 /* The hero card: the one place with a sky. */
@@ -203,20 +271,46 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .hero :focus-visible { outline-color: #fff; }
 
 /* Key points, What to do, rows. */
-.keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-/* Coloured by what each box says (lib/plain.ts keyTones): tinted background, darker text of the same
-   hue (each pair >= 5.7:1), a matching edge and icon. Grey when there is no reading. */
-.key { min-width: 0; padding: 10px 12px 12px; border-radius: var(--r-tile); border: 1.5px solid var(--key-edge, var(--line));
-  background: var(--key-bg, var(--surface)); color: var(--key-ink, var(--ink)); }
-.key .glyph { display: block; width: 20px; height: 20px; margin-bottom: 4px; color: var(--key-ink, var(--muted)); }
-.key b { display: block; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
-.key span { display: block; margin-top: 3px; font-size: 15px; font-weight: 800; line-height: 1.25; }
-.key[data-tone="ok"] { --key-bg: #e8f5e9; --key-ink: #1b5e20; --key-edge: #a5d6a7; }
-.key[data-tone="watch"] { --key-bg: #fff3dc; --key-ink: #8a4b00; --key-edge: #f5c97a; }
-.key[data-tone="warn"] { --key-bg: #ffeadd; --key-ink: #a33a00; --key-edge: #f4a77a; }
-.key[data-tone="danger"] { --key-bg: #fdecec; --key-ink: #b71c1c; --key-edge: #ef9a9a; }
-.key[data-tone="none"] { --key-bg: var(--surface); --key-ink: var(--ink); --key-edge: var(--line); }
-.key[data-tone="none"] .glyph { color: var(--muted); }
+/* Tones for the panels (lib/plain.ts keyTones and friends): tinted background, darker ink of the same
+   hue (each pair >= 5.7:1), a matching edge; grey when there is no reading. */
+[data-tone="ok"] { --key-bg: #e8f5e9; --key-ink: #1b5e20; --key-edge: #a5d6a7; --key-dot: var(--ok); }
+[data-tone="watch"] { --key-bg: #fff3dc; --key-ink: #8a4b00; --key-edge: #f5c97a; --key-dot: var(--watch); }
+[data-tone="warn"] { --key-bg: #ffeadd; --key-ink: #a33a00; --key-edge: #f4a77a; --key-dot: var(--warn); }
+[data-tone="danger"] { --key-bg: #fdecec; --key-ink: #b71c1c; --key-edge: #ef9a9a; --key-dot: var(--danger); }
+[data-tone="none"] { --key-bg: var(--surface); --key-ink: var(--ink); --key-edge: var(--line); }
+[data-tone="info"] { --key-bg: #e8f1fa; --key-ink: #1d5f99; --key-edge: #b9d3ec; }
+
+/* Panels: the readings a resident should not miss (river, rain, the street, tide), each with an icon,
+   a status chip and one big value. The edge takes the panel's tone; the body stays white. */
+.panel { min-width: 0; padding: 14px 16px 16px; border-radius: var(--r-card); background: var(--bg); border: 1.5px solid var(--key-edge, var(--line)); }
+.panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.panel-head h2 { flex: 1; min-width: 0; }
+.panel-icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--key-bg, var(--surface)); color: var(--key-ink, var(--muted)); }
+.panel-icon .glyph { width: 18px; height: 18px; }
+.panel-chip { flex: none; padding: 3px 10px; border-radius: 999px; background: var(--key-bg); color: var(--key-ink); font-size: 12px; font-weight: 800; }
+.panel-sub { flex: none; font-size: 12px; color: var(--muted); }
+.panel-big { margin: 0; font-size: 30px; font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.panel-line { margin: 4px 0 0; font-size: 15px; font-weight: 600; color: var(--key-ink, var(--ink)); }
+.panel-note { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.panel-flag { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; padding: 10px 12px; border-radius: 12px;
+  background: #fff3dc; color: #8a4b00; font-size: 14px; font-weight: 700; }
+.panel-flag::before { content: "!"; flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--watch); color: #fff; font-size: 13px; font-weight: 900; }
+.panel-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.panel-pair .panel-big { font-size: 24px; }
+/* Half width: the status chip drops under the title instead of squeezing it. */
+.panel-pair .panel-head { flex-wrap: wrap; }
+.panel-pair .panel-chip { order: 3; }
+.panel-pair .river-marks { display: flex; flex-wrap: wrap; justify-content: start; gap: 2px 10px; }
+.river-marks span { white-space: nowrap; }
+.panel-pair .panel-line { font-size: 14px; }
+.river-marks { display: grid; grid-template-columns: repeat(3, auto); justify-content: end; gap: 12px; font-size: 11px; color: var(--muted); }
+.river-marks span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 2px; vertical-align: 0; }
+.river-marks span:nth-child(1)::before { background: #f5c542; }
+.river-marks span:nth-child(2)::before { background: var(--warn); }
+.river-marks span:nth-child(3)::before { background: var(--danger); }
+.prone-dots { display: flex; gap: 4px; margin-top: 6px; }
+.prone-dots i { width: 14px; height: 6px; border-radius: 3px; background: var(--line); }
+.prone-dots i[data-on] { background: var(--key-dot, var(--ink)); }
 .card.do { position: relative; overflow: hidden; border: 0; background: var(--surface); }
 .card.do::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--lvl); }
 .card.do h2 { color: var(--ink); }
@@ -243,15 +337,9 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .curve-mm { font-size: 11px; }
 
 /* Technical details: closed by default, a red + / – marker. */
-.tech summary { display: flex; justify-content: space-between; align-items: center; min-height: 32px; cursor: pointer; list-style: none;
-  font-size: 12px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
-.tech summary::-webkit-details-marker { display: none; }
-.tech-toggle::after { content: "+"; font-size: 22px; font-weight: 400; color: var(--brand); }
-.tech[open] .tech-toggle::after { content: "–"; }
+/* Technical details: always open, no toggle. */
+.tech > h2 { margin-bottom: 4px; }
 .tech h3 { margin: 14px 0 4px; font-size: 13px; font-weight: 700; }
-.tech-river { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
-.tech-river strong { font-size: 34px; font-weight: 300; font-variant-numeric: tabular-nums; }
-.tech-river span { font-size: 13px; color: var(--muted); }
 .reasons { margin: 0; padding-left: 1.1rem; font-size: 14px; }
 .reasons li { margin-bottom: 4px; }
 .river-gauge { position: relative; height: 6px; margin: 12px 0 6px; border-radius: 3px; background: #d9d9d9; }
@@ -260,8 +348,24 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .band-warning { background: var(--warn); }
 .band-danger { background: var(--danger); border-radius: 0 3px 3px 0; }
 .river-now { position: absolute; top: -5px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); transform: translateX(-50%); }
-.tide-mini { display: block; width: 100%; max-width: 280px; height: auto; color: #3b82c4; }
-.tide-mini circle { stroke: var(--ink); stroke-width: 2; }
+.tide-chart { display: block; width: 100%; height: auto; margin-top: 4px; cursor: ew-resize; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.tide-chart:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 8px; }
+/* What the pin reads: time, height, rising or falling; it changes as the pin is dragged. */
+.tide-readout { display: flex; align-items: center; gap: 8px; margin: 2px 0 0; font-size: 15px; font-variant-numeric: tabular-nums; }
+.tide-readout strong { font-size: 18px; font-weight: 800; }
+.tide-readout span:not(.tide-trend) { font-weight: 700; color: #1d5f99; }
+.tide-hint { font-size: 12px; color: var(--muted); }
+/* 6 h / 12 h: a small pill switch over the chart. */
+.tide-range { display: inline-flex; gap: 2px; margin: 0 0 6px; padding: 3px; border-radius: 999px; background: #eef2f6; }
+.tide-range button { min-height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.tide-range button[aria-pressed="true"] { background: #fff; color: #1d5f99; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
+.tide-now { margin-left: auto; min-height: 32px; padding: 4px 12px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--brand);
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.tide-facts { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-top: 4px; }
+.tide-facts .tile-note { margin: 0; color: var(--ink); font-weight: 600; }
+.tide-trend { padding: 2px 10px; border-radius: 999px; background: #e8f1fa; color: #1d5f99; font-size: 12px; font-weight: 800; }
+.tide-trend[data-trend="rising"]::before { content: "↑ "; }
+.tide-trend[data-trend="falling"]::before { content: "↓ "; }
 
 /* The closing question or the report card. */
 .report-card { display: flex; align-items: center; gap: 14px; min-height: 64px; }
@@ -312,6 +416,12 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .sky-view .curve-scroll { margin: 0; padding: 0 0 4px; }
 .sky-view .curve-hours li { color: #fff; }
 .sky-view .tile-empty { padding: 0 20px; color: #fff; }
+/* Under the curve: the street page's panels and technical details on solid white cards (text on them
+   keeps its page contrast whatever the sky behind). */
+.sky-view-body { display: grid; gap: 12px; padding: 16px 14px 0; color: var(--ink); text-shadow: none; }
+.sky-view-body .card { margin: 0; }
+.sky-view-body .panel, .sky-view-body .card { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); }
+.sky-view-body :focus-visible { outline-color: var(--ink); }
 .sky-view-note { margin: 0; padding: 14px 24px calc(28px + env(safe-area-inset-bottom)); font-size: 13px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .sky-view { animation: none; } .hero { transition: none; } }
 
@@ -319,13 +429,14 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .find { display: grid; align-content: start; gap: 14px; padding: 12px var(--gap) 24px; }
 .find-hero { padding: 28px 20px 26px; }
 .find-hero .hero-name { margin-top: 0; font-size: 26px; }
+.find-hero .logo { display: block; margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2)); }
 .find-actions { display: grid; gap: 10px; }
 .find-actions p { margin: 0; }
 .find-note { margin: 0; font-size: 14px; color: var(--muted); text-align: center; }
 .find-confirm p { margin: 0; }
 .find-street { display: block; margin: 6px 0 12px; font-size: 22px; }
 
-.primary, .secondary, .choice, .my-streets a, .lang-switch button { transition: background-color 120ms ease; }
+.primary, .secondary, .choice, .lang-switch button { transition: background-color 120ms ease; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }

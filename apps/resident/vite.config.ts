@@ -15,7 +15,7 @@ export default defineConfig({
         name: 'Flood-Ready Township',
         short_name: 'Flood-Ready',
         description: 'Street-level flash-flood warnings for SDP townships',
-        theme_color: '#0b3d91',
+        theme_color: '#ea0009',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',

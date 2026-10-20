@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import type { Lang } from '@floodready/shared';
+import { BackButton } from '../components/BackButton';
 import { api } from '../lib/api';
 import { NotificationOffer } from '../components/NotificationOffer';
 import { t } from '../lib/i18n';
@@ -41,7 +42,7 @@ export function PickStreetsPage({ lang, mine, deviceId, onSave, onClose }: { lan
       {onClose ? (
         <button type="button" className="sheet-close" onClick={onClose}>{t(lang, 'close')}</button>
       ) : (
-        <Link to="/" className="back">← {t(lang, 'back')}</Link>
+        <BackButton lang={lang} />
       )}
       <h1>{t(lang, 'pickStreets')}</h1>
       <input className="search" placeholder={t(lang, 'searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} />

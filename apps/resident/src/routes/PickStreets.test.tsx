@@ -70,7 +70,10 @@ describe('PickStreetsPage back link', () => {
   it('links back to the home page', async () => {
     renderPick();
     await screen.findAllByRole('radio');
-    expect(screen.getByRole('link', { name: '← Back' })).toHaveAttribute('href', '/');
+    const back = screen.getByRole('link', { name: 'Back' });
+    expect(back).toHaveAttribute('href', '/');
+    expect(back).toHaveClass('back-btn');
+    expect(back.textContent).toBe('');
   });
 });
 

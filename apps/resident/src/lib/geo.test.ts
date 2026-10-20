@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { streets } from '@floodready/shared/mocks';
 import type { StreetFeature } from '@floodready/shared';
 import bbrRaw from '../../../../assets/geo/bbr_streets.geojson?raw';
-import { nearestStreet } from './geo';
+import { focusedStreet, nearestStreet, REVEAL_ZOOM } from './geo';
 
 /** The committed BBR street map (943 OSM streets) as the app's /streets geometry. */
 const bbr = (JSON.parse(bbrRaw) as { features: StreetFeature[] }).features;
@@ -39,5 +39,31 @@ describe('nearestStreet', () => {
     };
     expect(nearestStreet({ lat: 3.5001, lon: 101.5005 }, [multi])!.distanceM).toBeLessThan(15);
     expect(nearestStreet({ lat: 3, lon: 101 }, [])).toBeNull();
+  });
+});
+
+describe('focusedStreet (the street under the map centre once zoomed in)', () => {
+  // A point on Jalan Makyong's second segment.
+  const onMakyong = { lat: 3.0902, lon: 101.42585 };
+
+  it('is the street under the centre at the reveal zoom or closer', () => {
+    expect(focusedStreet(onMakyong, REVEAL_ZOOM, streets.features)?.street.street_id).toBe('BBR-jalan-makyong');
+    expect(focusedStreet(onMakyong, REVEAL_ZOOM + 2, streets.features)?.street.street_id).toBe('BBR-jalan-makyong');
+  });
+
+  it('gives the point on the street line nearest the centre, for the popup to point at', () => {
+    const hit = focusedStreet({ lat: onMakyong.lat + 0.0001, lon: onMakyong.lon }, REVEAL_ZOOM, streets.features)!;
+    const back = nearestStreet(hit.point, streets.features)!;
+    expect(back.street.street_id).toBe('BBR-jalan-makyong');
+    expect(back.distanceM).toBeLessThan(0.5);
+    expect(nearestStreet({ lat: onMakyong.lat + 0.0001, lon: onMakyong.lon }, streets.features)!.point).toEqual(hit.point);
+  });
+
+  it('is nothing while zoomed out', () => {
+    expect(focusedStreet(onMakyong, REVEAL_ZOOM - 1, streets.features)).toBeNull();
+  });
+
+  it('is nothing when no street is close to the centre', () => {
+    expect(focusedStreet({ lat: 3.139, lon: 101.6869 }, REVEAL_ZOOM, streets.features)).toBeNull();
   });
 });

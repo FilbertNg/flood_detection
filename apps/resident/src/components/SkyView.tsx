@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { LEVEL_LABEL, type Lang, type Level, type StreetDetail } from '@floodready/shared';
 import { t } from '../lib/i18n';
 import { skyGradient, type Sky, type WeatherHour, type WeatherKind } from '../lib/weather';
@@ -21,14 +21,17 @@ export interface SkyViewProps {
   /** CSS variables from the street view: level colour and word colour. */
   vars: CSSProperties;
   onClose: () => void;
+  /** The street page's panels and technical details, shown under the curve on white cards. */
+  children?: ReactNode;
 }
 
 /**
  * Full-screen sky view, opened from the street hero card: the weather-app look with the condition
- * filling the screen, the canvas at full strength, glass key-point chips and the white-on-sky curve.
+ * filling the screen, the canvas at full strength, glass key-point chips and the white-on-sky curve,
+ * then everything else the street page shows (panels, tide, technical details) on white cards.
  * A modal dialog: focus moves to × on open; the street view handles ×, Escape and Back.
  */
-export function SkyView({ lang, sky, name, level, word, headline, kind, weatherLine, keys, rain, hours, vars, onClose }: SkyViewProps) {
+export function SkyView({ lang, sky, name, level, word, headline, kind, weatherLine, keys, rain, hours, vars, onClose, children }: SkyViewProps) {
   const close = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     close.current?.focus();
@@ -61,6 +64,7 @@ export function SkyView({ lang, sky, name, level, word, headline, kind, weatherL
       </div>
       <h3 className="sky-view-sec">{t(lang, 'skyRainTitle')}</h3>
       <RainCurve lang={lang} rain={rain} weather={hours} tone="sky" />
+      {children && <div className="sky-view-body">{children}</div>}
       <p className="sky-view-note">{t(lang, 'skyNote')}</p>
     </section>
   );

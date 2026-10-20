@@ -56,7 +56,7 @@ export function WeatherIcon({ kind, tone = 'sky' }: { kind: WeatherKind; tone?: 
   );
 }
 
-type Glyph = 'drop' | 'river' | 'tide' | 'home' | 'why' | 'todo' | 'report' | 'clock' | 'map' | 'list' | 'check' | 'pin';
+type Glyph = 'drop' | 'river' | 'tide' | 'home' | 'why' | 'todo' | 'report' | 'clock' | 'map' | 'list' | 'check' | 'pin' | 'expand' | 'collapse';
 
 const GLYPHS: Record<Glyph, ReactElement> = {
   drop: <path d="M16 4c4.5 6 8 10.4 8 14.5a8 8 0 0 1-16 0C8 14.4 11.5 10 16 4z" />,
@@ -70,6 +70,8 @@ const GLYPHS: Record<Glyph, ReactElement> = {
   map: <path d="M3 7l8-3 10 3 8-3v21l-8 3-10-3-8 3zm8 .2v17.2l10 3V10.2z" />,
   pin: <path d="M16 3a10 10 0 0 0-10 10c0 7.2 10 16 10 16s10-8.8 10-16A10 10 0 0 0 16 3zm0 13.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z" />,
   check: <path d="M16 3a13 13 0 1 1 0 26 13 13 0 0 1 0-26zm0 2.6a10.4 10.4 0 1 0 0 20.8 10.4 10.4 0 0 0 0-20.8zm5.2 5.6l1.9 1.8-8.5 8.8-5-5 1.9-1.9 3.1 3.1z" />,
+  expand: <path d="M4 4h9v3H7v6H4zm15 0h9v9h-3V7h-6zM4 19h3v6h6v3H4zm21 0h3v9h-9v-3h6z" />,
+  collapse: <path d="M10 4h3v9H4v-3h6zm9 0h3v6h6v3h-9zM4 19h9v9h-3v-6H4zm15 0h9v3h-6v6h-3z" />,
   list: <path d="M5 7h3v3H5zm6 .2h16v2.6H11zM5 14.5h3v3H5zm6 .2h16v2.6H11zM5 22h3v3H5zm6 .2h16v2.6H11z" />,
 };
 

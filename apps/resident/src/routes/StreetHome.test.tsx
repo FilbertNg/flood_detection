@@ -3,7 +3,10 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { streetDetail, streets } from '@floodready/shared/mocks';
+import * as geo from '../lib/geo';
 import { StreetHome } from './StreetHome';
+
+vi.mock('../lib/geo', async (importOriginal) => ({ ...(await importOriginal<typeof geo>()), currentPosition: vi.fn() }));
 
 const nameOf = (id: string) => streets.features.find((f) => f.properties.street_id === id)?.properties.name ?? id;
 
@@ -87,5 +90,30 @@ describe('StreetHome (one street)', () => {
     renderHome('/', ['BBR-jalan-makyong']);
     const page = await screen.findByRole('heading', { level: 1, name: 'Jalan Makyong' }, slow);
     expect(within(page.closest('.street') as HTMLElement).queryByRole('link', { name: /Back/ })).toBeNull();
+  });
+
+  it('has a Change location button on my street that opens a sheet with the location and the list', async () => {
+    renderHome('/', ['BBR-persiaran-batu-belah']);
+    await screen.findByRole('heading', { level: 1, name: 'Persiaran Batu Belah' }, slow);
+    fireEvent.click(screen.getByRole('button', { name: 'Change location' }));
+    const sheet = screen.getByRole('dialog', { name: 'Change your street' });
+    expect(within(sheet).getByRole('button', { name: 'Use my location' })).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Choose from the list' }));
+    expect(within(sheet).getByPlaceholderText('Search a street…')).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('changes my street from the phone location after a confirm', async () => {
+    vi.mocked(geo.currentPosition).mockResolvedValue({ lat: 3.0899, lon: 101.4251 });
+    const onSave = renderHome('/', ['BBR-persiaran-batu-belah']);
+    await screen.findByRole('heading', { level: 1, name: 'Persiaran Batu Belah' }, slow);
+    fireEvent.click(screen.getByRole('button', { name: 'Change location' }));
+    const sheet = screen.getByRole('dialog', { name: 'Change your street' });
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Use my location' }));
+    expect(await within(sheet).findByText('Jalan Makyong')).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Yes' }));
+    expect(onSave).toHaveBeenCalledWith(['BBR-jalan-makyong']);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

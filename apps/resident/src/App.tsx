@@ -1,8 +1,10 @@
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router';
 import type { Lang } from '@floodready/shared';
 import { LangSwitch } from './components/LangSwitch';
-import { StatusLine } from './components/StatusLine';
+import { LogoMark } from './components/Logo';
+import { api } from './lib/api';
 import { t } from './lib/i18n';
 import { loadPrefs, savePrefs, type Prefs } from './lib/prefs';
 import { usePushSync } from './push/usePushSync';
@@ -17,10 +19,14 @@ export function App() {
   const lang: Lang = prefs.lang;
   usePushSync({ deviceId: prefs.deviceId, streets: prefs.streets, lang });
   const path = useLocation().pathname;
+  // Under the logo: my chosen street (picked from the list or found from my location); the township
+  // until one is chosen. The street list is the same cached query the other screens use.
+  const mine = prefs.streets[0];
+  const streets = useQuery({ queryKey: ['streets'], queryFn: () => api.streets(), enabled: !!mine });
+  const place = (mine && streets.data?.features.find((f) => f.properties.street_id === mine)?.properties.name) || t(lang, 'township');
 
-  // The report form and the street picker need no live line; a replay is labelled on every screen
-  // (replayed data must be shown as such).
-  const showLive = !path.startsWith('/report') && !path.startsWith('/streets');
+  // The street picker needs no live line, and the report form shows no data at all, so it gets no line;
+  // every screen that shows data labels a replay (replayed data must be shown as such).
   const map = path.startsWith('/map');
 
   return (
@@ -29,16 +35,18 @@ export function App() {
       {!map && (
         <>
           <header className="top">
-            <Link to="/" className="brand">{t(lang, 'appName')}<small>{t(lang, 'township')}</small></Link>
+            <Link to="/" className="brand">
+              <LogoMark tone="white" size={34} />
+              <span>{t(lang, 'appName')}<small>{place}</small></span>
+            </Link>
             <LangSwitch lang={lang} onChange={(next) => update({ lang: next })} />
           </header>
-          <StatusLine lang={lang} live={showLive} />
         </>
       )}
       <Routes>
         <Route path="/" element={<StreetHome lang={lang} deviceId={prefs.deviceId} saved={prefs.streets} onSave={(streets) => update({ streets })} />} />
         <Route path="/street/:id" element={<StreetHome lang={lang} deviceId={prefs.deviceId} saved={prefs.streets} onSave={(streets) => update({ streets })} />} />
-        <Route path="/map" element={<HomePage lang={lang} mine={prefs.streets} deviceId={prefs.deviceId} onSave={(streets) => update({ streets })} onLang={(next) => update({ lang: next })} />} />
+        <Route path="/map" element={<HomePage lang={lang} mine={prefs.streets} onLang={(next) => update({ lang: next })} />} />
         <Route path="/report" element={<ReportPage lang={lang} deviceId={prefs.deviceId} mine={prefs.streets} />} />
         <Route path="/streets" element={<PickStreetsPage lang={lang} mine={prefs.streets} deviceId={prefs.deviceId} onSave={(streets) => update({ streets })} />} />
       </Routes>

@@ -45,6 +45,19 @@ export function riverStatus(wl: number, th: Thresholds): RiverStatus {
   return 'low';
 }
 
+export type Mark = 'alert' | 'warning' | 'danger';
+
+/**
+ * How far the river is from the next JPS mark above it (or above danger once past it), in metres.
+ * Display only: the level comes from the engine.
+ */
+export function riverGap(wl: number, th: Thresholds): { mark: Mark; m: number; above: boolean } {
+  if (wl < th.alert) return { mark: 'alert', m: th.alert - wl, above: false };
+  if (wl < th.warning) return { mark: 'warning', m: th.warning - wl, above: false };
+  if (wl < th.danger) return { mark: 'danger', m: th.danger - wl, above: false };
+  return { mark: 'danger', m: wl - th.danger, above: true };
+}
+
 /** Rain chance at which we call rain "likely", for wording only. */
 const LIKELY = 40;
 

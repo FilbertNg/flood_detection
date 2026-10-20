@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import type { Lang, StreetProperties } from '@floodready/shared';
+import { LogoMark } from '../components/Logo';
 import { SkyBackdrop } from '../components/SkyHero';
 import { api } from '../lib/api';
 import { currentPosition, nearestStreet } from '../lib/geo';
@@ -47,6 +48,7 @@ export function FindStreetPage({ lang, onSave }: { lang: Lang; onSave: (ids: str
     <div className="find">
       <section className="hero hero-none find-hero">
         <SkyBackdrop sky="none" />
+        <LogoMark tone="white" size={52} />
         <h1 className="hero-name">{t(lang, 'findTitle')}</h1>
         <p className="hero-headline">{t(lang, 'findWhy')}</p>
       </section>

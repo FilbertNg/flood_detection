@@ -11,6 +11,12 @@ describe('showPushNotification', () => {
     await showPushNotification({ showNotification: show }, payload);
     expect(show).toHaveBeenCalledWith('Warning', expect.objectContaining({ body: 'Jalan Makyong', data: { url: '/street/BBR-jalan-makyong' }, tag: 'a1' }));
   });
+
+  it('uses the app icon and the one-colour pin badge (Android draws the badge as a silhouette)', async () => {
+    const show = vi.fn(async () => undefined);
+    await showPushNotification({ showNotification: show }, payload);
+    expect(show).toHaveBeenCalledWith('Warning', expect.objectContaining({ icon: '/icon-192.png', badge: '/badge-96.png' }));
+  });
 });
 
 describe('focusOrOpen', () => {

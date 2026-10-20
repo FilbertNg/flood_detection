@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bigWord, headline, keyPoints, keyTones, rainStrength, riverStatus, weatherPhrase } from './plain';
+import { bigWord, headline, keyPoints, keyTones, rainStrength, riverGap, riverStatus, weatherPhrase } from './plain';
 import type { WeatherHour } from './weather';
 
 const T = (hm: string) => `2024-11-12T${hm}:00+08:00`;
@@ -45,6 +45,20 @@ describe('rainStrength', () => {
 describe('riverStatus', () => {
   it.each([[3.0, 'low'], [3.5, 'near'], [3.8, 'alert'], [4.05, 'warning'], [4.2, 'danger']] as const)('%s m → %s', (wl, s) => {
     expect(riverStatus(wl, th)).toBe(s);
+  });
+});
+
+describe('riverGap (how far the river is from the next JPS mark)', () => {
+  it.each([
+    [3.0, { mark: 'alert', m: 0.8, above: false }],
+    [3.9, { mark: 'warning', m: 0.1, above: false }],
+    [4.05, { mark: 'danger', m: 0.15, above: false }],
+    [4.5, { mark: 'danger', m: 0.3, above: true }],
+  ] as const)('%s m', (wl, gap) => {
+    const got = riverGap(wl, th);
+    expect(got.mark).toBe(gap.mark);
+    expect(got.above).toBe(gap.above);
+    expect(got.m).toBeCloseTo(gap.m);
   });
 });
 

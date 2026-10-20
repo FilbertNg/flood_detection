@@ -1,5 +1,6 @@
 import { useParams } from 'react-router';
 import type { Lang } from '@floodready/shared';
+import { ChangeLocation } from '../components/ChangeLocation';
 import { MapFab } from '../components/MapFab';
 import { StreetView } from '../components/StreetView';
 import { t } from '../lib/i18n';
@@ -16,7 +17,8 @@ interface Props {
 /**
  * Home for `/` and `/street/:id`: one street, no swiping. No saved street: the start screen.
  * `/` or my own street: my street. Another street (from the map, a share or a push for an older
- * saved street): that street with "Set as my street", which replaces mine.
+ * saved street): that street with "Set as my street", which replaces mine. "Change location" is always
+ * there, so a resident can move to another street without the map.
  */
 export function StreetHome({ lang, deviceId, saved, onSave }: Props) {
   const { id } = useParams();
@@ -33,6 +35,7 @@ export function StreetHome({ lang, deviceId, saved, onSave }: Props) {
         deviceId={deviceId}
         showBack={false}
         topLeft={other ? <button type="button" className="add-street" onClick={() => onSave([shown])}>{t(lang, 'setStreet')}</button> : undefined}
+        belowHero={<ChangeLocation lang={lang} mine={saved} deviceId={deviceId} onSave={onSave} />}
       />
       <MapFab lang={lang} />
     </div>

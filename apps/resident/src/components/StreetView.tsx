@@ -3,16 +3,17 @@ import { useEffect, useId, useRef, type CSSProperties, type KeyboardEvent, type 
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { LEVEL_LABEL, type Lang, type Level, type Susceptibility } from '@floodready/shared';
 import { AlertHistory } from './AlertHistory';
+import { BackButton } from './BackButton';
 import { Icon, WeatherIcon } from './Icons';
 import { SkyBackdrop } from './SkyHero';
 import { SkyView } from './SkyView';
-import { RainCurve, RiverMeter, TideMini } from './StreetTiles';
+import { RainCurve, RiverMeter, TideChart } from './StreetTiles';
 import { VerifySheet } from './VerifySheet';
 import { adviceSteps } from '../lib/advice';
 import { api } from '../lib/api';
-import { dayTime, metres, percent, riverForecastText } from '../lib/format';
-import { t, type StringKey } from '../lib/i18n';
-import { bigWord, headline, keyPoints, keyTones, rainStrength, riverStatus, weatherPhrase, type RiverStatus } from '../lib/plain';
+import { dayTime, hhmm, metres, percent, riverForecastText } from '../lib/format';
+import { t, tf, type StringKey } from '../lib/i18n';
+import { bigWord, headline, keyPoints, keyTones, rainStrength, riverGap, riverStatus, weatherPhrase, type Mark, type RiverStatus, type Tone } from '../lib/plain';
 import { streetRiver } from '../lib/river';
 import { gaugeRain, hourAt, parseWeather, skyFor, weatherKind, weatherUrl, type WeatherKind } from '../lib/weather';
 
@@ -27,7 +28,11 @@ const SOLID: Record<Level, string> = { normal: '#2e7d32', watch: '#b26a00', warn
 const TINT: Record<Level, string> = { normal: '#7ee0a1', watch: '#ffd166', warning: '#ff9f43', danger: '#ff5d5d' };
 
 const GAUGE_TEXT = { none: 'gNone', light: 'gLight', moderate: 'gModerate', heavy: 'gHeavy' } as const satisfies Record<string, StringKey>;
-const RIVER_TEXT: Record<RiverStatus, StringKey> = { low: 'rLow', near: 'rNear', alert: 'rAlert', warning: 'rWarning', danger: 'rDanger' };
+const RIVER_SHORT: Record<RiverStatus, StringKey> = { low: 'riverLow', near: 'riverNear', alert: 'riverAlert', warning: 'riverWarning', danger: 'riverDanger' };
+const MARK_TEXT: Record<Mark, StringKey> = { alert: 'markAlert', warning: 'markWarning', danger: 'markDanger' };
+const RAIN_WORD = { none: 'rainNone', light: 'rainLight', moderate: 'rainModerate', heavy: 'rainHeavy' } as const satisfies Record<string, StringKey>;
+const RAIN_TONE: Record<'none' | 'light' | 'moderate' | 'heavy', Tone> = { none: 'ok', light: 'ok', moderate: 'watch', heavy: 'warn' };
+const PRONE_TONE = (s: Susceptibility): Tone => (s >= 4 ? 'warn' : s === 3 ? 'none' : 'ok');
 
 const proneText = (s: Susceptibility): StringKey => (s >= 4 ? 'streetProne' : s === 3 ? 'streetMid' : 'streetLow');
 
@@ -51,6 +56,8 @@ export interface StreetViewProps {
   showBack?: boolean;
   /** Extra control at the top left, e.g. "+ Add to my streets". */
   topLeft?: ReactNode;
+  /** Full-width control right under the hero card, e.g. "Change location". */
+  belowHero?: ReactNode;
 }
 
 /**
@@ -59,7 +66,7 @@ export interface StreetViewProps {
  * The app header (with the language switch) and the live line sit above it; the replay label is
  * repeated inside the hero card so a replayed street is labelled even on its own.
  */
-export function StreetView({ id, lang, deviceId, showBack = true, topLeft }: StreetViewProps) {
+export function StreetView({ id, lang, deviceId, showBack = true, topLeft, belowHero }: StreetViewProps) {
   // Element ids are prefixed per view, in case two views are ever on one page.
   const uid = useId();
   const navigate = useNavigate();
@@ -137,6 +144,14 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft }: Str
   const tones = keyTones({ level: data.level, gauge, hours, dataTime: data.data_time, river });
   const steps = adviceSteps(data.level, data.susceptibility, data.window, lang);
   const forecast = riverForecastText(data.river_forecast, lang);
+  const rf = data.river_forecast;
+  // First forecast hour whose upper estimate reaches the warning line (an estimate, shown as such).
+  const reachBy = rf && rf.warning_m !== null ? rf.points.find((p) => p.wl_m_p90 >= rf.warning_m!) ?? null : null;
+  const strength = gauge ? rainStrength(gauge.mm) : 'none';
+  const rain12 = data.rain_next_12h.reduce((sum, p) => sum + p.mm, 0);
+  const rStatus = river ? riverStatus(river.wl, river.th) : null;
+  const gap = river ? riverGap(river.wl, river.th) : null;
+  const markWord = (m: Mark) => t(lang, MARK_TEXT[m]).toLowerCase();
   const verify = !!data.active_alert && (data.active_alert.level === 'warning' || data.active_alert.level === 'danger');
   const alerting = data.level === 'warning' || data.level === 'danger';
   const word = bigWord(data.level, lang);
@@ -149,9 +164,115 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft }: Str
     ? [t(lang, WX_LABEL[kind]), chance != null ? `${chance}% ${t(lang, 'wxChance')}` : null, phrase].filter(Boolean).join(' · ')
     : null;
 
+  // The panels and the technical details appear on the page and again in the full-screen sky view;
+  // `p` prefixes their element ids so the two copies never share an id.
+  const panels = (p: string) => (
+    <>
+      <section className="panel" data-tone={RAIN_TONE[strength]} aria-labelledby={`${p}-rain-panel`}>
+        <header className="panel-head">
+          <span className="panel-icon"><Icon name="drop" /></span>
+          <h2 id={`${p}-rain-panel`}>{t(lang, 'panelRain')}</h2>
+        </header>
+        <p className="panel-big">{t(lang, RAIN_WORD[strength])}</p>
+        <p className="panel-line">{gauge ? tf(lang, 'rainLastHour', { mm: gauge.mm }) : t(lang, GAUGE_TEXT.none)}</p>
+        <p className="panel-note">{tf(lang, 'rainNext12', { mm: rain12.toFixed(1) })}</p>
+      </section>
+
+      <div className="panel-pair">
+        <section className="panel" data-tone={rStatus ? tones.river : 'none'} aria-labelledby={`${p}-river-panel`}>
+          <header className="panel-head">
+            <span className="panel-icon"><Icon name="river" /></span>
+            <h2 id={`${p}-river-panel`}>{t(lang, 'panelRiver')}</h2>
+            {rStatus && <span className="panel-chip">{t(lang, RIVER_SHORT[rStatus])}</span>}
+          </header>
+          {river && gap && station ? (
+            <>
+              <p className="panel-big">{metres(river.wl)}</p>
+              <p className="panel-line">{tf(lang, gap.above ? 'riverAboveMark' : 'riverBelowMark', { m: metres(gap.m), mark: markWord(gap.mark) })}</p>
+              <RiverMeter wl={river.wl} th={river.th} />
+              <div className="river-marks" aria-hidden="true">
+                <span>{t(lang, 'markAlert')}</span><span>{t(lang, 'markWarning')}</span><span>{t(lang, 'markDanger')}</span>
+              </div>
+              <p className="panel-note">{tf(lang, 'riverAt', { station: station.name })}</p>
+            </>
+          ) : (
+            <p className="panel-line">{t(lang, 'rNone')}</p>
+          )}
+          {reachBy && <p className="panel-flag">{tf(lang, 'riverMayReachBy', { time: hhmm(reachBy.time) })}</p>}
+        </section>
+
+        <section className="panel" data-tone={PRONE_TONE(data.susceptibility)} aria-labelledby={`${p}-street-panel`}>
+          <header className="panel-head">
+            <span className="panel-icon"><Icon name="home" /></span>
+            <h2 id={`${p}-street-panel`}>{t(lang, 'panelStreet')}</h2>
+          </header>
+          <p className="panel-big">{`${data.susceptibility} / 5`}</p>
+          <span className="prone-dots" aria-hidden="true">
+            {[1, 2, 3, 4, 5].map((i) => <i key={i} data-on={i <= data.susceptibility || undefined} />)}
+          </span>
+          <p className="panel-line">{t(lang, proneText(data.susceptibility))}</p>
+        </section>
+      </div>
+
+      <section className="panel" data-tone="info" aria-labelledby={`${p}-tide-panel`}>
+        <header className="panel-head">
+          <span className="panel-icon"><Icon name="tide" /></span>
+          <h2 id={`${p}-tide-panel`}>{t(lang, 'panelTide')}</h2>
+          <span className="panel-sub">{t(lang, 'tidePlace')}</span>
+        </header>
+        <TideChart lang={lang} tide={data.tide} dataTime={data.data_time} />
+      </section>
+    </>
+  );
+  const techBody = (p: string) => (
+    <>
+      <ul className="rows">
+        {th && (
+          <li><b>{t(lang, 'techMarks')}</b><span>{`${t(lang, 'markAlert')} ${th.alert.toFixed(2)} · ${t(lang, 'markWarning')} ${th.warning.toFixed(2)} · ${t(lang, 'markDanger')} ${th.danger.toFixed(2)} m`}</span></li>
+        )}
+        <li><b>{t(lang, 'techRainHour')}</b><span>{gauge ? gauge.station : t(lang, 'techGauge')}</span><em>{gauge ? `${gauge.mm} mm` : '0 mm'}</em></li>
+        {data.flood_probability !== null && (
+          <li><b>{t(lang, 'techModel')}</b><span>{t(lang, 'chance')}</span><em>{percent(data.flood_probability)}</em></li>
+        )}
+      </ul>
+      {data.flood_probability !== null && <p className="fine">{t(lang, 'mlNote')}</p>}
+
+      <h3>{t(lang, 'why')}</h3>
+      {data.reasons.length ? (
+        <ul className="reasons">
+          {data.reasons.map((r) => (
+            <li key={r.code + r.station}>{r.text[lang]}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="fine">{t(lang, 'noReasons')}</p>
+      )}
+
+      {forecast && (
+        <section aria-labelledby={`${p}-river`}>
+          <h3 id={`${p}-river`}>{t(lang, 'riverForecast')}</h3>
+          <p className="fine">{forecast.now}</p>
+          <ul className="reasons">
+            {forecast.points.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          {forecast.warning && <p className="fine">{forecast.warning}</p>}
+          {forecast.mayReachWarning && <p className="fine"><strong>{t(lang, 'riverMayReach')}</strong></p>}
+          <p className="fine">{t(lang, 'riverNote')}</p>
+        </section>
+      )}
+
+      <p className="fine">
+        {t(lang, 'dataTime')} {dayTime(data.data_time)} · {t(lang, 'techSources')}
+        {kind && <> · <span>{t(lang, 'wxCredit')}</span></>}
+      </p>
+    </>
+  );
+
   return (
     <article className="street" style={vars}>
-      {showBack && <Link to="/" className="back">← {t(lang, 'back')}</Link>}
+      {showBack && <BackButton lang={lang} />}
       {topLeft && <div className="street-top">{topLeft}</div>}
 
       <section className={`hero hero-${sky}`} aria-labelledby={`${uid}-name`}>
@@ -177,95 +298,31 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft }: Str
         <div ref={opener} className="hero-open" role="button" tabIndex={0} aria-label={t(lang, 'heroOpen')} onClick={openFull} onKeyDown={onOpenerKey} />
       </section>
 
-      <div className="keys">
-        {([['keyRain', keys.rain, tones.rain, 'drop'], ['keyRiver', keys.river, tones.river, 'river'], ['keyFlood', keys.flood, tones.flood, 'home']] as const).map(([label, value, tone, icon]) => (
-          <div key={label} className="key" data-tone={tone}>
-            <Icon name={icon} />
-            <b>{t(lang, label)}</b>
-            <span>{value}</span>
-          </div>
-        ))}
-      </div>
+      {belowHero}
 
-      <section className="card do" aria-labelledby={`${uid}-do`}>
-        <h2 id={`${uid}-do`}>{t(lang, 'doTitle')}</h2>
-        <ul className="steps">
-          {steps.map((s) => (
-            <li key={s.title}><Icon name="check" /><span>{s.title}{s.note && <small>{s.note}</small>}</span></li>
-          ))}
-        </ul>
-      </section>
+      {/* Nothing to do on a Safe street: the card only takes room from Watch up. */}
+      {data.level !== 'normal' && (
+        <section className="card do" aria-labelledby={`${uid}-do`}>
+          <h2 id={`${uid}-do`}>{t(lang, 'doTitle')}</h2>
+          <ul className="steps">
+            {steps.map((s) => (
+              <li key={s.title}><Icon name="check" /><span>{s.title}{s.note && <small>{s.note}</small>}</span></li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {panels(uid)}
 
       <section className="card" aria-labelledby={`${uid}-rain`}>
         <h2 id={`${uid}-rain`}>{t(lang, 'curveTitle')}</h2>
         <RainCurve lang={lang} rain={data.rain_next_12h} weather={hours} />
       </section>
 
-      <section className="card" aria-labelledby={`${uid}-now`}>
-        <h2 id={`${uid}-now`}>{t(lang, 'streetNow')}</h2>
-        <ul className="rows">
-          <li><b>{t(lang, 'rowRain')}</b><span>{t(lang, GAUGE_TEXT[gauge ? rainStrength(gauge.mm) : 'none'])}</span></li>
-          <li><b>{t(lang, 'rowRiver')}</b><span>{river ? t(lang, RIVER_TEXT[riverStatus(river.wl, river.th)]) : t(lang, 'rNone')}</span></li>
-          <li><b>{t(lang, 'rowStreet')}</b><span>{t(lang, proneText(data.susceptibility))}</span><em>{data.susceptibility} / 5</em></li>
-        </ul>
+      <section className="card tech" aria-labelledby={`${uid}-tech`}>
+        <h2 id={`${uid}-tech`}>{t(lang, 'techTitle')}</h2>
+        {techBody(uid)}
       </section>
-
-      <details className="card tech">
-        <summary>
-          <span>{t(lang, 'techTitle')}</span>
-          <span className="tech-toggle" aria-hidden="true" />
-        </summary>
-        {station && wl !== null && (
-          <>
-            <div className="tech-river"><strong>{metres(wl)}</strong><span>{station.name}</span></div>
-            {th && <RiverMeter wl={wl} th={th} />}
-          </>
-        )}
-        <ul className="rows">
-          {th && (
-            <li><b>{t(lang, 'techMarks')}</b><span>{`${t(lang, 'markAlert')} ${th.alert.toFixed(2)} · ${t(lang, 'markWarning')} ${th.warning.toFixed(2)} · ${t(lang, 'markDanger')} ${th.danger.toFixed(2)} m`}</span></li>
-          )}
-          <li><b>{t(lang, 'techRainHour')}</b><span>{gauge ? gauge.station : t(lang, 'techGauge')}</span><em>{gauge ? `${gauge.mm} mm` : '0 mm'}</em></li>
-          {data.flood_probability !== null && (
-            <li><b>{t(lang, 'techModel')}</b><span>{t(lang, 'chance')}</span><em>{percent(data.flood_probability)}</em></li>
-          )}
-        </ul>
-        {data.flood_probability !== null && <p className="fine">{t(lang, 'mlNote')}</p>}
-
-        <h3>{t(lang, 'tide')}</h3>
-        <TideMini lang={lang} tide={data.tide} dataTime={data.data_time} />
-
-        <h3>{t(lang, 'why')}</h3>
-        {data.reasons.length ? (
-          <ul className="reasons">
-            {data.reasons.map((r) => (
-              <li key={r.code + r.station}>{r.text[lang]}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="fine">{t(lang, 'noReasons')}</p>
-        )}
-
-        {forecast && (
-          <section aria-labelledby={`${uid}-river`}>
-            <h3 id={`${uid}-river`}>{t(lang, 'riverForecast')}</h3>
-            <p className="fine">{forecast.now}</p>
-            <ul className="reasons">
-              {forecast.points.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-            {forecast.warning && <p className="fine">{forecast.warning}</p>}
-            {forecast.mayReachWarning && <p className="fine"><strong>{t(lang, 'riverMayReach')}</strong></p>}
-            <p className="fine">{t(lang, 'riverNote')}</p>
-          </section>
-        )}
-
-        <p className="fine">
-          {t(lang, 'dataTime')} {dayTime(data.data_time)} · {t(lang, 'techSources')}
-          {kind && <> · <span>{t(lang, 'wxCredit')}</span></>}
-        </p>
-      </details>
 
       <AlertHistory history={data.history} lang={lang} />
 
@@ -298,7 +355,13 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft }: Str
           hours={hours}
           vars={vars}
           onClose={closeFull}
-        />
+        >
+          {panels(`${uid}-sky`)}
+          <section className="card tech" aria-labelledby={`${uid}-sky-tech`}>
+            <h2 id={`${uid}-sky-tech`}>{t(lang, 'techTitle')}</h2>
+            {techBody(`${uid}-sky`)}
+          </section>
+        </SkyView>
       )}
     </article>
   );
