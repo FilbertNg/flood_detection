@@ -157,7 +157,8 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft, below
   const word = bigWord(data.level, lang);
   // 64 px like the proposal, smaller for long words ("Berwaspada") so one word never overflows the card.
   const longest = Math.max(...word.split(' ').map((w) => w.length));
-  const wordSize = Math.min(64, Math.floor(300 / (longest * 0.55)));
+  // Heavy rounded letters (lock-screen clock style) are about 0.64 em wide on average.
+  const wordSize = Math.min(64, Math.floor(300 / (longest * 0.64)));
   const vars = { '--lvl': SOLID[data.level], '--word': alerting ? TINT[data.level] : '#fff', '--word-size': `${wordSize}px` } as CSSProperties;
 
   const weatherLine = kind

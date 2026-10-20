@@ -416,12 +416,78 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .sky-view .curve-scroll { margin: 0; padding: 0 0 4px; }
 .sky-view .curve-hours li { color: #fff; }
 .sky-view .tile-empty { padding: 0 20px; color: #fff; }
-/* Under the curve: the street page's panels and technical details on solid white cards (text on them
-   keeps its page contrast whatever the sky behind). */
-.sky-view-body { display: grid; gap: 12px; padding: 16px 14px 0; color: var(--ink); text-shadow: none; }
-.sky-view-body .card { margin: 0; }
-.sky-view-body .panel, .sky-view-body .card { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); }
-.sky-view-body :focus-visible { outline-color: var(--ink); }
+/* Under the curve: the street page's panels and technical details as glass cards over the sky, like the
+   key-point chips: 12 % white (the most the sky contrast test allows), a light edge, blur, white text.
+   Tone colours stay on shapes only (icon tiles, dots, the river bands); the amber estimate callout stays
+   solid so it still stands out. */
+.sky-view-body { display: grid; gap: 12px; padding: 16px 14px 0; color: #fff; }
+.sky-view-body .card, .sky-view-body .panel { margin: 0; color: #fff; box-shadow: none; }
+
+/* Liquid glass (the full-screen sky only): a frosted pane that lets the sky glow through (blur plus
+   saturation), a lit rim (a 1 px gradient edge, brightest top left and bottom right, drawn by ::after with
+   a mask so only the edge shows), an inner highlight along the top and a faint sheen fading down from it.
+   The base is 8 % white so base plus sheen stays near the 12 % the sky contrast test covers; a soft text
+   shadow keeps white text crisp where the sheen is brightest. */
+.sky-view-body .card, .sky-view-body .panel, .sky-view-chips div, .sky-close, .hero-top .level-pill, .sky-view-top .level-pill {
+  position: relative; isolation: isolate; border: 1px solid transparent;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 45%), rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%);
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.55), inset 0 -1px 0.5px rgba(255, 255, 255, 0.12), 0 10px 30px rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22); }
+.sky-view-body .card::after, .sky-view-body .panel::after, .sky-view-chips div::after, .sky-close::after,
+.hero-top .level-pill::after, .sky-view-top .level-pill::after {
+  content: ""; position: absolute; inset: -1px; z-index: -1; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.12) 30%, rgba(255, 255, 255, 0.04) 60%, rgba(255, 255, 255, 0.5));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.sky-view-body h2, .sky-view-body h3, .sky-view-body .panel-line, .sky-view-body .panel-note, .sky-view-body .panel-sub, .sky-view-body .fine,
+.sky-view-body .rows span, .sky-view-body .tile-note, .sky-view-body .tide-hint, .sky-view-body .river-marks,
+.sky-view-body .tide-readout span:not(.tide-trend) { color: #fff; }
+.sky-view-body .rows li { border-top-color: rgba(255, 255, 255, 0.22); }
+.sky-view-body .panel-icon { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.sky-view-body .panel-chip, .sky-view-body .tide-trend { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.sky-view-body .prone-dots i:not([data-on]) { background: rgba(255, 255, 255, 0.3); }
+.sky-view-body .tide-range { background: rgba(255, 255, 255, 0.16); }
+.sky-view-body .tide-range button { color: #fff; }
+.sky-view-body .tide-range button[aria-pressed="true"] { background: #fff; color: #1d5f99; }
+.sky-view-body .tide-now { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.4); color: #fff; }
+/* The tide chart's labels and base line are SVG attributes; CSS wins over them here. */
+.sky-view-body .tide-chart text:not([fill="#fff"]) { fill: #fff; }
+.sky-view-body .tide-chart line[stroke="#e4e4e4"] { stroke: rgba(255, 255, 255, 0.35); }
+.sky-view-body .tide-chart path[stroke] { stroke: #9fd3ff; }
+.sky-view-body :focus-visible { outline-color: #fff; }
+
+/* The big word in the iPhone lock-screen clock style: the system face (SF Pro on Apple devices), heavy,
+   narrow where the face has a condensed width, and stretched 30 % taller from its baseline (the margin
+   above grows by the same 0.3 em so nothing overlaps). On the full-screen sky it is 1.15x the card size
+   (the card size is already fitted to the word's length). */
+.hero-word, .sky-view-word { font-weight: 800; font-stretch: condensed; letter-spacing: -0.02em; transform: scaleY(1.3); transform-origin: 50% 100%; }
+.hero-word { margin-top: calc(8px + 0.3em); }
+.sky-view-word { font-size: min(calc(var(--word-size, 64px) * 1.15), 22vw); margin-top: calc(14px + 0.3em); }
+
+/* Liquid glass lettering for the big word (Safe, Get ready, ...), on the hero card and the full-screen sky.
+   The letters are the word's colour (white, or the level tint at Warning and Danger) fading towards clear
+   at the bottom, so the sky shows through; a bright glow rim outlines them; a diagonal band of light (and a
+   slight shade beside it, so the band also shows on white letters) crosses them; a soft drop shadow
+   lifts the word off the sky. The fill never drops below 55 % so the word keeps >= 3:1 as large text.
+   (Text shadows show through clear text, so the depth is a filter.) */
+.hero-word, .sky-view-word {
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0) 24%, rgba(255, 255, 255, 0.85) 38%, rgba(255, 255, 255, 0) 46%, rgba(20, 30, 50, 0.18) 54%, rgba(20, 30, 50, 0) 64%),
+    linear-gradient(180deg, color-mix(in srgb, var(--word) 96%, transparent) 0%, color-mix(in srgb, var(--word) 82%, transparent) 40%, color-mix(in srgb, var(--word) 55%, transparent) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  /* The rim is drawn by light glow filters, not a text stroke: a stroke traces the overlapping shapes
+     inside heavy letters and shows little boxes in "e" and "a". A lit top edge, a white rim, then depth. */
+  filter: drop-shadow(0 -0.5px 0 rgba(255, 255, 255, 0.75)) drop-shadow(0 0 0.4px rgba(255, 255, 255, 0.8))
+    drop-shadow(0 2px 1.5px rgba(0, 0, 0, 0.18)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
+  padding-bottom: 0.06em; }
+/* The solid amber callout keeps its dark text crisp: no glass text shadow on it. */
+.sky-view-body .panel-flag { text-shadow: none; }
+/* The level chip on the sky (hero card and full view) is liquid glass too: white text, the dot keeps the
+   level colour, a light ring round the dot so it reads on the glass. */
+.hero-top .level-pill, .sky-view-top .level-pill { color: #fff; }
+.hero-top .level-pill i, .sky-view-top .level-pill i { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55); }
 .sky-view-note { margin: 0; padding: 14px 24px calc(28px + env(safe-area-inset-bottom)); font-size: 13px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .sky-view { animation: none; } .hero { transition: none; } }
 
