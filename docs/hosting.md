@@ -67,7 +67,7 @@ What each value is for:
 
 | Setting | What it is | Where it is used |
 | --- | --- | --- |
-| `JWT_SECRET` | The key that signs Admin login tokens. Anyone who has it can forge an admin login. | API only |
+| `JWT_SECRET` | The key that signs Admin login tokens (after you log in, the browser keeps a signed token instead of your password). Anyone who has it can forge an admin login. Must be random and at least 32 bytes (256 bits); shorter counts as unset. Generate one with `.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(48))"`; never a word or password. | API only |
 | `UPLOAD_URL_SECRET` | Signs the 1-hour links to residents' photos in the Admin review queue. | API only |
 | `SENSOR_TOKEN` | Password the (simulated) water-level sensor sends with each reading (`scripts/sim_sensor.py`). | API and the sensor script |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push keys (see below). | API only |
@@ -81,18 +81,21 @@ Push notifications don't go straight from our laptop to the phone. The API hands
 - **The public key** is given to the phone when the resident taps "Allow notifications". The Resident app fetches it from the API (`GET /api/v1/push/public-key`) on its own, so you don't put it anywhere by hand, and it is not a Cloudflare setting.
 - **The subject** is a `mailto:` contact address the push service can use if our server misbehaves. It stays in `.env` too.
 
-Keep the same key pair for the whole event: if you regenerate it, every phone that already allowed notifications must subscribe again.
+Unlike `JWT_SECRET`, VAPID is not a secret you can make up: the public and private keys are a matched pair (elliptic curve P-256) that `gen_vapid.py` generates together; a random string won't work. Keep the same key pair for the whole event: if you regenerate it, every phone that already allowed notifications must subscribe again.
 
 ## Step 4: Admin account (You, once)
 
-Create the real Admin login. You type the password yourself, so it never appears in Claude's chat or your shell history:
+Create the real Admin login. You type the password yourself, so it never appears in Claude's chat or your shell history. Run:
 
 ```powershell
 .venv\Scripts\python.exe scripts\seed_admin.py --email you@example.com --role admin
-# Password: (type it; nothing is shown)
 ```
 
-For a teammate who only needs to look, use `--role viewer` (viewers can't change anything). Run it again with the same email to change a password.
+The script then stops at a `Password:` prompt. Type the password and press Enter. **Nothing appears while you type** (no dots or stars); that is normal. It answers `admin you@example.com saved in …`.
+
+- **The email is only a username.** It must contain `@`; nothing is ever sent to it, so it doesn't have to be a real inbox. It is stored in lowercase in `data/floodready.db`, never in git.
+- **The password:** there is no minimum, so pick a strong one yourself (12+ characters); at most 72 bytes (longer ones are refused, not cut). Only its bcrypt hash is stored.
+- For a teammate who only needs to look, use `--role viewer` (viewers can't change anything). Run it again with the same email to change a password or role.
 
 ## Step 5: Cloudflare Pages: two projects (You, once)
 
