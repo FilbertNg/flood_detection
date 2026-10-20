@@ -23,8 +23,9 @@ export function App() {
   // The swipe home (start screen, pager, single street) is full screen: the sky reaches the top edge and
   // the street view carries its own top row; navigation is its bottom bar.
   const fullScreen = path === '/' || path.startsWith('/street/');
-  // The report form needs no live strip; a replay is still labelled there (replayed data must be shown as such).
-  const showLive = !path.startsWith('/report');
+  // The report form and the street picker need no live strip; a replay is still labelled there
+  // (replayed data must be shown as such).
+  const showLive = !path.startsWith('/report') && !path.startsWith('/streets');
 
   return (
     <div className="app">

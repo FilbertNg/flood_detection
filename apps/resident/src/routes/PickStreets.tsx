@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import type { Lang } from '@floodready/shared';
 import { api } from '../lib/api';
 import { NotificationOffer } from '../components/NotificationOffer';
@@ -36,6 +36,7 @@ export function PickStreetsPage({ lang, mine, deviceId, onSave }: { lang: Lang; 
 
   return (
     <div className="pad pick">
+      <Link to="/" className="back">← {t(lang, 'back')}</Link>
       <h1>{t(lang, 'pickStreets')}</h1>
       <input className="search" placeholder={t(lang, 'searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
       <ul className="pick-list">

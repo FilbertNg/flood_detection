@@ -65,3 +65,11 @@ describe('PickStreetsPage returns to the swipe home', () => {
     expect(await screen.findByText('swipe home')).toBeInTheDocument();
   });
 });
+
+describe('PickStreetsPage back link', () => {
+  it('links back to the swipe home', async () => {
+    renderPick();
+    await screen.findAllByRole('checkbox');
+    expect(screen.getByRole('link', { name: '← Back' })).toHaveAttribute('href', '/');
+  });
+});
