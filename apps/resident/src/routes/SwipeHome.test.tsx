@@ -79,7 +79,8 @@ describe('SwipeShell', () => {
     const first = await screen.findByRole('button', { name: /^Street 1 of 2/ }, slow);
     expect(first).toHaveAttribute('aria-current', 'true');
     expect(await screen.findByRole('heading', { level: 1, name: 'Jalan Makyong' }, slow)).toBeInTheDocument();
-    expect(path).toBe('/street/BBR-jalan-makyong');
+    // The pager puts the street in the URL in its own effect, so wait for it rather than read it at once.
+    await waitFor(() => expect(path).toBe('/street/BBR-jalan-makyong'), slow);
   });
 
   it('mounts only the active page and its neighbours', async () => {
@@ -97,7 +98,7 @@ describe('SwipeShell', () => {
     renderShell('/street/BBR-persiaran-batu-belah', ['BBR-jalan-makyong', 'BBR-persiaran-batu-belah']);
     const dot = await screen.findByRole('button', { name: /Persiaran Batu Belah/ }, slow);
     expect(dot).toHaveAttribute('aria-current', 'true');
-    expect(path).toBe('/street/BBR-persiaran-batu-belah');
+    await waitFor(() => expect(path).toBe('/street/BBR-persiaran-batu-belah'), slow);
   });
 
   it('opens a street that is not saved on its own, with an Add button and no dots', async () => {
