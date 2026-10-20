@@ -3,9 +3,11 @@
  * docs/design/sdp-street-proposal.html). White page, #121212 text, #666666 secondary, #F6F6F6
  * surfaces, #E4E4E4 hairlines, header #EA0009 with one thin #DF6436 edge, buttons and links #D71920.
  *
- * ONE EXCEPTION (owner decision, 20 Oct 2026): the street hero card holds the live sky gradient and
- * canvas (clouds, rain). Nothing else uses a gradient, glass or blur. Every sky stop keeps white text
- * at >= 4.5:1 (tested in lib/weather.test.ts).
+ * TWO EXCEPTIONS (owner decisions, 20 Oct 2026): the street hero card and the full-screen sky view it
+ * opens hold the live sky gradient and canvas (clouds, rain); glass and backdrop blur are allowed only
+ * there (the "Details ›" chip, the × button, the key-point chips). Nothing else uses a gradient, glass
+ * or blur. Every sky stop keeps white text at >= 4.5:1, also with 12 % white over it, which is the most
+ * the glass adds (tested in lib/weather.test.ts).
  *
  * Level colours are used as shapes on white (dots, the stripe on "What to do now"), never as text:
  * Watch #B26A00 and Warning #E65100 are under 4.5:1 for text but above 3:1 for shapes. Every level
@@ -79,7 +81,7 @@ p { margin: 0 0 0.5rem; }
 .primary:disabled { background: #999999; cursor: not-allowed; }
 .secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 24px; border: 1.5px solid var(--brand); border-radius: 999px; background: var(--bg); color: var(--brand); font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; text-align: center; }
 .secondary:hover { background: var(--brand-soft); }
-.link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; color: var(--brand); font-weight: 700; }
+.link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--brand); font: inherit; font-weight: 700; cursor: pointer; }
 .back { display: inline-flex; align-items: center; min-height: 44px; padding-right: 12px; color: var(--brand); font-weight: 700; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 
@@ -95,8 +97,30 @@ p { margin: 0 0 0.5rem; }
 .badge-large { font-size: 1.3rem; padding: 6px 18px; }
 
 /* Map screen. */
-.home { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-.map { height: 50vh; min-height: 280px; margin: 4px var(--gap) 12px; border-radius: var(--r-card); overflow: hidden; border: 1px solid var(--line); }
+.home { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.map-head h1 { flex: 1; margin: 0; font-size: 15px; font-weight: 800; }
+.map-back { display: inline-flex; align-items: center; min-height: 44px; padding-right: 6px; color: #fff; font-weight: 700; font-size: 15px; }
+.map-wrap { position: relative; margin: 12px var(--gap) 0; }
+.map { height: 62vh; min-height: 380px; width: 100%; border-radius: var(--r-card); overflow: hidden; border: 1px solid var(--line); }
+/* The "My location" card floats on the bottom of the map (Leaflet's panes sit at z-index 400 to 700),
+   above the attribution line, which must stay readable on every map. */
+.loc-card { position: absolute; left: 10px; right: 10px; bottom: 40px; z-index: 800; display: grid; gap: 10px;
+  padding: 14px 16px; border-radius: var(--r-card); background: var(--bg); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); }
+.loc-card small { font-size: 11px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.loc-row { display: flex; align-items: center; gap: 10px; }
+.loc-row strong { flex: 1; min-width: 0; font-size: 17px; }
+.loc-pin { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); }
+.loc-pin .glyph { width: 18px; height: 18px; }
+.loc-level { border: 1px solid var(--line); }
+.loc-note { margin: 0; font-size: 13px; color: var(--muted); }
+.loc-card [role="alert"] { color: var(--brand-dark); font-weight: 600; }
+.loc-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.loc-btns .primary, .loc-btns .secondary { min-height: 44px; padding: 10px 8px; font-size: 14px; }
+/* The street picker as a bottom sheet over the map. */
+.sheet-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, 0.35); }
+.pick-sheet { width: 100%; max-width: 640px; max-height: 88dvh; overflow-y: auto; background: var(--bg); border-radius: 24px 24px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+.pick-sheet .pick-list { max-height: 45dvh; }
+.sheet-close { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--brand); font: inherit; font-weight: 700; cursor: pointer; }
 .summary { margin: 4px 0 12px; padding: 12px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-tile); }
 .alert-banner { display: block; margin: 12px var(--gap) 0; background: #b71c1c; color: #fff; padding: 14px 18px; font-weight: 700; border-radius: var(--r-card); }
 .alert-banner.watch { background: #f9a825; color: #1a1a1a; }
@@ -247,17 +271,57 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .pager-panel { flex: 0 0 100%; height: 100%; overflow-y: auto; overscroll-behavior-y: contain; scroll-snap-align: start; scroll-snap-stop: always; }
 @media (prefers-reduced-motion: reduce) { .pager-track { scroll-behavior: auto; } }
 
-/* Bottom bar: white with a hairline, round outlined buttons, dots in the middle. */
-.bottom-bar { position: fixed; left: 50%; bottom: 0; z-index: 10; transform: translateX(-50%); width: 100%; max-width: 640px;
-  display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; gap: 8px;
-  padding: 8px 18px calc(10px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
-.bar-button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
-.bar-button .glyph { width: 20px; height: 20px; }
-.bar-dots { display: flex; flex-wrap: wrap; justify-content: center; min-width: 0; }
-.bar-dot { display: grid; place-items: center; min-width: 24px; height: 44px; padding: 0 4px; border: 0; background: transparent; cursor: pointer; }
-.bar-dot span { width: 8px; height: 8px; border-radius: 50%; background: var(--dot, #cfcfcf); }
-.bar-dot[aria-current="true"] span { width: 22px; border-radius: 4px; background: var(--dot, var(--brand)); }
-.bottom-bar :focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
+/* Page dots just under the hero card: the active one a short red pill. */
+.page-dots { display: flex; justify-content: center; margin: -8px 0 -6px; }
+.page-dot { display: grid; place-items: center; min-width: 22px; height: 32px; padding: 0 3px; border: 0; background: transparent; cursor: pointer; }
+.page-dot span { width: 6px; height: 6px; border-radius: 50%; background: var(--dot, #cfcfcf); }
+.page-dot[aria-current="true"] span { width: 18px; border-radius: 3px; background: var(--dot, var(--brand)); }
+
+/* Red floating map button, bottom right above the safe area; pages keep room below their last card. */
+.fab { position: fixed; z-index: 20; right: max(18px, calc((100vw - 640px) / 2 + 18px)); bottom: calc(20px + env(safe-area-inset-bottom));
+  display: grid; place-items: center; width: 58px; height: 58px; border-radius: 50%; background: var(--brand); color: #fff;
+  box-shadow: 0 8px 20px rgba(215, 25, 32, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15); }
+.fab .glyph { width: 24px; height: 24px; }
+.fab:hover { background: var(--brand-dark); }
+.fab:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* The hero card opens the full-screen sky: a layer over the whole card, a "Details ›" chip, a slight press. */
+.hero { transition: transform 0.15s; }
+.hero:has(.hero-open:active) { transform: scale(0.985); }
+.hero-open { position: absolute; inset: 0; z-index: 1; border-radius: inherit; cursor: pointer; }
+.hero-open:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.hero-more { position: absolute; right: 14px; bottom: 12px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.3); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.hero-weather { padding-right: 84px; }
+
+/* Full-screen sky view (the second exception): weather-app look, glass chips. */
+.sky-view { position: fixed; inset: 0; z-index: 1100; overflow-y: auto; isolation: isolate; color: #fff;
+  background: linear-gradient(180deg, var(--sky-top), var(--sky-mid) 45%, var(--sky-bottom)); animation: sky-grow 0.35s ease-out; }
+@keyframes sky-grow { from { opacity: 0; transform: scale(0.94); border-radius: 24px; } to { opacity: 1; transform: none; } }
+.sky-view .sky { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.sky-view .sky-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 620px;
+  -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); mask-image: linear-gradient(180deg, #000 60%, transparent); }
+.sky-view-top { display: flex; justify-content: space-between; align-items: center; padding: calc(16px + env(safe-area-inset-top)) 18px 0; }
+.sky-close { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.12); color: #fff;
+  font-size: 22px; line-height: 1; cursor: pointer; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.sky-view :focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.sky-view-hero { text-align: center; padding: 14px 20px 8px; text-shadow: 0 1px 12px rgba(0, 0, 0, 0.18); }
+.sky-view-hero h2 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: 0; text-transform: none; color: #fff; }
+.sky-view-word { margin: 14px 0 6px; font-size: min(96px, 22vw); font-weight: 200; line-height: 1; letter-spacing: -0.04em; color: var(--word); }
+.sky-view-headline { max-width: 30ch; margin: 0 auto; font-size: 18px; font-weight: 600; line-height: 1.35; }
+.sky-view-weather { display: flex; justify-content: center; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 15px; }
+.sky-view-weather .icon { flex: none; width: 22px; height: 22px; }
+.sky-view-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 14px; }
+.sky-view-chips div { min-width: 0; padding: 10px; text-align: center; border-radius: 18px;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.22); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.sky-view-chips b { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.sky-view-chips span { display: block; margin-top: 3px; font-weight: 600; }
+.sky-view-sec { margin: 0; padding: 6px 20px 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.sky-view .curve-scroll { margin: 0; padding: 0 0 4px; }
+.sky-view .curve-hours li { color: #fff; }
+.sky-view .tile-empty { padding: 0 20px; color: #fff; }
+.sky-view-note { margin: 0; padding: 14px 24px calc(28px + env(safe-area-inset-bottom)); font-size: 13px; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .sky-view { animation: none; } .hero { transition: none; } }
 
 /* Start screen when no street is saved. */
 .find { display: grid; align-content: start; gap: 14px; padding: 12px var(--gap) 24px; overflow-y: auto; }
