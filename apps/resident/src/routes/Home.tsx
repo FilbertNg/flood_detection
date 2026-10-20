@@ -23,6 +23,7 @@ export function HomePage({ lang, mine }: { lang: Lang; mine: string[] }) {
 
   return (
     <div className="home">
+      <div className="pad"><Link to="/" className="back">← {t(lang, 'back')}</Link></div>
       {alerting.length > 0 && (
         <Link to={`/street/${alerting[0].street_id}`} className="alert-banner">
           ⚠ {t(lang, 'activeAlert')}: {alerting[0].name}

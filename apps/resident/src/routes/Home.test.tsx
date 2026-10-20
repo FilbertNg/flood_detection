@@ -80,3 +80,11 @@ describe('HomePage report link', () => {
     expect(screen.queryByRole('link', { name: 'Report a flood' })).not.toBeInTheDocument();
   });
 });
+
+describe('HomePage at /map', () => {
+  it('links back to the swipe home', async () => {
+    renderHome('en', []);
+    await screen.findByText(/streets at Warning or Danger/);
+    expect(screen.getByRole('link', { name: '← Back' })).toHaveAttribute('href', '/');
+  });
+});

@@ -227,7 +227,9 @@ select.search:hover { border-color: var(--ink); }
 /* Rain curve. */
 .sky-curve { margin-top: 18px; }
 .sky-curve h2 { padding: 0 6px 6px; }
-.curve-scroll { overflow-x: auto; scrollbar-width: none; padding-bottom: 6px; margin: 0 -14px; padding-left: 0; }
+.curve-scroll { overflow-x: auto; scrollbar-width: none; padding-bottom: 6px; margin: 0 -14px; padding-left: 0;
+  /* Dragging the curve scrolls the curve, never flips the swipe pager. */
+  overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
 .curve-scroll::-webkit-scrollbar { display: none; }
 .curve-svg { display: block; overflow: visible; }
 .curve-hours { display: flex; list-style: none; margin: 0; padding: 0; }
@@ -284,3 +286,51 @@ select.search:hover { border-color: var(--ink); }
 .sky-page .report-card:hover { background: rgba(255, 255, 255, 0.18); }
 .sky-page :focus-visible { outline-color: #fff; }
 .sky-page .footer { padding: 16px 6px 24px; font-size: 12px; text-align: center; }
+
+/*
+ * Swipe home (same street-page design exception as above): one full-screen panel per saved street,
+ * CSS scroll-snap, each panel scrolling on its own; a glass bottom bar with map, dots and list.
+ */
+.pager { position: relative; height: 100vh; height: 100dvh; overflow: hidden; }
+.pager-track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain; scrollbar-width: none; scroll-behavior: smooth; }
+.pager-track::-webkit-scrollbar { display: none; }
+.pager-track:focus-visible { outline: none; }
+.pager-panel { flex: 0 0 100%; height: 100%; overflow-y: auto; overscroll-behavior-y: contain; scroll-snap-align: start; scroll-snap-stop: always; background: #2a2e38; }
+.pager.single { overflow-y: auto; }
+.pager .sky-content { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+@media (prefers-reduced-motion: reduce) { .pager-track { scroll-behavior: auto; } }
+
+.bottom-bar { position: fixed; left: 50%; bottom: 0; z-index: 10; transform: translateX(-50%); width: 100%; max-width: 640px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
+  background: rgba(20, 24, 32, 0.55); border-top: 1px solid rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
+.bar-button { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: #fff;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.18); }
+.bar-button .glyph { width: 22px; height: 22px; }
+.bar-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; min-width: 0; }
+.bar-dot { display: grid; place-items: center; width: 28px; height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.bar-dot span { width: 8px; height: 8px; border-radius: 50%; background: var(--dot, rgba(255, 255, 255, 0.4)); }
+.bar-dot[aria-current="true"] span { background: var(--dot, #fff); width: 10px; height: 10px; box-shadow: 0 0 0 2px #fff; }
+.bar-dot:not([data-alert])[aria-current="true"] span { box-shadow: none; }
+.bottom-bar :focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+.add-street { min-height: 40px; padding: 6px 14px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer;
+  background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.3);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+
+/* Start screen when no street is saved. */
+.find-page { display: flex; }
+.find-content { display: flex; flex-direction: column; justify-content: center; gap: 12px; min-height: 100dvh; max-width: 30rem; margin: 0 auto; padding: 32px 20px; text-align: center; }
+.find-content h1 { margin: 0; font-size: 30px; font-weight: 600; line-height: 1.2; text-wrap: balance; }
+.find-why { margin: 0; font-size: 17px; line-height: 1.45; }
+.find-actions { display: grid; gap: 10px; margin-top: 12px; }
+.find-actions p { margin: 0; }
+.find-primary { min-height: 52px; border: 0; border-radius: 999px; background: #fff; color: #121212; font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
+.find-secondary { display: grid; place-items: center; min-height: 52px; border-radius: 999px; color: #fff; font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.08); }
+.find-note { margin: 0; font-size: 14px; }
+.find-confirm { margin-top: 12px; }
+.find-confirm p { margin: 0; }
+.find-street { display: block; margin: 6px 0 4px; font-size: 22px; }

@@ -49,7 +49,7 @@ export function WeatherIcon({ kind }: { kind: WeatherKind }) {
   );
 }
 
-type Glyph = 'drop' | 'river' | 'tide' | 'home' | 'why' | 'todo' | 'report' | 'clock';
+type Glyph = 'drop' | 'river' | 'tide' | 'home' | 'why' | 'todo' | 'report' | 'clock' | 'map' | 'list';
 
 const GLYPHS: Record<Glyph, ReactElement> = {
   drop: <path d="M16 4c4.5 6 8 10.4 8 14.5a8 8 0 0 1-16 0C8 14.4 11.5 10 16 4z" />,
@@ -60,7 +60,11 @@ const GLYPHS: Record<Glyph, ReactElement> = {
   todo: <path d="M16 3l11 4v8c0 7-4.6 12.2-11 14-6.4-1.8-11-7-11-14V7zm-1.5 16.5l-4-4-2.1 2.1 6.1 6.1 9-9-2.1-2.1z" />,
   report: <path d="M6 4h20a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H13l-6 5v-5H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zm8.4 4v8h3.2V8zm0 10v3.2h3.2V18z" />,
   clock: <path d="M16 3a13 13 0 1 1 0 26 13 13 0 0 1 0-26zm-1.5 6v8.2l6.4 3.8 1.5-2.5-4.9-2.9V9z" />,
+  map: <path d="M3 7l8-3 10 3 8-3v21l-8 3-10-3-8 3zm8 .2v17.2l10 3V10.2z" />,
+  list: <path d="M5 7h3v3H5zm6 .2h16v2.6H11zM5 14.5h3v3H5zm6 .2h16v2.6H11zM5 22h3v3H5zm6 .2h16v2.6H11z" />,
 };
+
+export type GlyphName = Glyph;
 
 export function Icon({ name }: { name: Glyph }) {
   return (

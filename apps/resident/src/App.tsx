@@ -11,7 +11,7 @@ import { usePushSync } from './push/usePushSync';
 import { HomePage } from './routes/Home';
 import { PickStreetsPage } from './routes/PickStreets';
 import { ReportPage } from './routes/Report';
-import { StreetPage } from './routes/Street';
+import { SwipeShell } from './routes/SwipeHome';
 
 export function App() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
@@ -19,9 +19,10 @@ export function App() {
   const { data: status } = useQuery({ queryKey: ['status'], queryFn: api.status, refetchInterval: 10_000 });
   const lang: Lang = prefs.lang;
   usePushSync({ deviceId: prefs.deviceId, streets: prefs.streets, lang });
-  // The street page is full screen (weather sky to the top edge) and draws its own top row.
   const path = useLocation().pathname;
-  const fullScreen = path.startsWith('/street/');
+  // The swipe home (start screen, pager, single street) is full screen: the sky reaches the top edge and
+  // the street view carries its own top row; navigation is its bottom bar.
+  const fullScreen = path === '/' || path.startsWith('/street/');
   // The report form needs no live strip; a replay is still labelled there (replayed data must be shown as such).
   const showLive = !path.startsWith('/report');
 
@@ -41,8 +42,12 @@ export function App() {
         </>
       )}
       <Routes>
-        <Route path="/" element={<HomePage lang={lang} mine={prefs.streets} />} />
-        <Route path="/street/:id" element={<StreetPage lang={lang} deviceId={prefs.deviceId} onLang={(next) => update({ lang: next })} />} />
+        {/* One layout route for both paths, so a swipe can change the URL without remounting the pager. */}
+        <Route element={<SwipeShell lang={lang} deviceId={prefs.deviceId} saved={prefs.streets} onSave={(streets) => update({ streets })} onLang={(next) => update({ lang: next })} />}>
+          <Route index element={null} />
+          <Route path="street/:id" element={null} />
+        </Route>
+        <Route path="/map" element={<HomePage lang={lang} mine={prefs.streets} />} />
         <Route path="/report" element={<ReportPage lang={lang} deviceId={prefs.deviceId} mine={prefs.streets} />} />
         <Route path="/streets" element={<PickStreetsPage lang={lang} mine={prefs.streets} deviceId={prefs.deviceId} onSave={(streets) => update({ streets })} />} />
       </Routes>
