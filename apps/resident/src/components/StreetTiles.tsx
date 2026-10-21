@@ -2,7 +2,7 @@ import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import type { Lang, StreetDetail } from '@floodready/shared';
 import { CURVE, chanceColor, curvePoints, curveRuns } from '../lib/curve';
 import { hhmm } from '../lib/format';
-import { t } from '../lib/i18n';
+import { t, tf, type StringKey } from '../lib/i18n';
 import { riverScale, type Thresholds } from '../lib/river';
 import { tideIndexAt, tideTrend, tideTurns } from '../lib/tide';
 import { weatherKind, type WeatherHour } from '../lib/weather';
@@ -94,6 +94,122 @@ export function RiverMeter({ wl, th }: { wl: number; th: Thresholds }) {
       <span className="river-band band-warning" style={{ left: `${at(th.warning)}%`, width: `${at(th.danger) - at(th.warning)}%` }} />
       <span className="river-band band-danger" style={{ left: `${at(th.danger)}%`, right: 0 }} />
       <span className="river-now" style={{ left: `${at(wl)}%` }} />
+    </div>
+  );
+}
+
+type Stage = 'safe' | 'alert' | 'danger';
+const STAGES: { stage: Stage; key: StringKey }[] = [
+  { stage: 'safe', key: 'stageSafe' }, { stage: 'alert', key: 'stageAlert' }, { stage: 'danger', key: 'stageDanger' },
+];
+const BARS = 4;
+
+/**
+ * Signal bars lit towards a mark: none 3 alert-to-danger spans or more below it (the river meter's
+ * floor), one more per quarter of that distance, all four once the river reaches the mark.
+ */
+function barsTowards(wl: number | null, mark: number, th: Thresholds): number {
+  if (wl === null) return 0;
+  if (wl >= mark) return BARS;
+  const near = 1 - (mark - wl) / (3 * (th.danger - th.alert));
+  return Math.min(BARS - 1, Math.max(0, Math.floor(near * BARS)));
+}
+
+/** All lit bars share one colour, set by how many are lit. */
+const barTier = (n: number) => (n === 0 ? 'none' : n === 1 ? 'ok' : n === 2 ? 'watch' : 'danger');
+
+/**
+ * Where the water marker sits on the danger gauge (0 to 100): three equal steps, Safe up to the alert
+ * mark (from the river meter's floor), Be alert up to danger, Danger up to the meter's top.
+ */
+function gaugeAt(wl: number, th: Thresholds): number {
+  const span = th.danger - th.alert;
+  const steps: [number, number][] = [[th.alert - 3 * span, th.alert], [th.alert, th.danger], [th.danger, th.danger + 0.75 * span]];
+  const i = wl >= th.danger ? 2 : wl >= th.alert ? 1 : 0;
+  const [lo, hi] = steps[i];
+  return ((i + Math.min(1, Math.max(0, (wl - lo) / (hi - lo)))) / 3) * 100;
+}
+
+const metresTo = (m: number) => `${Math.abs(m).toFixed(2)} m`;
+
+/**
+ * The JPS marks for the street's river. Alert and Warning side by side: the mark, signal bars that fill
+ * as the river nears it, and how far below it the river is. Danger: one gauge in three steps (Safe,
+ * Be alert, Danger) filled up to a water marker, the current step marked "Now".
+ * Display only: the street level comes from the engine.
+ */
+export function JpsMarks({ lang, wl, th }: { lang: Lang; wl: number | null; th: Thresholds }) {
+  const stage: Stage | null = wl === null ? null : wl >= th.danger ? 'danger' : wl >= th.alert ? 'alert' : 'safe';
+  const signal = (mark: 'alert' | 'warning', key: StringKey) => {
+    const n = barsTowards(wl, th[mark], th);
+    const name = t(lang, key);
+    return (
+      <div className="mark-tile" data-mark={mark}>
+        <span className="mark-name">{name}</span>
+        <span className="signal" data-tier={barTier(n)} role="img" aria-label={tf(lang, 'marksBars', { n, mark: name.toLowerCase() })}>
+          {Array.from({ length: BARS }, (_, i) => <i key={i} data-bar data-on={i < n || undefined} />)}
+        </span>
+        <strong className="mark-m">{`${th[mark].toFixed(2)} m`}</strong>
+        <span className="mark-gap" data-tier={barTier(n)}>
+          {wl === null ? t(lang, 'rNone') : wl >= th[mark] ? t(lang, 'marksReached') : tf(lang, 'marksBelow', { m: metresTo(th[mark] - wl) })}
+        </span>
+      </div>
+    );
+  };
+  const at = wl === null ? null : gaugeAt(wl, th);
+  return (
+    <div className="jps-marks">
+      <div className="mark-pair">
+        {signal('alert', 'markAlert')}
+        {signal('warning', 'markWarning')}
+      </div>
+      <div className="gauge" data-mark="danger" data-stage-now={stage ?? undefined}>
+        <div className="gauge-head">
+          <span className="mark-name">{t(lang, 'markDanger')}</span>
+          <strong className="mark-m">{`${th.danger.toFixed(2)} m`}</strong>
+        </div>
+        <div className="gauge-track" aria-hidden="true">
+          {at !== null && <span className="gauge-fill" style={{ width: `${at}%` }} />}
+          {at !== null && <span className="gauge-marker" style={{ left: `${at}%` }} />}
+        </div>
+        <div className="gauge-ticks" aria-hidden="true">
+          <span style={{ left: `${100 / 3}%` }}>{th.alert.toFixed(2)}</span>
+          <span style={{ left: `${200 / 3}%` }}>{th.danger.toFixed(2)}</span>
+        </div>
+        <ol className="gauge-steps">
+          {STAGES.map(({ stage: s, key }) => (
+            <li key={s} data-stage={s} aria-current={s === stage ? 'true' : undefined}>
+              <span>{t(lang, key)}</span>
+              {s === stage && <small>{t(lang, 'nowLabel')}</small>}
+            </li>
+          ))}
+        </ol>
+        <p className="gauge-note">
+          {wl === null ? t(lang, 'rNone') : tf(lang, wl >= th.danger ? 'dangerAbove' : 'dangerBelow', { m: metresTo(th.danger - wl) })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One reading in Technical details: a label, the number large, a meaning line and where it comes from.
+ * `meter` (0 to 100) draws a thin bar under the number.
+ */
+export function Reading({ label, value, meaning, source, meter, meterLabel }: {
+  label: string; value: string; meaning?: string; source: string; meter?: number; meterLabel?: string;
+}) {
+  return (
+    <div className="reading">
+      <span className="reading-label">{label}</span>
+      <strong className="reading-value">{value}</strong>
+      {meter !== undefined && (
+        <span className="reading-meter" role="meter" aria-label={meterLabel ?? label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(meter)}>
+          <i style={{ width: `${Math.min(100, Math.max(0, meter))}%` }} />
+        </span>
+      )}
+      {meaning && <span className="reading-meaning">{meaning}</span>}
+      <span className="reading-source">{source}</span>
     </div>
   );
 }

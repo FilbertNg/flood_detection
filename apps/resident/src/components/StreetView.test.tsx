@@ -115,3 +115,36 @@ describe('StreetView full-screen sky', () => {
     expect(Number(fullCanvas.getAttribute('data-drops'))).toBeGreaterThanOrEqual(Number(heroCanvas.getAttribute('data-drops')));
   });
 });
+
+describe('StreetView why and report', () => {
+  it('puts "Why" in a green callout when there are no flood signals, amber when there are', async () => {
+    renderView({ ...streetDetail, level: 'normal' as const, active_alert: null, reasons: [] });
+    const calm = (await screen.findByText('No flood signals right now.')).closest('.why')!;
+    expect(calm).toHaveAttribute('data-tone', 'ok');
+    expect(within(calm as HTMLElement).getByRole('heading', { name: 'Why' })).toBeInTheDocument();
+    cleanup();
+    renderView();
+    const busy = (await screen.findByText('61.5 mm of rain in 1 h at Kg. Perepat, Kapar')).closest('.why')!;
+    expect(busy).toHaveAttribute('data-tone', 'alert');
+  });
+
+  it('shows Report a flood as a red card', async () => {
+    renderView();
+    expect(await screen.findByRole('link', { name: 'Report a flood' })).toHaveClass('report-card');
+  });
+});
+
+describe('StreetView readings', () => {
+  it('shows rain last hour and the flood model as two tiles, the model chance on a 0 to 100 meter', async () => {
+    renderView();
+    const rain = (await screen.findAllByText('Rain last hour'))[0].closest('.reading') as HTMLElement;
+    expect(rain).toHaveTextContent('0 mm');
+    expect(rain).toHaveTextContent('Nearest JPS rain gauge');
+    const model = screen.getAllByText('Flood model')[0].closest('.reading') as HTMLElement;
+    expect(model.parentElement).toBe(rain.parentElement);
+    expect(model).toHaveTextContent('62%');
+    const meter = within(model).getByRole('meter');
+    expect(meter).toHaveAttribute('aria-valuenow', '62');
+    expect(meter).toHaveAttribute('aria-valuemax', '100');
+  });
+});

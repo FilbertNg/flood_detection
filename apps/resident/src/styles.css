@@ -133,9 +133,9 @@ p { margin: 0 0 0.5rem; }
 /* Compact footer under the map: counts, report link and credits in as little height as they need. */
 .map-foot { flex: none; display: grid; gap: 8px; padding: 10px var(--gap) 6px; }
 .map-foot .summary-pair { margin: 0; gap: 8px; }
-.map-foot .summary-box { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; }
+.map-foot .summary-box { display: grid; gap: 2px; padding: 10px 30px 10px 14px; }
 .map-foot .summary-box strong { font-size: 22px; }
-.map-foot .summary-box span { margin: 0; font-size: 12px; }
+.map-foot .summary-box span { margin: 0; font-size: 13px; }
 .map-foot .report-link { min-height: 40px; margin: 0; padding: 8px 16px; font-size: 15px; }
 .map-foot .credits { margin: 0; font-size: 11px; line-height: 1.4; }
 .map-foot .credits summary { min-height: 32px; padding: 6px 0 0; }
@@ -184,9 +184,9 @@ p { margin: 0 0 0.5rem; }
 .summary-box::after { content: ""; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; border-right: 2px solid var(--sum-ink); border-bottom: 2px solid var(--sum-ink);
   transform: translateY(-50%) rotate(-45deg); }
 .summary-box:hover { filter: brightness(0.97); }
-.summary-box::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--sum-bar); }
 .summary-box strong { display: block; font-size: 30px; font-weight: 800; line-height: 1.1; color: var(--sum-ink); font-variant-numeric: tabular-nums; }
-.summary-box span { display: block; margin-top: 2px; font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--ink); }
+/* The level on top, the count under it (no side bar). */
+.summary-box span { display: block; font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--ink); }
 .summary-box[data-kind="risk"] { --sum-bg: #fdecec; --sum-edge: #ef9a9a; --sum-bar: var(--danger); --sum-ink: #b71c1c; }
 .summary-box[data-kind="watch"] { --sum-bg: #fff8e1; --sum-edge: #f5d77a; --sum-bar: #f9a825; --sum-ink: #8a4b00; }
 .alert-banner { display: block; margin: 12px var(--gap) 0; background: #b71c1c; color: #fff; padding: 14px 18px; font-weight: 700; border-radius: var(--r-card); }
@@ -342,6 +342,62 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .tech h3 { margin: 14px 0 4px; font-size: 13px; font-weight: 700; }
 .reasons { margin: 0; padding-left: 1.1rem; font-size: 14px; }
 .reasons li { margin-bottom: 4px; }
+/* Technical details tiles: the JPS marks and the two readings share one tile (surface grey, 12 px radius)
+   so the section reads as a set of instruments, not a list. */
+.mark-tile, .gauge, .reading { padding: 12px; border-radius: 12px; background: var(--surface); color: var(--ink); min-width: 0; }
+.mark-name, .reading-label { font-size: 13px; font-weight: 700; }
+.mark-m { font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.jps-marks { display: grid; gap: 8px; margin-top: 6px; }
+/* Alert and Warning side by side: name and bars on top, the mark, then how far the river is from it. */
+.mark-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mark-tile { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 8px; }
+.mark-tile .mark-m, .mark-gap { grid-column: 1 / -1; }
+.mark-gap { font-size: 13px; font-weight: 700; color: var(--muted); }
+/* The lit bars all take one colour from how many are lit (1 green, 2 amber, 3-4 red); words say the same. */
+.signal { display: inline-flex; align-items: flex-end; gap: 3px; height: 18px; }
+.signal i { width: 6px; border-radius: 2px; background: #d6d6d6; }
+.signal i:nth-child(1) { height: 6px; } .signal i:nth-child(2) { height: 10px; } .signal i:nth-child(3) { height: 14px; } .signal i:nth-child(4) { height: 18px; }
+[data-tier="ok"] { --tier: var(--ok); --tier-ink: var(--ok); }
+[data-tier="watch"] { --tier: var(--watch); --tier-ink: #8a4b00; }
+[data-tier="danger"] { --tier: var(--danger); --tier-ink: var(--danger); }
+.signal i[data-on] { background: var(--tier); }
+.mark-gap[data-tier]:not([data-tier="none"]) { color: var(--tier-ink); }
+/* Danger: one gauge in three equal steps, filled to a water marker in the colour of the step it is in. */
+.gauge { display: grid; gap: 8px; }
+.gauge-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.gauge[data-stage-now="safe"] { --step: var(--ok); --step-ink: var(--ok); }
+.gauge[data-stage-now="alert"] { --step: var(--watch); --step-ink: #8a4b00; }
+.gauge[data-stage-now="danger"] { --step: var(--danger); --step-ink: var(--danger); }
+.gauge-track { position: relative; height: 10px; margin: 6px 0 0; border-radius: 5px;
+  background: linear-gradient(90deg, #e0e0e0 calc(33.333% - 1px), var(--surface) 0 calc(33.333% + 1px), #e0e0e0 0 calc(66.667% - 1px), var(--surface) 0 calc(66.667% + 1px), #e0e0e0 0); }
+.gauge-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--step); }
+.gauge-marker { position: absolute; top: 50%; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 4px solid var(--step);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); transform: translate(-50%, -50%); }
+.gauge-ticks { position: relative; height: 14px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.gauge-ticks span { position: absolute; top: 0; transform: translateX(-50%); }
+.gauge-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; }
+.gauge-steps li { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; }
+.gauge-steps li[aria-current="true"] { background: #fff; color: var(--step-ink); font-weight: 800; box-shadow: inset 0 0 0 1.5px var(--step); }
+.gauge-steps small { font-size: 11px; font-weight: 700; }
+.gauge-note { margin: 0; font-size: 14px; font-weight: 700; color: var(--step-ink, var(--muted)); }
+/* Rain last hour and the flood model side by side: label, the number large, meaning, source. The model
+   meter is information blue, not a level colour: ML never sets the level. */
+.readings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.reading { display: grid; align-content: start; gap: 4px; }
+.reading-value { font-size: 28px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.reading-meaning { font-size: 13px; font-weight: 700; color: #1d5f99; }
+.reading-source { font-size: 12px; line-height: 1.4; color: var(--muted); }
+.reading-meter { display: block; height: 6px; margin: 2px 0; border-radius: 3px; background: #e0e0e0; overflow: hidden; }
+.reading-meter i { display: block; height: 100%; border-radius: 3px; background: #1d5f99; }
+/* Why: a tinted callout, green with a tick when nothing is happening, amber with reasons. */
+.why { margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1.5px solid; }
+.tech .why h3 { margin: 0 0 4px; font-size: 14px; }
+.why p { margin: 0; font-size: 15px; font-weight: 700; }
+.why[data-tone="ok"] { background: #e8f5e9; border-color: #a5d6a7; color: #1b5e20; }
+.why[data-tone="ok"] p::before { content: "✓"; display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 8px; border-radius: 50%; background: var(--ok); color: #fff; font-size: 12px; }
+.why[data-tone="alert"] { background: #fff3dc; border-color: #f5c27a; color: #8a4b00; }
+.why[data-tone="alert"] .reasons { font-weight: 600; }
+.tech .fine strong { color: var(--ink); }
 .river-gauge { position: relative; height: 6px; margin: 12px 0 6px; border-radius: 3px; background: #d9d9d9; }
 .river-band { position: absolute; top: 0; bottom: 0; }
 .band-alert { background: #f5c542; }
@@ -368,10 +424,11 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .tide-trend[data-trend="falling"]::before { content: "↓ "; }
 
 /* The closing question or the report card. */
-.report-card { display: flex; align-items: center; gap: 14px; min-height: 64px; }
+.report-card { display: flex; align-items: center; gap: 14px; min-height: 64px; background: var(--brand); border-color: var(--brand); color: #fff; }
 .report-card strong { display: block; font-size: 18px; }
-.report-card:hover { border-color: var(--brand); }
-.report-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--brand-soft); color: var(--brand); }
+.report-card .tile-note { color: #fff; }
+.report-card:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+.report-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.2); color: #fff; }
 
 /* Red floating map button, bottom right above the safe area; pages keep room below their last card. */
 .fab { position: fixed; z-index: 20; right: max(18px, calc((100vw - 640px) / 2 + 18px)); bottom: calc(20px + env(safe-area-inset-bottom));
@@ -397,7 +454,7 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .sky-view .sky { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .sky-view .sky-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 620px;
   -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); mask-image: linear-gradient(180deg, #000 60%, transparent); }
-.sky-view-top { display: flex; justify-content: space-between; align-items: center; padding: calc(16px + env(safe-area-inset-top)) 18px 0; }
+.sky-view-top { display: flex; justify-content: flex-end; align-items: center; min-height: 44px; padding: calc(16px + env(safe-area-inset-top)) 18px 0; }
 .sky-close { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.12); color: #fff;
   font-size: 22px; line-height: 1; cursor: pointer; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .sky-view :focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
@@ -488,6 +545,19 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
    level colour, a light ring round the dot so it reads on the glass. */
 .hero-top .level-pill, .sky-view-top .level-pill { color: #fff; }
 .hero-top .level-pill i, .sky-view-top .level-pill i { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55); }
+/* × stays in the top left corner while the sky view scrolls; a darker glass so it reads over the cards too. */
+.sky-view .sky-close { position: fixed; z-index: 10; top: calc(16px + env(safe-area-inset-top)); left: 18px;
+  background: rgba(20, 30, 50, 0.55); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); }
+/* The technical-detail tiles on the glass cards: a lighter pane, white text (tier colours stay on shapes). */
+.sky-view-body .mark-tile, .sky-view-body .gauge, .sky-view-body .reading { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.sky-view-body .mark-gap[data-tier], .sky-view-body .gauge-note, .sky-view-body .gauge-ticks, .sky-view-body .gauge-steps li,
+.sky-view-body .reading-meaning, .sky-view-body .reading-source, .sky-view-body .fine strong { color: #fff; }
+.sky-view-body .signal i:not([data-on]), .sky-view-body .reading-meter { background: rgba(255, 255, 255, 0.3); }
+.sky-view-body .gauge-track { background: linear-gradient(90deg, rgba(255, 255, 255, 0.3) calc(33.333% - 1px), transparent 0 calc(33.333% + 1px), rgba(255, 255, 255, 0.3) 0 calc(66.667% - 1px), transparent 0 calc(66.667% + 1px), rgba(255, 255, 255, 0.3) 0); }
+.sky-view-body .gauge-steps li[aria-current="true"] { background: rgba(255, 255, 255, 0.2); color: #fff; box-shadow: inset 0 0 0 1.5px #fff; }
+.sky-view-body .reading-meter i { background: #fff; }
+.sky-view-body .why { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.4); color: #fff; }
+.sky-view-body .report-card { background: var(--brand); }
 .sky-view-note { margin: 0; padding: 14px 24px calc(28px + env(safe-area-inset-bottom)); font-size: 13px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .sky-view { animation: none; } .hero { transition: none; } }
 

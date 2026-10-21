@@ -7,7 +7,7 @@ import { BackButton } from './BackButton';
 import { Icon, WeatherIcon } from './Icons';
 import { SkyBackdrop } from './SkyHero';
 import { SkyView } from './SkyView';
-import { RainCurve, RiverMeter, TideChart } from './StreetTiles';
+import { JpsMarks, RainCurve, Reading, RiverMeter, TideChart } from './StreetTiles';
 import { VerifySheet } from './VerifySheet';
 import { adviceSteps } from '../lib/advice';
 import { api } from '../lib/api';
@@ -227,27 +227,32 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft, below
   );
   const techBody = (p: string) => (
     <>
-      <ul className="rows">
-        {th && (
-          <li><b>{t(lang, 'techMarks')}</b><span>{`${t(lang, 'markAlert')} ${th.alert.toFixed(2)} · ${t(lang, 'markWarning')} ${th.warning.toFixed(2)} · ${t(lang, 'markDanger')} ${th.danger.toFixed(2)} m`}</span></li>
-        )}
-        <li><b>{t(lang, 'techRainHour')}</b><span>{gauge ? gauge.station : t(lang, 'techGauge')}</span><em>{gauge ? `${gauge.mm} mm` : '0 mm'}</em></li>
+      {th && (
+        <section className="tech-block" aria-labelledby={`${p}-marks`}>
+          <h3 id={`${p}-marks`}>{t(lang, 'techMarks')}</h3>
+          <JpsMarks lang={lang} wl={river?.wl ?? null} th={th} />
+        </section>
+      )}
+      <div className="readings">
+        <Reading label={t(lang, 'techRainHour')} value={`${gauge ? gauge.mm : 0} mm`} meaning={t(lang, RAIN_WORD[strength])} source={gauge ? gauge.station : t(lang, 'techGauge')} />
         {data.flood_probability !== null && (
-          <li><b>{t(lang, 'techModel')}</b><span>{t(lang, 'chance')}</span><em>{percent(data.flood_probability)}</em></li>
+          <Reading label={t(lang, 'techModel')} value={percent(data.flood_probability)} meter={data.flood_probability * 100} source={t(lang, 'chance')} />
         )}
-      </ul>
+      </div>
       {data.flood_probability !== null && <p className="fine">{t(lang, 'mlNote')}</p>}
 
-      <h3>{t(lang, 'why')}</h3>
-      {data.reasons.length ? (
-        <ul className="reasons">
-          {data.reasons.map((r) => (
-            <li key={r.code + r.station}>{r.text[lang]}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="fine">{t(lang, 'noReasons')}</p>
-      )}
+      <div className="why" data-tone={data.reasons.length ? 'alert' : 'ok'}>
+        <h3>{t(lang, 'why')}</h3>
+        {data.reasons.length ? (
+          <ul className="reasons">
+            {data.reasons.map((r) => (
+              <li key={r.code + r.station}>{r.text[lang]}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>{t(lang, 'noReasons')}</p>
+        )}
+      </div>
 
       {forecast && (
         <section aria-labelledby={`${p}-river`}>
@@ -265,7 +270,7 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft, below
       )}
 
       <p className="fine">
-        {t(lang, 'dataTime')} {dayTime(data.data_time)} · {t(lang, 'techSources')}
+        {t(lang, 'dataTime')} <strong>{dayTime(data.data_time)}</strong> · {t(lang, 'techSources')}
         {kind && <> · <span>{t(lang, 'wxCredit')}</span></>}
       </p>
     </>
