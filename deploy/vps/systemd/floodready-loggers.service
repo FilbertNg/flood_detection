@@ -1,5 +1,5 @@
 [Unit]
-Description=Flood-Ready Township live data loggers (JPS Infobanjir, MET warnings, Open-Meteo)
+Description=Flood-Ready live data loggers (JPS Infobanjir, MET warnings, Open-Meteo)
 After=network-online.target
 Wants=network-online.target
 # Never give up restarting: lost live readings cannot be recovered.
@@ -8,8 +8,8 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 User=floodready
-WorkingDirectory=/opt/floodready
-ExecStart=/opt/floodready/.venv/bin/python scripts/run_loggers.py
+WorkingDirectory=/opt/floodready/app
+ExecStart=/opt/floodready/app/.venv/bin/python -X utf8 scripts/run_loggers.py
 Restart=always
 RestartSec=30
 Environment=PYTHONUNBUFFERED=1

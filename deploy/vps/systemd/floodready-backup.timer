@@ -1,0 +1,9 @@
+[Unit]
+Description=Flood-Ready database backup at 04:30 daily
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 Asia/Kuala_Lumpur
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=Flood-Ready API (engine live tick, replay, /api/v1) on 127.0.0.1:8000
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=floodready
+WorkingDirectory=/opt/floodready/app
+ExecStart=/opt/floodready/app/.venv/bin/python -X utf8 scripts/serve_api.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
