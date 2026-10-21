@@ -47,7 +47,7 @@ export function ReplayControl() {
           <p className="small">
             {replaying
               ? 'Stop the replay? The system returns to live.'
-              : 'Start the 12 Nov 2024 replay? Live alerts are paused; everything created is labelled Replay.'}
+              : 'Start the 12 Nov 2024 replay from 08:30? The first alerts appear within about 15 seconds. Live alerts are paused; everything created is labelled Replay.'}
           </p>
           <button type="button" className="primary" disabled={toggle.isPending} onClick={() => toggle.mutate()}>Confirm</button>
           <button type="button" className="secondary" onClick={() => setConfirming(false)}>Cancel</button>

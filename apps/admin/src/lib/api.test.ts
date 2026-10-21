@@ -47,7 +47,8 @@ describe('api', () => {
     const calls = fn.mock.calls as unknown as [string, RequestInit][];
     expect(calls[0][0]).toMatch(/\/api\/v1\/admin\/replay$/);
     expect(calls[0][1].method).toBe('POST');
-    expect(JSON.parse(calls[0][1].body as string)).toEqual({ event: '2024-11-12', speed: 60 });
+    // Starts at 08:30, just before the first alerts (08:45), at 10 s per 15-min step: something happens within ~15 s.
+    expect(JSON.parse(calls[0][1].body as string)).toEqual({ event: '2024-11-12', speed: 90, start: '08:30' });
     expect(calls[1][1].method).toBe('DELETE');
   });
 
