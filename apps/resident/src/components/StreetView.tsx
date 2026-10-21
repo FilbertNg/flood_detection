@@ -7,6 +7,7 @@ import { BackButton } from './BackButton';
 import { Icon, WeatherIcon } from './Icons';
 import { SkyBackdrop } from './SkyHero';
 import { SkyView } from './SkyView';
+import { ModelTile, PlainTile, RainNextTile, RainNowTile, RiverTile, StreetTile, TideTile, TileGrid, UpdatedTile, WhyTile } from './PanelTiles';
 import { JpsMarks, RainCurve, Reading, RiverMeter, TideChart } from './StreetTiles';
 import { VerifySheet } from './VerifySheet';
 import { adviceSteps } from '../lib/advice';
@@ -165,9 +166,9 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft, below
     ? [t(lang, WX_LABEL[kind]), chance != null ? `${chance}% ${t(lang, 'wxChance')}` : null, phrase].filter(Boolean).join(' · ')
     : null;
 
-  // The panels and the technical details appear on the page and again in the full-screen sky view;
-  // `p` prefixes their element ids so the two copies never share an id.
-  const panels = (p: string) => (
+  // The full-screen sky view keeps these panels and technical details as they were; the white page
+  // below the hero card draws the same readings as picture tiles (PanelTiles). `p` prefixes ids.
+  const skyPanels = (p: string) => (
     <>
       <section className="panel" data-tone={RAIN_TONE[strength]} aria-labelledby={`${p}-rain-panel`}>
         <header className="panel-head">
@@ -225,7 +226,7 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft, below
       </section>
     </>
   );
-  const techBody = (p: string) => (
+  const skyTech = (p: string) => (
     <>
       {th && (
         <section className="tech-block" aria-labelledby={`${p}-marks`}>
@@ -318,17 +319,40 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft, below
         </section>
       )}
 
-      {panels(uid)}
+      <TileGrid title={t(lang, 'tilesNow')} id={`${uid}-now`}>
+        <RainNowTile lang={lang} gauge={gauge} />
+        <RainNextTile lang={lang} rain={data.rain_next_12h} />
+        <RiverTile lang={lang} river={river && station ? { ...river, name: station.name } : null} reachBy={reachBy?.time ?? null} />
+        <StreetTile lang={lang} score={data.susceptibility} />
+        <TideTile lang={lang} tide={data.tide} dataTime={data.data_time} />
+      </TileGrid>
 
       <section className="card" aria-labelledby={`${uid}-rain`}>
         <h2 id={`${uid}-rain`}>{t(lang, 'curveTitle')}</h2>
         <RainCurve lang={lang} rain={data.rain_next_12h} weather={hours} />
       </section>
 
-      <section className="card tech" aria-labelledby={`${uid}-tech`}>
-        <h2 id={`${uid}-tech`}>{t(lang, 'techTitle')}</h2>
-        {techBody(uid)}
-      </section>
+      <TileGrid title={t(lang, 'techTitle')} id={`${uid}-tech`} className="tech-tiles">
+        <ModelTile lang={lang} p={data.flood_probability} />
+        <UpdatedTile lang={lang} dataTime={data.data_time} />
+        <WhyTile lang={lang} reasons={data.reasons} />
+        {th && (
+          <PlainTile icon="river" title={t(lang, 'techMarks')}>
+            <JpsMarks lang={lang} wl={river?.wl ?? null} th={th} />
+          </PlainTile>
+        )}
+        {forecast && (
+          <PlainTile icon="river" title={t(lang, 'riverForecast')}>
+            <p className="ptile-note">{forecast.now}</p>
+            <ul className="ptile-why">
+              {forecast.points.map((line) => <li key={line}>{line}</li>)}
+            </ul>
+            {forecast.warning && <p className="ptile-note">{forecast.warning}</p>}
+            {forecast.mayReachWarning && <p className="ptile-flag">{t(lang, 'riverMayReach')}</p>}
+            <p className="ptile-note">{t(lang, 'riverNote')}</p>
+          </PlainTile>
+        )}
+      </TileGrid>
 
       <AlertHistory history={data.history} lang={lang} />
 
@@ -362,10 +386,10 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft, below
           vars={vars}
           onClose={closeFull}
         >
-          {panels(`${uid}-sky`)}
+          {skyPanels(`${uid}-sky`)}
           <section className="card tech" aria-labelledby={`${uid}-sky-tech`}>
             <h2 id={`${uid}-sky-tech`}>{t(lang, 'techTitle')}</h2>
-            {techBody(`${uid}-sky`)}
+            {skyTech(`${uid}-sky`)}
           </section>
         </SkyView>
       )}

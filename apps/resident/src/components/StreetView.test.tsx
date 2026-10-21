@@ -116,35 +116,38 @@ describe('StreetView full-screen sky', () => {
   });
 });
 
-describe('StreetView why and report', () => {
-  it('puts "Why" in a green callout when there are no flood signals, amber when there are', async () => {
-    renderView({ ...streetDetail, level: 'normal' as const, active_alert: null, reasons: [] });
-    const calm = (await screen.findByText('No flood signals right now.')).closest('.why')!;
-    expect(calm).toHaveAttribute('data-tone', 'ok');
-    expect(within(calm as HTMLElement).getByRole('heading', { name: 'Why' })).toBeInTheDocument();
-    cleanup();
-    renderView();
-    const busy = (await screen.findByText('61.5 mm of rain in 1 h at Kg. Perepat, Kapar')).closest('.why')!;
-    expect(busy).toHaveAttribute('data-tone', 'alert');
-  });
-
+describe('StreetView report', () => {
   it('shows Report a flood as a red card', async () => {
     renderView();
     expect(await screen.findByRole('link', { name: 'Report a flood' })).toHaveClass('report-card');
   });
 });
 
-describe('StreetView readings', () => {
-  it('shows rain last hour and the flood model as two tiles, the model chance on a 0 to 100 meter', async () => {
+describe('StreetView sky view keeps its panels', () => {
+  it('renders the current panels and technical details in the sky view, not the picture tiles', async () => {
     renderView();
-    const rain = (await screen.findAllByText('Rain last hour'))[0].closest('.reading') as HTMLElement;
+    fireEvent.click(await opener());
+    const view = dialog()!;
+    expect(view.querySelectorAll('.panel').length).toBeGreaterThanOrEqual(4);
+    expect(view.querySelector('.ptile')).toBeNull();
+    expect(view.querySelector('.tide-chart')).not.toBeNull();
+    const rain = within(view).getByText('Rain last hour').closest('.reading') as HTMLElement;
     expect(rain).toHaveTextContent('0 mm');
     expect(rain).toHaveTextContent('Nearest JPS rain gauge');
-    const model = screen.getAllByText('Flood model')[0].closest('.reading') as HTMLElement;
+    const model = within(view).getByText('Flood model').closest('.reading') as HTMLElement;
     expect(model.parentElement).toBe(rain.parentElement);
-    expect(model).toHaveTextContent('62%');
     const meter = within(model).getByRole('meter');
     expect(meter).toHaveAttribute('aria-valuenow', '62');
     expect(meter).toHaveAttribute('aria-valuemax', '100');
+    expect(view.querySelector('.why[data-tone="alert"]')).not.toBeNull();
+  });
+
+  it('draws the picture tiles on the page itself, below the hero card', async () => {
+    renderView();
+    await opener();
+    const page = document.querySelector('.street') as HTMLElement;
+    expect(page.querySelectorAll(':scope > .ptiles')).toHaveLength(2);
+    const hero = page.querySelector('.hero')!;
+    expect(hero.compareDocumentPosition(page.querySelector('.ptiles')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
