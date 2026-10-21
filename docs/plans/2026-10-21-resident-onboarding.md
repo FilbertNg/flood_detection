@@ -1,6 +1,6 @@
 # Resident single-screen onboarding
 
-**Date:** 21 Oct 2026 · **Branch:** `feat/resident-onboarding` · **Checkpoint:** `ed7ea99` (head of `feat/resident-picture-panels`; no uncommitted code, so no checkpoint commit was needed; tests passed there, 327)
+**Date:** 21 Oct 2026 · **Branch:** `feat/resident-onboarding` · **Checkpoint:** `51679d0` (head of `feat/resident-picture-panels` before its plan fix; `ed7ea99` before the rebase onto main; no uncommitted code, so no checkpoint commit was needed; tests passed there, 327)
 **Target:** `docs/design/onboarding-proposal.html`
 
 ## Goal
