@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Suggestion card proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#D71920; --red-head:#EA0009; --orange:#DF6436; --ink:#121212; --muted:#666; --line:#E4E4E4;
+  --page:#F6F6F6; --card:#fff; --soft:#F6F6F6; --red-tint:#FDECEC; --green:#1E8E4E; --green-tint:#E7F5EC;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--ink:#F2F2F2;--muted:#A8A8A8;--line:#333;--page:#161616;--card:#1F1F1F;--soft:#272727;--red-tint:#3A1517;--green-tint:#15301F}
+}
+:root[data-theme="dark"]{--ink:#F2F2F2;--muted:#A8A8A8;--line:#333;--page:#161616;--card:#1F1F1F;--soft:#272727;--red-tint:#3A1517;--green-tint:#15301F}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.45}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 48px}
+.cap{color:var(--muted);font-size:13px;margin:0 0 14px}
+.card{background:var(--card);border-radius:20px;padding:22px;border-top:4px solid var(--orange);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.top h2{margin:0;font-size:19px;font-weight:800}
+.chip{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.pri{background:var(--red-tint);color:var(--red)}
+.status{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:var(--soft);color:var(--ink)}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.status[data-s="open"]::before{background:var(--orange)}
+.status[data-s="accepted"]::before{background:var(--red)}
+.status[data-s="done"]{background:var(--green-tint);color:var(--green)}
+.status[data-s="done"]::before{background:var(--green)}
+.id{color:var(--muted);font-size:12px;font-weight:600}
+.action{margin:14px 0 2px;font-size:17px;font-weight:700}
+.caveat{margin:0;color:var(--muted);font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0 10px}
+.stat{background:var(--soft);border-radius:14px;padding:12px 14px;min-width:0}
+.stat b{display:block;font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.stat b small{font-size:14px;font-weight:500;color:var(--muted)}
+.stat span{font-size:12.5px;color:var(--muted)}
+.stat.station b{font-size:16px;line-height:1.3;padding-top:4px}
+.month{background:var(--soft);border-radius:14px;padding:12px 14px 10px}
+.month .h{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.month .h b{color:var(--ink);font-weight:600}
+.days{display:grid;grid-template-columns:repeat(30,minmax(0,1fr));gap:3px;align-items:end}
+.d{height:8px;border-radius:3px;background:var(--line)}
+.d.on{height:22px;background:var(--red)}
+.ticks{display:grid;grid-template-columns:repeat(30,minmax(0,1fr));gap:3px;font-size:11px;color:var(--muted);margin-top:5px}
+.ticks span{text-align:center;white-space:nowrap}
+.method{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+details.method summary{cursor:pointer;color:var(--ink);font-weight:600;list-style:none}
+details.method summary::-webkit-details-marker{display:none}
+details.method summary::after{content:" ▾"}
+details.method p{margin:6px 0 0}
+.foot{display:flex;align-items:flex-end;gap:12px;margin-top:18px;flex-wrap:wrap}
+.note{flex:1 1 280px;position:relative}
+.note label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.note input{width:100%;font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
+.note input:focus{outline:2px solid var(--red);outline-offset:1px;border-color:transparent}
+.saved{position:absolute;right:10px;bottom:11px;font-size:12px;color:var(--green);opacity:0;transition:opacity .2s}
+.saved.show{opacity:1}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:700;font-size:14px;padding:10px 18px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 4px 12px rgba(215,25,32,.22)}
+.btn.link{border-color:transparent;background:none;color:var(--muted);padding-left:8px;padding-right:8px}
+.btn:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+[hidden]{display:none!important}
+@media (max-width:560px){
+  .stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .stat.station{grid-column:1/-1}
+  .status{margin-left:0}
+  .ticks span:not(.k){visibility:hidden}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="cap">Suggestion card proposal (admin). Try the buttons: the status chip and the next actions change with each step.</p>
+
+  <article class="card" aria-labelledby="t">
+    <div class="top">
+      <h2 id="t">Jalan Bakti 11/KU3</h2>
+      <span class="chip pri">Medium priority</span>
+      <span class="id">SUG-5</span>
+      <span class="chip status" id="status" data-s="open">Open</span>
+    </div>
+
+    <p class="action">Add to the pre-storm drain-clearing and staff deployment list</p>
+    <p class="caveat">Screening suggestion. A site survey is needed before acting.</p>
+
+    <div class="stats">
+      <div class="stat"><b>5 <small>of 79</small></b><span>Rank among eligible streets</span></div>
+      <div class="stat"><b>6</b><span>Separate alert episodes</span></div>
+      <div class="stat station"><b>P/A Pandamaran</b><span>River station driving the count, shared by 53 eligible streets</span></div>
+    </div>
+
+    <div class="month" aria-label="Alert episode starts: 16, 17, 22, 24, 25 and 26 April 2024">
+      <div class="h"><span>Alert episode starts</span><b>April 2024</b></div>
+      <div class="days" id="days" aria-hidden="true"></div>
+      <div class="ticks" id="ticks" aria-hidden="true"></div>
+    </div>
+
+    <details class="method">
+      <summary>How this was ranked</summary>
+      <p>Streets with at least 5 Warning/Danger episodes are eligible, ranked by episodes, then Danger episodes, then susceptibility. Flapping alerts are merged into one episode. Dates are episode starts, not confirmed floods.</p>
+    </details>
+
+    <div class="foot">
+      <div class="note">
+        <label for="note">Note (optional)</label>
+        <input id="note" type="text" placeholder="e.g. Survey booked for Monday">
+        <span class="saved" id="saved">Saved</span>
+      </div>
+      <div class="btns" id="btns"></div>
+    </div>
+  </article>
+</div>
+<script>
+const dates = [16, 17, 22, 24, 25, 26];
+const days = document.getElementById('days'), ticks = document.getElementById('ticks');
+for (let d = 1; d <= 30; d++) {
+  const on = dates.includes(d);
+  days.insertAdjacentHTML('beforeend', `<span class="d${on ? ' on' : ''}" title="${d} Apr 2024"></span>`);
+  const key = d === 1 || d === 30;
+  ticks.insertAdjacentHTML('beforeend', `<span class="${key ? 'k' : ''}">${on || key ? d : ''}</span>`);
+}
+
+const LABEL = { open: 'Open', accepted: 'Accepted', dismissed: 'Dismissed', done: 'Done' };
+const NEXT = {
+  open: [['Accept', 'accepted', 'primary'], ['Dismiss', 'dismissed', '']],
+  accepted: [['Mark done', 'done', 'primary'], ['Back to open', 'open', 'link']],
+  dismissed: [['Reopen', 'open', '']],
+  done: [['Reopen', 'open', 'link']],
+};
+const status = document.getElementById('status'), btns = document.getElementById('btns');
+function render(s) {
+  status.dataset.s = s;
+  status.textContent = LABEL[s];
+  btns.innerHTML = NEXT[s].map(([l, to, c]) => `<button type="button" class="btn ${c}" data-to="${to}">${l}</button>`).join('');
+}
+btns.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) render(b.dataset.to); });
+render('open');
+
+const note = document.getElementById('note'), saved = document.getElementById('saved');
+let t;
+note.addEventListener('input', () => { saved.classList.remove('show'); clearTimeout(t); t = setTimeout(() => saved.classList.add('show'), 700); });
+</script>
+</body>
+</html>
