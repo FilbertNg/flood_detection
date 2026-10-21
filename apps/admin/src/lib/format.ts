@@ -27,6 +27,19 @@ export function todayIso(): string {
   return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
 }
 
+const DAY_MS = 86_400_000;
+const utc = (iso: string) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
+
+/** A YYYY-MM-DD date moved by whole days (calendar arithmetic in UTC, so no time-zone drift). */
+export function shiftDays(iso: string, days: number): string {
+  return new Date(utc(iso) + days * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** Days in a YYYY-MM-DD range, both ends included. */
+export function daysInclusive(from: string, to: string): number {
+  return Math.round((utc(to) - utc(from)) / DAY_MS) + 1;
+}
+
 const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /** "2024-11" -> "November 2024". */

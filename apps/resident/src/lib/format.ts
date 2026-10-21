@@ -6,6 +6,13 @@ export function hhmm(iso: string): string {
   return iso.slice(11, 16);
 }
 
+/** "12 Nov 2024" from "2024-11-12" or a full ISO time. */
+export function day(iso: string): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  return `${Number(d)} ${months[Number(m) - 1]} ${y}`;
+}
+
 /** "12 Nov 2024, 09:00" */
 export function dayTime(iso: string): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

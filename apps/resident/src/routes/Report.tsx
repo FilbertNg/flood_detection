@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import type { Lang } from '@floodready/shared';
+import { BackButton } from '../components/BackButton';
 import { VerifySheet } from '../components/VerifySheet';
 import { api } from '../lib/api';
 import { t } from '../lib/i18n';
@@ -21,7 +22,7 @@ export function ReportPage({ lang, deviceId, mine }: { lang: Lang; deviceId: str
 
   return (
     <article className="pad report">
-      <Link to="/" className="back">← {t(lang, 'back')}</Link>
+      <BackButton lang={lang} />
       <label className="field-label" htmlFor="report-street">{t(lang, 'reportStreet')}</label>
       <select id="report-street" className="search" value={streetId} onChange={(e) => setChosen(e.target.value)}>
         {list.map((p) => (

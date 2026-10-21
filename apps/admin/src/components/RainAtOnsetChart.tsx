@@ -5,7 +5,8 @@ import { dateLabel } from '../lib/format';
 const W = 620;
 const H = 230;
 const PAD = { l: 40, r: 150, t: 16, b: 70 };
-const GUIDE_MM = 60;
+/** The JPS rain guide the chart is drawn against (mm in 2 to 4 h). */
+export const GUIDE_MM = 60;
 
 /** Station rain over 2 to 4 h at each confirmed flood's onset, against the JPS 60 mm guide. */
 export function RainAtOnsetChart({ rows, nameOf = (id) => id }: { rows: Stats['rain_at_onset']; nameOf?: (id: string) => string }) {

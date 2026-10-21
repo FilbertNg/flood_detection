@@ -1,40 +1,52 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, Route, Routes } from 'react-router';
+import { Link, Route, Routes, useLocation } from 'react-router';
 import type { Lang } from '@floodready/shared';
+import { LangSwitch } from './components/LangSwitch';
+import { LogoMark } from './components/Logo';
 import { api } from './lib/api';
-import { dayTime } from './lib/format';
 import { t } from './lib/i18n';
 import { loadPrefs, savePrefs, type Prefs } from './lib/prefs';
 import { usePushSync } from './push/usePushSync';
 import { HomePage } from './routes/Home';
 import { PickStreetsPage } from './routes/PickStreets';
 import { ReportPage } from './routes/Report';
-import { StreetPage } from './routes/Street';
+import { StreetHome } from './routes/StreetHome';
 
 export function App() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const update = (next: Partial<Prefs>) => setPrefs((p) => { const merged = { ...p, ...next }; savePrefs(merged); return merged; });
-  const { data: status } = useQuery({ queryKey: ['status'], queryFn: api.status, refetchInterval: 10_000 });
   const lang: Lang = prefs.lang;
   usePushSync({ deviceId: prefs.deviceId, streets: prefs.streets, lang });
+  const path = useLocation().pathname;
+  // Under the logo: my chosen street (picked from the list or found from my location); the township
+  // until one is chosen. The street list is the same cached query the other screens use.
+  const mine = prefs.streets[0];
+  const streets = useQuery({ queryKey: ['streets'], queryFn: () => api.streets(), enabled: !!mine });
+  const place = (mine && streets.data?.features.find((f) => f.properties.street_id === mine)?.properties.name) || t(lang, 'township');
+
+  // The street picker needs no live line, and the report form shows no data at all, so it gets no line;
+  // every screen that shows data labels a replay (replayed data must be shown as such).
+  const map = path.startsWith('/map');
 
   return (
     <div className="app">
-      <header className="top">
-        <Link to="/" className="brand">{t(lang, 'appName')} · {t(lang, 'township')}</Link>
-        <button className="lang" onClick={() => update({ lang: lang === 'en' ? 'ms' : 'en' })}>
-          {lang === 'en' ? 'BM' : 'EN'}
-        </button>
-      </header>
-      {status?.mode === 'replay' ? (
-        <div className="ribbon replay">▶ {t(lang, 'replay')}: {dayTime(status.data_time)}</div>
-      ) : status ? (
-        <div className="ribbon live">● {t(lang, 'live')} · {t(lang, 'dataTime')} {dayTime(status.data_time)}</div>
-      ) : null}
+      {/* The map draws its own red header (Back, title, language) above the map. */}
+      {!map && (
+        <>
+          <header className="top">
+            <Link to="/" className="brand">
+              <LogoMark tone="white" size={34} />
+              <span>{t(lang, 'appName')}<small>{place}</small></span>
+            </Link>
+            <LangSwitch lang={lang} onChange={(next) => update({ lang: next })} />
+          </header>
+        </>
+      )}
       <Routes>
-        <Route path="/" element={<HomePage lang={lang} mine={prefs.streets} />} />
-        <Route path="/street/:id" element={<StreetPage lang={lang} deviceId={prefs.deviceId} />} />
+        <Route path="/" element={<StreetHome lang={lang} deviceId={prefs.deviceId} saved={prefs.streets} onSave={(streets) => update({ streets })} />} />
+        <Route path="/street/:id" element={<StreetHome lang={lang} deviceId={prefs.deviceId} saved={prefs.streets} onSave={(streets) => update({ streets })} />} />
+        <Route path="/map" element={<HomePage lang={lang} mine={prefs.streets} onLang={(next) => update({ lang: next })} />} />
         <Route path="/report" element={<ReportPage lang={lang} deviceId={prefs.deviceId} mine={prefs.streets} />} />
         <Route path="/streets" element={<PickStreetsPage lang={lang} mine={prefs.streets} deviceId={prefs.deviceId} onSave={(streets) => update({ streets })} />} />
       </Routes>
