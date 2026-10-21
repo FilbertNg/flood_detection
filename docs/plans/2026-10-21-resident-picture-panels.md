@@ -1,6 +1,6 @@
 # Resident picture panels (street page)
 
-**Date:** 21 Oct 2026 · **Branch:** `feat/resident-picture-panels` · **Checkpoint:** `99cbf52` (chore(resident): checkpoint before picture panels)
+**Date:** 21 Oct 2026 · **Branch:** `feat/resident-picture-panels` · **Checkpoint:** `d146b5f` (chore(resident): checkpoint before picture panels; `99cbf52` before the rebase onto main after SDP v2 #62)
 **Target:** `docs/design/panels-proposal.html` (sample numbers only; the app uses real data)
 
 ## Goal
