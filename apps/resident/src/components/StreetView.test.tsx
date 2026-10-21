@@ -56,10 +56,10 @@ describe('StreetView full-screen sky', () => {
     renderView();
     fireEvent.click(await opener());
     const view = dialog()!;
-    for (const name of ['Rain', 'River level', 'This street', 'Tide']) {
+    for (const name of ['Rain now', 'River level', 'This street', 'Tide · Port Klang']) {
       expect(within(view).getByRole('heading', { name })).toBeInTheDocument();
     }
-    expect(within(view).getByText('High tide 11:00 · 2.2 m')).toBeInTheDocument();
+    expect(within(view).getByRole('heading', { name: 'Tide · Port Klang' }).closest('.ptile')).toHaveTextContent('Next high water11:00');
     // Technical details are shown open, with the model chance and the reasons.
     expect(within(view).getByText('62%')).toBeVisible();
     expect(within(view).getByText('61.5 mm of rain in 1 h at Kg. Perepat, Kapar')).toBeInTheDocument();
@@ -123,23 +123,20 @@ describe('StreetView report', () => {
   });
 });
 
-describe('StreetView sky view keeps its panels', () => {
-  it('renders the current panels and technical details in the sky view, not the picture tiles', async () => {
+describe('StreetView sky view follows the street page', () => {
+  it('shows the same picture tiles in the sky view, under its own sky and rain curve', async () => {
     renderView();
     fireEvent.click(await opener());
     const view = dialog()!;
-    expect(view.querySelectorAll('.panel').length).toBeGreaterThanOrEqual(4);
-    expect(view.querySelector('.ptile')).toBeNull();
-    expect(view.querySelector('.tide-chart')).not.toBeNull();
-    const rain = within(view).getByText('Rain last hour').closest('.reading') as HTMLElement;
-    expect(rain).toHaveTextContent('0 mm');
-    expect(rain).toHaveTextContent('Nearest JPS rain gauge');
-    const model = within(view).getByText('Flood model').closest('.reading') as HTMLElement;
-    expect(model.parentElement).toBe(rain.parentElement);
-    const meter = within(model).getByRole('meter');
-    expect(meter).toHaveAttribute('aria-valuenow', '62');
-    expect(meter).toHaveAttribute('aria-valuemax', '100');
-    expect(view.querySelector('.why[data-tone="alert"]')).not.toBeNull();
+    expect(view.querySelector('.panel')).toBeNull();
+    const grids = view.querySelectorAll('.ptiles');
+    expect(grids).toHaveLength(2);
+    const titles = [...grids[0].querySelectorAll('.ptile-head')].map((h) => h.textContent);
+    expect(titles).toEqual(['Rain now', 'Next 12 hours', 'River level', 'This street', 'Tide · Port Klang']);
+    expect(within(grids[1] as HTMLElement).getByRole('heading', { name: 'Flood model' })).toBeInTheDocument();
+    // The sky's own curve stays above the tiles; the page's white curve card is not repeated.
+    expect(view.querySelectorAll('.curve-scroll')).toHaveLength(1);
+    expect(view.querySelector('.sky-view-chips')!.compareDocumentPosition(grids[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('draws the picture tiles on the page itself, below the hero card', async () => {

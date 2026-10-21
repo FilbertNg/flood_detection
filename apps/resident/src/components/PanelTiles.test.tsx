@@ -20,6 +20,13 @@ describe('RainNowTile', () => {
     expect(pictures(el)[0]).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it('puts the mm at the top left, the drop in the middle, and the word and note under the drop', () => {
+    render(<RainNowTile lang="en" gauge={{ mm: 3, station: 'Kg. Perepat, Kapar' }} />);
+    const el = tile('Rain now');
+    const order = [...el.querySelectorAll('.rain-now > *')].map((n) => n.classList[0]);
+    expect(order).toEqual(['rain-now-val', 'pic', 'ptile-mean', 'ptile-note']);
+  });
+
   it('shows 0 mm and "None now" when no gauge is raining (Malay)', () => {
     render(<RainNowTile lang="ms" gauge={null} />);
     const el = tile('Hujan sekarang');

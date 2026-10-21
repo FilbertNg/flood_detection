@@ -192,28 +192,6 @@ export function JpsMarks({ lang, wl, th }: { lang: Lang; wl: number | null; th: 
   );
 }
 
-/**
- * One reading in Technical details: a label, the number large, a meaning line and where it comes from.
- * `meter` (0 to 100) draws a thin bar under the number.
- */
-export function Reading({ label, value, meaning, source, meter, meterLabel }: {
-  label: string; value: string; meaning?: string; source: string; meter?: number; meterLabel?: string;
-}) {
-  return (
-    <div className="reading">
-      <span className="reading-label">{label}</span>
-      <strong className="reading-value">{value}</strong>
-      {meter !== undefined && (
-        <span className="reading-meter" role="meter" aria-label={meterLabel ?? label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(meter)}>
-          <i style={{ width: `${Math.min(100, Math.max(0, meter))}%` }} />
-        </span>
-      )}
-      {meaning && <span className="reading-meaning">{meaning}</span>}
-      <span className="reading-source">{source}</span>
-    </div>
-  );
-}
-
 /** A clock time n fractional hours after an ISO time, as "14:30" (MYT, the API's offset; wraps past midnight). */
 function clockAfter(iso: string, hours: number): string {
   const start = Number(iso.slice(11, 13)) * 60 + Number(iso.slice(14, 16));

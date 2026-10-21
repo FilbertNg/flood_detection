@@ -37,20 +37,17 @@ function Tile({ icon, title, wide, children }: { icon: GlyphName; title: string;
 
 const Value = ({ n, unit }: { n: string; unit?: string }) => <p className="ptile-val">{n}{unit && <small>{unit}</small>}</p>;
 
-/** Rain in the last hour at the wettest nearby gauge, in a drop that fills to 30 mm. */
+/** Rain in the last hour at the wettest nearby gauge: the mm small at the top left, a drop that fills to 30 mm
+ * in the middle, the plain word and the note under it. */
 export function RainNowTile({ lang, gauge }: { lang: Lang; gauge: GaugeRain | null }) {
   const clip = useId();
   const mm = gauge?.mm ?? 0;
   const top = dropFillTop(mm);
   return (
     <Tile icon="drop" title={t(lang, 'rainNow')}>
-      <div className="ptile-body">
-        <div>
-          <Value n={String(mm)} unit="mm" />
-          <p className="ptile-mean">{t(lang, RAIN_WORD[rainStrength(mm)])}</p>
-          <p className="ptile-note">{t(lang, 'tileRainNote')}</p>
-        </div>
-        <svg className="pic" width="58" height="76" viewBox="0 0 80 104" aria-hidden="true">
+      <div className="rain-now">
+        <p className="rain-now-val ptile-val">{mm}<small>mm</small></p>
+        <svg className="pic" width="70" height="91" viewBox="0 0 80 104" aria-hidden="true">
           <defs><clipPath id={clip}><path d={DROP_PATH} /></clipPath></defs>
           <path d={DROP_PATH} className="w3" />
           <rect className="w1 rise" x="0" y={top} width="80" height={104 - top} clipPath={`url(#${clip})`} />
@@ -58,6 +55,8 @@ export function RainNowTile({ lang, gauge }: { lang: Lang; gauge: GaugeRain | nu
           <text x="78" y="12" textAnchor="end">30+</text>
           <text x="78" y="100" textAnchor="end">0</text>
         </svg>
+        <p className="ptile-mean">{t(lang, RAIN_WORD[rainStrength(mm)])}</p>
+        <p className="ptile-note">{t(lang, 'tileRainNote')}</p>
       </div>
     </Tile>
   );

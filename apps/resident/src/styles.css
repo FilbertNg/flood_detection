@@ -352,8 +352,8 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .reasons li { margin-bottom: 4px; }
 /* Technical details tiles: the JPS marks and the two readings share one tile (surface grey, 12 px radius)
    so the section reads as a set of instruments, not a list. */
-.mark-tile, .gauge, .reading { padding: 12px; border-radius: 12px; background: var(--surface); color: var(--ink); min-width: 0; }
-.mark-name, .reading-label { font-size: 13px; font-weight: 700; }
+.mark-tile, .gauge { padding: 12px; border-radius: 12px; background: var(--surface); color: var(--ink); min-width: 0; }
+.mark-name { font-size: 13px; font-weight: 700; }
 .mark-m { font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .jps-marks { display: grid; gap: 8px; margin-top: 6px; }
 /* Alert and Warning side by side: name and bars on top, the mark, then how far the river is from it. */
@@ -388,15 +388,6 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .gauge-steps li[aria-current="true"] { background: #fff; color: var(--step-ink); font-weight: 800; box-shadow: inset 0 0 0 1.5px var(--step); }
 .gauge-steps small { font-size: 11px; font-weight: 700; }
 .gauge-note { margin: 0; font-size: 14px; font-weight: 700; color: var(--step-ink, var(--muted)); }
-/* Rain last hour and the flood model side by side: label, the number large, meaning, source. The model
-   meter is information blue, not a level colour: ML never sets the level. */
-.readings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-.reading { display: grid; align-content: start; gap: 4px; }
-.reading-value { font-size: 28px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.reading-meaning { font-size: 13px; font-weight: 700; color: #1d5f99; }
-.reading-source { font-size: 12px; line-height: 1.4; color: var(--muted); }
-.reading-meter { display: block; height: 6px; margin: 2px 0; border-radius: 3px; background: #e0e0e0; overflow: hidden; }
-.reading-meter i { display: block; height: 100%; border-radius: 3px; background: #1d5f99; }
 /* Why: a tinted callout, green with a tick when nothing is happening, amber with reasons. */
 .why { margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1.5px solid; }
 .tech .why h3 { margin: 0 0 4px; font-size: 14px; }
@@ -522,31 +513,16 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .sky-view-body .tide-chart path[stroke] { stroke: #9fd3ff; }
 .sky-view-body :focus-visible { outline-color: #fff; }
 
-/* The big word in the iPhone lock-screen clock style: the system face (SF Pro on Apple devices), heavy,
-   narrow where the face has a condensed width, and stretched 30 % taller from its baseline (the margin
-   above grows by the same 0.3 em so nothing overlaps). On the full-screen sky it is 1.15x the card size
+/* The big word (Safe, Be alert, Get ready, Move now) in the weather-app temperature style: the system
+   face (SF Pro Display on iPhones, Roboto on Android) at Light 300, regular width, no stretching, slightly
+   tight tracking. It is solid in the word colour (white, or the level tint at Warning and Danger, both
+   >= 4.5:1 on the sky) with a soft shadow that lifts it off the sky. Light letters read calm at Safe and
+   still carry the level colour; no web font to download. On the full-screen sky it is 1.15x the card size
    (the card size is already fitted to the word's length). */
-.hero-word, .sky-view-word { font-weight: 800; font-stretch: condensed; letter-spacing: -0.02em; transform: scaleY(1.3); transform-origin: 50% 100%; }
-.hero-word { margin-top: calc(8px + 0.3em); }
-.sky-view-word { font-size: min(calc(var(--word-size, 64px) * 1.15), 22vw); margin-top: calc(14px + 0.3em); }
-
-/* Liquid glass lettering for the big word (Safe, Get ready, ...), on the hero card and the full-screen sky.
-   The letters are the word's colour (white, or the level tint at Warning and Danger) fading towards clear
-   at the bottom, so the sky shows through; a bright glow rim outlines them; a diagonal band of light (and a
-   slight shade beside it, so the band also shows on white letters) crosses them; a soft drop shadow
-   lifts the word off the sky. The fill never drops below 55 % so the word keeps >= 3:1 as large text.
-   (Text shadows show through clear text, so the depth is a filter.) */
-.hero-word, .sky-view-word {
-  background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0) 24%, rgba(255, 255, 255, 0.85) 38%, rgba(255, 255, 255, 0) 46%, rgba(20, 30, 50, 0.18) 54%, rgba(20, 30, 50, 0) 64%),
-    linear-gradient(180deg, color-mix(in srgb, var(--word) 96%, transparent) 0%, color-mix(in srgb, var(--word) 82%, transparent) 40%, color-mix(in srgb, var(--word) 55%, transparent) 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
-  text-shadow: none;
-  /* The rim is drawn by light glow filters, not a text stroke: a stroke traces the overlapping shapes
-     inside heavy letters and shows little boxes in "e" and "a". A lit top edge, a white rim, then depth. */
-  filter: drop-shadow(0 -0.5px 0 rgba(255, 255, 255, 0.75)) drop-shadow(0 0 0.4px rgba(255, 255, 255, 0.8))
-    drop-shadow(0 2px 1.5px rgba(0, 0, 0, 0.18)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
-  padding-bottom: 0.06em; }
+.hero-word, .sky-view-word { font-weight: 300; font-stretch: normal; letter-spacing: -0.035em; line-height: 1.05; color: var(--word);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.22); }
+.hero-word { margin-top: 10px; }
+.sky-view-word { font-size: min(calc(var(--word-size, 64px) * 1.15), 22vw); margin-top: 16px; }
 /* The solid amber callout keeps its dark text crisp: no glass text shadow on it. */
 .sky-view-body .panel-flag { text-shadow: none; }
 /* The level chip on the sky (hero card and full view) is liquid glass too: white text, the dot keeps the
@@ -556,21 +532,18 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 /* × stays in the top left corner while the sky view scrolls; a darker glass so it reads over the cards too. */
 .sky-view .sky-close { position: fixed; z-index: 10; top: calc(16px + env(safe-area-inset-top)); left: 18px;
   background: rgba(20, 30, 50, 0.55); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); }
-/* The technical-detail tiles on the glass cards: a lighter pane, white text (tier colours stay on shapes). */
-.sky-view-body .mark-tile, .sky-view-body .gauge, .sky-view-body .reading { background: rgba(255, 255, 255, 0.12); color: #fff; }
-.sky-view-body .mark-gap[data-tier], .sky-view-body .gauge-note, .sky-view-body .gauge-ticks, .sky-view-body .gauge-steps li,
-.sky-view-body .reading-meaning, .sky-view-body .reading-source, .sky-view-body .fine strong { color: #fff; }
-.sky-view-body .signal i:not([data-on]), .sky-view-body .reading-meter { background: rgba(255, 255, 255, 0.3); }
-.sky-view-body .gauge-track { background: linear-gradient(90deg, rgba(255, 255, 255, 0.3) calc(33.333% - 1px), transparent 0 calc(33.333% + 1px), rgba(255, 255, 255, 0.3) 0 calc(66.667% - 1px), transparent 0 calc(66.667% + 1px), rgba(255, 255, 255, 0.3) 0); }
-.sky-view-body .gauge-steps li[aria-current="true"] { background: rgba(255, 255, 255, 0.2); color: #fff; box-shadow: inset 0 0 0 1.5px #fff; }
-.sky-view-body .reading-meter i { background: #fff; }
-.sky-view-body .why { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.4); color: #fff; }
+/* The full-screen sky shows the street page's picture tiles: white tiles straight on the sky (no grey
+   band), dark text inside them; the section labels stay white on the sky. */
+.sky-view-body .ptiles { margin: 0; padding: 0; background: none; }
+.sky-view-body .ptiles-sec { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22); }
+.sky-view-body .ptile { color: var(--ink); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+.sky-view-body .ptile .ptile-head { color: var(--ink); }
 .sky-view-body .report-card { background: var(--brand); }
 .sky-view-note { margin: 0; padding: 14px 24px calc(28px + env(safe-area-inset-bottom)); font-size: 13px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .sky-view { animation: none; } .hero { transition: none; } }
 
 /* Picture tiles on the white street page (PanelTiles): a full-bleed grey band, a two-column grid of white
-   tiles, each reading drawn as an object. The sky view keeps its panels; none of this applies there. */
+   tiles, each reading drawn as an object. The full-screen sky shows the same tiles (see the sky rules). */
 .ptiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 calc(-1 * var(--gap)); padding: 12px var(--gap) 16px; background: var(--surface); }
 .ptiles-sec { grid-column: 1 / -1; margin: 4px 2px 0; font-size: 12px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
 .ptile { display: grid; align-content: start; gap: 4px; min-width: 0; padding: 14px; border-radius: 22px; background: var(--bg); }
@@ -595,6 +568,11 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .ptile-chip[data-tone="danger"] { background: var(--danger-t); color: var(--danger-ink); }
 .ptile-center { display: grid; justify-items: center; gap: 4px; margin-top: 4px; text-align: center; }
 .ptile-center .ptile-mean { margin: 0; }
+/* Rain now: the mm small at the top left, the drop centred, the word and note centred under it. */
+.rain-now { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.rain-now .rain-now-val { justify-self: start; font-size: 24px; }
+.rain-now .rain-now-val small { font-size: 13px; }
+.rain-now .ptile-mean { margin: 4px 0 0; }
 .ptile-why { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
 .ptile-tide { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
 /* Pictures: SVG classes take colours from the tokens; text in a picture is a small muted label. */

@@ -23,3 +23,9 @@ On the white street page (below the hero card), every reading is drawn as a pict
 4. EN + BM strings in `lib/i18n.ts`.
 5. Styles: white tiles (22 px radius, 14 px padding) on `#f6f6f6`, water blue `#3b82c4 / #8fbbe3 / #dcebf8`, level tokens for state, SDP red only for now markers; stack value and picture below 360 px; 400 ms fill on first render, none with reduced motion.
 6. Check in a 393 × 852 view (Normal live street, 12 Nov 2024 replay), EN and BM; PR into `main` with screenshots and the checkpoint hash.
+
+## Revision (owner feedback, 21 Oct 2026)
+
+- **Rain now:** the mm is smaller (24 px) at the top left, the drop sits in the middle, the plain word and the note are centred under it.
+- **The full-screen sky view now follows the street page:** under its own sky, chips and rain curve it shows the same picture tiles ("Right now" and "Technical details") as white tiles straight on the sky. This replaces the earlier "keep the sky panels" decision; the old glass panels, `skyPanels` / `skyTech` and the `Reading` tile are removed. The hero card's sky backdrop is unchanged.
+- **The big level word** (Safe, Be alert, Get ready, Move now) drops the heavy, condensed, 1.3× stretched glass lettering for the system face at Light 300, regular width, solid in the word colour with a soft shadow (the weather-app temperature style; no web font).
