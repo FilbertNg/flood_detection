@@ -32,6 +32,14 @@
   --watch: #b26a00;
   --warn: #e65100;
   --danger: #c62828;
+  /* Picture tiles: water blues for anything that is water, tints and darker inks (>= 4.5:1 on the tint) per level. */
+  --water: #3b82c4;
+  --water-2: #8fbbe3;
+  --water-3: #dcebf8;
+  --ok-t: #dff0e0; --ok-ink: #1b5e20;
+  --watch-t: #fdefd2; --watch-ink: #8a4b00;
+  --warn-t: #fde3d3; --warn-ink: #a83a00;
+  --danger-t: #f9dada; --danger-ink: #a51d1d;
   --r-tile: 16px;
   --r-card: 20px;
   --r-hero: 24px;
@@ -560,6 +568,65 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .sky-view-body .report-card { background: var(--brand); }
 .sky-view-note { margin: 0; padding: 14px 24px calc(28px + env(safe-area-inset-bottom)); font-size: 13px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .sky-view { animation: none; } .hero { transition: none; } }
+
+/* Picture tiles on the white street page (PanelTiles): a full-bleed grey band, a two-column grid of white
+   tiles, each reading drawn as an object. The sky view keeps its panels; none of this applies there. */
+.ptiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 calc(-1 * var(--gap)); padding: 12px var(--gap) 16px; background: var(--surface); }
+.ptiles-sec { grid-column: 1 / -1; margin: 4px 2px 0; font-size: 12px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.ptile { display: grid; align-content: start; gap: 4px; min-width: 0; padding: 14px; border-radius: 22px; background: var(--bg); }
+.ptile[data-wide] { grid-column: 1 / -1; }
+.ptile-head { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+.ptile-head .glyph { width: 16px; height: 16px; flex: none; color: var(--muted); }
+/* Value beside the picture while both fit; the picture wraps under the value on narrow tiles, never overflows. */
+.ptile-body { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 4px; min-height: 112px; }
+.ptile-body > div { flex: 1 1 0; min-width: min-content; }
+.ptile-val { margin: 0; font-size: 34px; font-weight: 400; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ptile-val small { margin-left: 2px; font-size: 16px; color: var(--muted); letter-spacing: 0; }
+.ptile-val-m { margin: 2px 0; font-size: 26px; }
+.ptile-mean { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
+.ptile-note { margin: 0; font-size: 12px; line-height: 1.35; color: var(--muted); }
+.ptile-note b { color: var(--ink); }
+.ptile-gap { margin-top: 6px; }
+.ptile-flag { margin: 4px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--watch-t); color: var(--watch-ink); font-size: 12px; font-weight: 700; }
+.ptile-chip { justify-self: start; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.ptile-chip[data-tone="ok"] { background: var(--ok-t); color: var(--ok-ink); }
+.ptile-chip[data-tone="watch"] { background: var(--watch-t); color: var(--watch-ink); }
+.ptile-chip[data-tone="warn"] { background: var(--warn-t); color: var(--warn-ink); }
+.ptile-chip[data-tone="danger"] { background: var(--danger-t); color: var(--danger-ink); }
+.ptile-center { display: grid; justify-items: center; gap: 4px; margin-top: 4px; text-align: center; }
+.ptile-center .ptile-mean { margin: 0; }
+.ptile-why { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+.ptile-tide { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
+/* Pictures: SVG classes take colours from the tokens; text in a picture is a small muted label. */
+.pic { display: block; overflow: visible; }
+.pic text { font: 700 10px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: var(--muted); }
+.pic-stretch { width: 100%; height: auto; }
+.pic-axis { display: flex; justify-content: space-between; margin: 2px 0 0; font-size: 10px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pic .w1 { fill: var(--water); } .pic .w2 { fill: var(--water-2); } .pic .w3 { fill: var(--water-3); }
+.pic .w-edge { stroke: var(--water); } .pic .ink { fill: var(--ink); } .pic .past { opacity: 0.55; }
+.pic .baseline { stroke: var(--ink); }
+.pic .now-dot { fill: #fff; stroke: var(--brand); }
+.pic .tick-alert line { stroke: var(--watch); } .pic .tick-alert text { fill: var(--watch-ink); }
+.pic .tick-warning line { stroke: var(--warn); } .pic .tick-warning text { fill: var(--warn-ink); }
+.pic .tick-danger line { stroke: var(--danger); } .pic .tick-danger text { fill: var(--danger-ink); }
+/* Badge and ring: the number is text stacked on the picture. */
+.pic-stack { display: grid; place-items: center; }
+.pic-stack > * { grid-area: 1 / 1; }
+.badge-val { display: grid; justify-items: center; margin: 0; line-height: 1; }
+.badge-val small { margin-top: 2px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.ptile-ring-val { font-size: 24px; }
+[data-tone="ok"] .badge { fill: var(--ok-t); } [data-tone="watch"] .badge { fill: var(--watch-t); } [data-tone="warn"] .badge { fill: var(--warn-t); }
+.pic [data-dot] { fill: var(--line); }
+[data-tone="ok"] .pic [data-dot][data-on] { fill: var(--ok); } [data-tone="watch"] .pic [data-dot][data-on] { fill: var(--watch); } [data-tone="warn"] .pic [data-dot][data-on] { fill: var(--warn); }
+.pic .ring-track { stroke: var(--line); }
+[data-tone="ok"] .ring { stroke: var(--ok); } [data-tone="watch"] .ring { stroke: var(--watch); } [data-tone="warn"] .ring { stroke: var(--warn); }
+.pic .clock-face { fill: var(--surface); } .pic .clock-tick { fill: var(--muted); } .pic .clock-hand { stroke: var(--ink); } .pic .now-pin { fill: var(--brand); }
+/* The water in the drop and the pill rises from empty once, on first render (none with reduced motion). */
+.pic .rise { transform-box: fill-box; transform-origin: 50% 100%; animation: tile-rise 400ms ease-out; }
+@keyframes tile-rise { from { transform: scaleY(0); } }
+/* Technical details blocks inside a wide tile. */
+.ptile .jps-marks { margin-top: 2px; }
+@media (max-width: 359px) { .ptile-tide { grid-template-columns: minmax(0, 1fr); } }
 
 /* Start screen when no street is saved. */
 .find { display: grid; align-content: start; gap: 14px; padding: 12px var(--gap) 24px; }

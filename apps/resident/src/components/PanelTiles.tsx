@@ -68,6 +68,10 @@ export function RainNextTile({ lang, rain }: { lang: Lang; rain: StreetDetail['r
   const total = rain.reduce((sum, p) => sum + p.mm, 0);
   const peak = heaviestHour(rain);
   const W = Math.max(BARS.width, (rain.length - 1) * BARS.step + BARS.bar);
+  // No hours at all (a replay has no stored forecast) is missing data, not a dry forecast.
+  if (rain.length === 0) {
+    return <Tile icon="drop" title={t(lang, 'tileNext12')}><p className="ptile-note">{t(lang, 'noForecast')}</p></Tile>;
+  }
   return (
     <Tile icon="drop" title={t(lang, 'tileNext12')}>
       <Value n={total.toFixed(1)} unit="mm" />
@@ -111,15 +115,15 @@ export function RiverTile({ lang, river, reachBy }: { lang: Lang; river: RiverRe
           <Value n={wl.toFixed(2).replace('-', '−')} unit="m" />
           <p className="ptile-note ptile-gap">{tf(lang, gap.above ? 'riverAboveMark' : 'riverBelowMark', { m: metres(gap.m), mark: t(lang, MARK_TEXT[gap.mark]).toLowerCase() })}</p>
         </div>
-        <svg className="pic" width="74" height={H} viewBox={`0 0 74 ${H}`} aria-hidden="true">
-          <defs><clipPath id={clip}><rect x="16" y="4" width="24" height={H - 8} rx="12" /></clipPath></defs>
-          <rect className="w3" x="16" y="4" width="24" height={H - 8} rx="12" />
-          <rect className="w2 rise" x="16" y={y} width="24" height={H - y} clipPath={`url(#${clip})`} />
-          <path className="ink" d={`M4 ${y - 5} L12 ${y} L4 ${y + 5}z`} />
+        <svg className="pic" width="56" height={H} viewBox={`0 0 56 ${H}`} aria-hidden="true">
+          <defs><clipPath id={clip}><rect x="10" y="4" width="24" height={H - 8} rx="12" /></clipPath></defs>
+          <rect className="w3" x="10" y="4" width="24" height={H - 8} rx="12" />
+          <rect className="w2 rise" x="10" y={y} width="24" height={H - y} clipPath={`url(#${clip})`} />
+          <path className="ink" d={`M0 ${y - 5} L8 ${y} L0 ${y + 5}z`} />
           {pillTicks(th).map((k) => (
             <g key={k.mark} data-tick={k.mark} className={`tick-${k.mark}`}>
-              <line x1="44" x2="52" y1={k.y} y2={k.y} strokeWidth="3" strokeLinecap="round" />
-              <text x="56" y={k.y + 3.5}>{TICK_LETTER[k.mark]}</text>
+              <line x1="38" x2="45" y1={k.y} y2={k.y} strokeWidth="3" strokeLinecap="round" />
+              <text x="48" y={k.y + 3.5}>{TICK_LETTER[k.mark]}</text>
             </g>
           ))}
         </svg>
@@ -136,14 +140,16 @@ const PRONE_WORD = (s: Susceptibility): StringKey => (s >= 4 ? 'tileLowLying' : 
 export function StreetTile({ lang, score }: { lang: Lang; score: Susceptibility }) {
   return (
     <Tile icon="home" title={t(lang, 'panelStreet')}>
-      <div className="ptile-center">
-        <svg className="pic" width="92" height="112" viewBox="0 0 92 112" aria-hidden="true" data-tone={proneTone(score)}>
-          <path className="badge" d={scallopPath()} />
-          <text className="pic-big" x="46" y="58" textAnchor="middle">{score}</text>
-          <text x="46" y="72" textAnchor="middle">{t(lang, 'tileOf5')}</text>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <circle key={i} data-dot data-on={i <= score || undefined} cx={46 + (i - 3) * 13} cy="104" r="4" />
-          ))}
+      <div className="ptile-center" data-tone={proneTone(score)}>
+        {/* The score is real text over the badge, so screen readers get it; the badge and dots are pictures. */}
+        <div className="pic-stack">
+          <svg className="pic" width="92" height="92" viewBox="0 0 92 92" aria-hidden="true">
+            <path className="badge" d={scallopPath()} />
+          </svg>
+          <p className="badge-val"><span className="ptile-val">{score}</span><small>{t(lang, 'tileOf5')}</small></p>
+        </div>
+        <svg className="pic" width="62" height="10" viewBox="0 0 62 10" aria-hidden="true">
+          {[1, 2, 3, 4, 5].map((i) => <circle key={i} data-dot data-on={i <= score || undefined} cx={5 + (i - 1) * 13} cy="5" r="4" />)}
         </svg>
         <p className="ptile-mean">{t(lang, PRONE_WORD(score))}</p>
         <p className="ptile-note">{t(lang, 'tileStreetNote')}</p>
@@ -198,12 +204,14 @@ export function ModelTile({ lang, p }: { lang: Lang; p: number | null }) {
   const { len, C } = ringDash(p);
   return (
     <Tile icon="why" title={t(lang, 'techModel')}>
-      <div className="ptile-center">
-        <svg className="pic" width="96" height="96" viewBox="0 0 96 96" aria-hidden="true" data-tone={ringTone(p)}>
-          <circle className="ring-track" cx="48" cy="48" r="34" fill="none" strokeWidth="9" />
-          {len > 0 && <circle className="ring" cx="48" cy="48" r="34" fill="none" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${len} ${C}`} transform="rotate(-90 48 48)" />}
-        </svg>
-        <p className="ptile-val ptile-ring-val">{percent(p)}</p>
+      <div className="ptile-center" data-tone={ringTone(p)}>
+        <div className="pic-stack">
+          <svg className="pic" width="96" height="96" viewBox="0 0 96 96" aria-hidden="true">
+            <circle className="ring-track" cx="48" cy="48" r="34" fill="none" strokeWidth="9" />
+            {len > 0 && <circle className="ring" cx="48" cy="48" r="34" fill="none" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${len} ${C}`} transform="rotate(-90 48 48)" />}
+          </svg>
+          <p className="ptile-val ptile-ring-val">{percent(p)}</p>
+        </div>
         <p className="ptile-note">{t(lang, 'chance')}. {t(lang, 'tileModelNote')}</p>
       </div>
     </Tile>

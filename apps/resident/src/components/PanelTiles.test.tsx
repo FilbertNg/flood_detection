@@ -41,6 +41,14 @@ describe('RainNextTile', () => {
     render(<RainNextTile lang="en" rain={streetDetail.rain_next_12h.map((p) => ({ ...p, mm: 0 }))} />);
     expect(tile('Next 12 hours')).toHaveTextContent('No rain expected');
   });
+
+  it('says there is no forecast, with no total, when the API sends no hours (e.g. a replay)', () => {
+    render(<RainNextTile lang="en" rain={[]} />);
+    const el = tile('Next 12 hours');
+    expect(el).toHaveTextContent('No rain forecast.');
+    expect(el).not.toHaveTextContent('mm');
+    expect(el).not.toHaveTextContent('No rain expected');
+  });
 });
 
 describe('RiverTile', () => {
