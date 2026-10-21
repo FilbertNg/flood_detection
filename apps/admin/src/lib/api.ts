@@ -69,8 +69,9 @@ export const api = {
     const qs = q.toString();
     return request<SeriesPoint[]>(`/stations/${encodeURIComponent(graphId)}/series${qs ? `?${qs}` : ''}`);
   },
-  startReplay: (event: string = REPLAY_EVENT, speed = 60) =>
-    request<Status>('/admin/replay', json({ event, speed }, 'POST')),
+  /** From 08:30, just before the first alerts (08:45), at 10 s per 15-min step, so a demo shows alerts within ~15 s. */
+  startReplay: (event: string = REPLAY_EVENT, speed = 90, start = '08:30') =>
+    request<Status>('/admin/replay', json({ event, speed, start }, 'POST')),
   stats: (from: string, to: string) => request<Stats>(`/admin/stats?${new URLSearchParams({ from, to })}`),
   report: (month: string) => request<Report>(`/admin/report?${new URLSearchParams({ month })}`),
   suggestions: (from: string, to: string) => request<Suggestion[]>(`/admin/suggestions?${new URLSearchParams({ from, to })}`),

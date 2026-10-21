@@ -119,7 +119,7 @@ describe('OpsMapPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
     await waitFor(() => expect(methods(fn)).toContain('POST'));
     const post = fn.mock.calls.find((c) => (c[1] as RequestInit | undefined)?.method === 'POST')!;
-    expect(JSON.parse((post[1] as RequestInit).body as string)).toEqual({ event: '2024-11-12', speed: 60 });
+    expect(JSON.parse((post[1] as RequestInit).body as string)).toEqual({ event: '2024-11-12', speed: 90, start: '08:30' });
   });
 
   it('shows a popup for the street under the map centre once zoomed in, with its level and View', async () => {
