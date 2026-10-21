@@ -1,0 +1,7 @@
+[Unit]
+Description=Flood-Ready health check (API answering, JPS data fresh, disk)
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/floodready/healthcheck.env
+ExecStart=/opt/floodready/bin/healthcheck.sh

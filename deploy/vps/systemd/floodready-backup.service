@@ -1,0 +1,7 @@
+[Unit]
+Description=Flood-Ready daily database backup
+
+[Service]
+Type=oneshot
+User=floodready
+ExecStart=/opt/floodready/bin/backup.sh

@@ -1,0 +1,13 @@
+[Unit]
+Description=Flood-Ready JPS history top-up (resumable; fills live-log gaps), then reloads the API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=floodready
+WorkingDirectory=/opt/floodready/app
+ExecStart=/opt/floodready/app/.venv/bin/python -X utf8 scripts/archive_jps_history.py
+# "+" runs as root: restart the API so it reads the refreshed archive.
+ExecStartPost=+/usr/bin/systemctl try-restart floodready-api.service
+Environment=PYTHONUNBUFFERED=1

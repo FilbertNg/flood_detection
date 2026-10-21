@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly JPS history top-up
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Kuala_Lumpur
+# Run at next boot if the server was off at 03:30.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

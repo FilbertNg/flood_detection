@@ -212,6 +212,6 @@ Done since 15 Oct: everything in the old per-owner list except hosting (D3), the
 
 1. Who records the video, and on which Android phone?
 2. Does SDP want the 1–5 street score visible to buyers? (Ask the mentors after Top 10.)
-3. Hosting stays on the laptop (Pages + Funnel) for the MVP; after Top 10, an always-on PC or VPS (`deploy/systemd`)?
+3. ~~Hosting after the laptop?~~ Decided 21 Oct 2026: the backend runs on a Hetzner VPS with deploy on merge ([deploy/README.md](deploy/README.md)).
 
 - **Admin login lockout (accepted for the MVP):** 5 failed logins for one email in 15 min lock that email out (429), so an attacker can keep a known admin email locked out with bad passwords. Use another admin account or restart the API to clear it.
