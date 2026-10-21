@@ -26,14 +26,26 @@ afterEach(() => {
 });
 
 describe('App header', () => {
-  it('shows the Flood-Ready logo next to the name', async () => {
+  it('shows no header on the first-visit onboarding screen', async () => {
     renderAt('/');
+    expect(await screen.findByRole('button', { name: 'Find my street' })).toBeInTheDocument();
+    expect(document.querySelector('header.top')).toBeNull();
+    expect(screen.queryByRole('link', { name: /Flood-Ready/ })).toBeNull();
+  });
+
+  it('keeps the header on the other screens before a street is chosen', async () => {
+    renderAt('/streets');
+    expect(await screen.findByRole('link', { name: /Flood-Ready/ })).toBeInTheDocument();
+  });
+
+  it('shows the Flood-Ready logo next to the name', async () => {
+    renderAt('/report');
     const brand = await screen.findByRole('link', { name: /Flood-Ready/ });
     expect(brand.querySelector('svg.logo')).not.toBeNull();
   });
 
   it('names the township under the logo until a street is chosen', async () => {
-    renderAt('/');
+    renderAt('/report');
     const brand = await screen.findByRole('link', { name: /Flood-Ready/ });
     expect(brand.querySelector('small')).toHaveTextContent('Bandar Bukit Raja');
   });
@@ -48,7 +60,7 @@ describe('App header', () => {
 
 describe('App status line', () => {
   // The live / replay chip lives on the map only; a replayed street is labelled inside its hero card.
-  it.each(['/', '/report', '/streets'])('shows no live or replay chip under the header on %s', async (path) => {
+  it.each(['/report', '/streets'])('shows no live or replay chip under the header on %s', async (path) => {
     renderAt(path);
     await screen.findByRole('link', { name: /Flood-Ready/ });
     // Give the status request time to answer, then check nothing was drawn.

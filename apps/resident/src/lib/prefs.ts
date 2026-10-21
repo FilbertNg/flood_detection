@@ -30,6 +30,15 @@ function validDeviceId(id: unknown): id is string {
   return typeof id === 'string' && DEVICE_ID.test(id);
 }
 
+/** First visit, nothing saved: Malay when the phone's language is Malay, otherwise English. */
+function phoneLang(): Lang {
+  try {
+    return navigator.language?.toLowerCase().startsWith('ms') ? 'ms' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
 export function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem(KEY);
@@ -40,7 +49,7 @@ export function loadPrefs(): Prefs {
   } catch {
     // storage unavailable (private mode): fall through to defaults
   }
-  return { lang: 'en', streets: [], deviceId: newDeviceId() };
+  return { lang: phoneLang(), streets: [], deviceId: newDeviceId() };
 }
 
 export function savePrefs(prefs: Prefs): void {

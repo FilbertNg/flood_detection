@@ -28,11 +28,13 @@ export function App() {
   // The street picker needs no live line, and the report form shows no data at all, so it gets no line;
   // every screen that shows data labels a replay (replayed data must be shown as such).
   const map = path.startsWith('/map');
+  // The first-visit onboarding (/ with no street saved) is one full screen with no header.
+  const onboarding = path === '/' && !mine;
 
   return (
     <div className="app">
-      {/* The map draws its own red header (Back, title, language) above the map. */}
-      {!map && (
+      {/* The map draws its own red header (Back, title, language) above the map; onboarding has none. */}
+      {!map && !onboarding && (
         <>
           <header className="top">
             <Link to="/" className="brand">

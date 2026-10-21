@@ -49,7 +49,7 @@ afterEach(() => {
 describe('StreetHome (one street)', () => {
   it('shows the start screen when no street is saved', async () => {
     renderHome('/', []);
-    expect(await screen.findByRole('heading', { name: 'See flood warnings for your street' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Know before the water reaches your street' })).toBeInTheDocument();
   });
 
   it('opens straight on my street, with no swiping and no page dots', async () => {

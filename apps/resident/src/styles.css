@@ -606,16 +606,45 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .ptile .jps-marks { margin-top: 2px; }
 @media (max-width: 359px) { .ptile-tide { grid-template-columns: minmax(0, 1fr); } }
 
-/* Start screen when no street is saved. */
-.find { display: grid; align-content: start; gap: 14px; padding: 12px var(--gap) 24px; }
-.find-hero { padding: 28px 20px 26px; }
-.find-hero .hero-name { margin-top: 0; font-size: 26px; }
-.find-hero .logo { display: block; margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2)); }
+/* Location confirm and actions (Change location on the street page). */
 .find-actions { display: grid; gap: 10px; }
 .find-actions p { margin: 0; }
 .find-note { margin: 0; font-size: 14px; color: var(--muted); text-align: center; }
 .find-confirm p { margin: 0; }
 .find-street { display: block; margin: 6px 0 12px; font-size: 22px; }
+
+/* First-visit onboarding (FindStreet, docs/design/onboarding-proposal.html): one screen that never scrolls,
+   no app header. The red illustration and the logo take the top; a white card holds the line and the two
+   actions. The deepest red sits behind the card so no flat stripe shows between the art and the card. */
+.onb { position: relative; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; background: #9a0007; }
+.onb-art { position: relative; flex: 1; min-height: 0; }
+.onb-art > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.onb-brand { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 10px; color: #fff; }
+.onb-glow { position: absolute; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, rgba(234, 0, 9, 0.6) 30%, rgba(234, 0, 9, 0) 70%); }
+.onb-brand .logo { position: relative; margin-bottom: 8px; filter: drop-shadow(0 10px 18px rgba(120, 0, 5, 0.35)); }
+.onb-name { position: relative; font-size: 26px; font-weight: 800; letter-spacing: -0.01em; }
+/* Top corners: the replay label on the left (replay only), who it is built for on the right. */
+.onb-replay, .onb-builtfor { position: absolute; z-index: 2; top: calc(14px + env(safe-area-inset-top)); margin: 0; background: #fff; box-shadow: 0 4px 14px rgba(90, 0, 5, 0.25); }
+.onb-replay { left: 14px; padding: 6px 11px; border-radius: 999px; color: var(--brand-dark); font-size: 12px; font-weight: 800; }
+.onb-builtfor { right: 14px; display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 11px; border-radius: 12px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.onb-builtfor img { display: block; width: 40px; height: auto; }
+.onb-card { position: relative; display: grid; gap: 14px; margin: 0 10px; padding: 26px 22px calc(18px + env(safe-area-inset-bottom));
+  border-top: 4px solid var(--edge); border-radius: 28px 28px 0 0; background: var(--bg); text-align: center; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12); }
+.onb-card h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; text-wrap: balance; color: var(--ink); }
+.onb-card h1 em { font-style: normal; color: var(--brand); }
+.onb-find { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; padding: 15px; border: 0; border-radius: 16px;
+  background: var(--brand); color: #fff; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 18px rgba(215, 25, 32, 0.3); }
+.onb-find:hover { background: var(--brand-dark); }
+.onb-link { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px; color: var(--brand); font-size: 15px; font-weight: 700; text-decoration: none; }
+.onb-link:hover { text-decoration: underline; }
+.onb-card :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.onb-status { display: grid; gap: 4px; }
+.onb-status p, .onb-msg, .onb-confirm p { margin: 0; font-size: 15px; }
+.onb-status .onb-fine { font-size: 13px; color: var(--muted); }
+.onb-confirm { display: grid; gap: 10px; }
+.onb-street { font-size: 20px; }
+/* Short phones (320 × 568): a little less air in the card so the logo keeps its room. */
+@media (max-height: 620px) { .onb-card { gap: 10px; padding-top: 20px; } .onb-card h1 { font-size: 20px; } .onb-glow { width: 220px; height: 220px; } }
 
 .primary, .secondary, .choice, .lang-switch button { transition: background-color 120ms ease; }
 @media (prefers-reduced-motion: reduce) {

@@ -47,3 +47,21 @@ describe('device id', () => {
     });
   });
 });
+
+describe('language on a first visit', () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("starts in Malay when the phone's language is Malay, otherwise English", () => {
+    vi.stubGlobal('navigator', { ...navigator, language: 'ms-MY' });
+    expect(loadPrefs().lang).toBe('ms');
+    vi.stubGlobal('navigator', { ...navigator, language: 'en-GB' });
+    expect(loadPrefs().lang).toBe('en');
+  });
+
+  it('keeps a saved choice over the phone language', () => {
+    vi.stubGlobal('navigator', { ...navigator, language: 'ms-MY' });
+    localStorage.setItem(KEY, JSON.stringify({ lang: 'en', streets: [], deviceId: 'dev_abc123def456ghi789' }));
+    expect(loadPrefs().lang).toBe('en');
+  });
+});
