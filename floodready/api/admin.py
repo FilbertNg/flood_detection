@@ -2,6 +2,8 @@
 and the read-only photo route.
 
 Reads need any valid token; every write needs the `admin` role (see auth.py). Installed by `create_app`.
+Statistics and reports are served from a result cache (result_cache.py), cleared by writes that feed them and
+warmed after each live tick for the Statistics page's default period and this month's report.
 """
 
 import logging
@@ -18,11 +20,14 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from ..db import repo
+from ..jobs import now_myt
 from ..stats import report as report_mod
 from ..stats import statistics
 from . import auth
+from .result_cache import ResultCache
 
 log = logging.getLogger(__name__)
+STATS_DEFAULT_FROM = date(2024, 1, 1)      # the Statistics page's default "All" period starts here (DEFAULT_FROM)
 ROOT = Path(__file__).resolve().parents[2]
 PHOTO_NAME = r"^[A-Za-z0-9_-]{1,64}\.(jpg|jpeg|png|webp)$"
 MEDIA = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
@@ -138,28 +143,56 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1") -> tuple:
             raise HTTPException(status_code=503, detail="admin login not configured")
         return {"token": auth.issue_token(auth.PREVIEW_EMAIL, "viewer", key)}
 
-    @app.get(f"{api}/admin/stats")
-    def get_stats(_who: Annotated[auth.Principal, Depends(read)], date_from: Annotated[date, Query(alias="from")],
-                  date_to: Annotated[date, Query(alias="to")]):
-        if date_from > date_to:
-            raise HTTPException(status_code=422, detail="from must be on or before to")
+    def compute_stats(date_from: date, date_to: date) -> dict:
         readings = readings_for(date_from, date_to)             # slow (QC); outside the database lock
         with tx() as conn:
             return statistics.stats(conn, date_from, date_to, street_names=names, events=load_events(),
                                     readings=readings, stations=station_frame(ctx),
                                     street_stations=ctx.street_stations, township_name=township)
 
-    @app.get(f"{api}/admin/report")
-    def get_report(_who: Annotated[auth.Principal, Depends(read)], month: str):
-        try:
-            date_from, date_to = report_mod.month_range(month)
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from None
+    def compute_report(month: str) -> dict:
+        date_from, date_to = report_mod.month_range(month)
         readings = readings_for(date_from, date_to)
         with tx() as conn:
             return report_mod.monthly_report(conn, month, street_names=names, events=load_events(),
                                              readings=readings, stations=station_frame(ctx),
                                              street_stations=ctx.street_stations, township_name=township)
+
+    results = ResultCache()
+    feeds_stats = tuple(f"{api}/{p}" for p in ("answers", "sensor/readings", "admin/answers", "admin/suggestions",
+                                               "admin/notes"))
+
+    @app.middleware("http")
+    async def clear_results_after_writes(request: Request, call_next):
+        response = await call_next(request)
+        if (request.method in ("POST", "PUT", "PATCH", "DELETE") and response.status_code < 400
+                and request.url.path.startswith(feeds_stats)):
+            results.clear()
+        return response
+
+    def warm(now: datetime | None = None) -> None:
+        """Precompute the Statistics page's default period and this month's report (called after each live tick)."""
+        today = (now or now_myt()).date()
+        results.put(("stats", STATS_DEFAULT_FROM, today), compute_stats(STATS_DEFAULT_FROM, today))
+        month = today.strftime("%Y-%m")
+        results.put(("report", month), compute_report(month))
+
+    app.state.warm_admin = warm
+
+    @app.get(f"{api}/admin/stats")
+    def get_stats(_who: Annotated[auth.Principal, Depends(read)], date_from: Annotated[date, Query(alias="from")],
+                  date_to: Annotated[date, Query(alias="to")]):
+        if date_from > date_to:
+            raise HTTPException(status_code=422, detail="from must be on or before to")
+        return results.get(("stats", date_from, date_to), lambda: compute_stats(date_from, date_to))
+
+    @app.get(f"{api}/admin/report")
+    def get_report(_who: Annotated[auth.Principal, Depends(read)], month: str):
+        try:
+            report_mod.month_range(month)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from None
+        return results.get(("report", month), lambda: compute_report(month))
 
     @app.get(f"{api}/admin/suggestions")
     def get_suggestions(_who: Annotated[auth.Principal, Depends(read)],
