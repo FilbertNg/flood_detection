@@ -44,3 +44,14 @@ describe('loader CSS', () => {
     expect(reduced).toMatch(/\.logo-fill \{[^}]*animation: lf-pulse 1\.6s/);
   });
 });
+
+describe('PageLoading', () => {
+  it('centres a 56 px loader above the text in a status, for whole-page loads', async () => {
+    const { PageLoading } = await import('./LogoFill');
+    const { getByRole } = render(<PageLoading text="Loading the street list…" />);
+    const status = getByRole('status');
+    expect(status).toHaveClass('page-loading');
+    expect(status).toHaveTextContent('Loading the street list…');
+    expect(status.querySelector('svg.logo-fill')).toHaveAttribute('width', '56');
+  });
+});

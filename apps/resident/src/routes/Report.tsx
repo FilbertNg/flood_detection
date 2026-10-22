@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import type { Lang } from '@floodready/shared';
 import { BackButton } from '../components/BackButton';
-import { InlineLoading } from '../components/LogoFill';
+import { PageLoading } from '../components/LogoFill';
 import { VerifySheet } from '../components/VerifySheet';
 import { api } from '../lib/api';
 import { t } from '../lib/i18n';
@@ -14,7 +14,7 @@ export function ReportPage({ lang, deviceId, mine }: { lang: Lang; deviceId: str
   const { data, isLoading, isError } = useQuery({ queryKey: ['streets'], queryFn: () => api.streets() });
   const [chosen, setChosen] = useState<string | null>(null);
 
-  if (isLoading) return <InlineLoading text={t(lang, 'loadingStreets')} />;
+  if (isLoading) return <PageLoading text={t(lang, 'loadingStreets')} />;
   if (isError || !data) return <p className="pad" role="alert">{t(lang, 'error')}</p>;
 
   const list = data.features.map((f) => f.properties).sort((a, b) => a.name.localeCompare(b.name));

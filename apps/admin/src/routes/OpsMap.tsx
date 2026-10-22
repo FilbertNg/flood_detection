@@ -8,7 +8,7 @@ import { ModeChip, ReplayControl } from '../components/ReplayControl';
 import { api } from '../lib/api';
 import { hhmm } from '../lib/chart';
 import { STALE_GREY } from '../lib/colours';
-import { InlineLoading } from '../components/LogoFill';
+import { PageLoading } from '../components/LogoFill';
 
 export function OpsMapPage() {
   const [focused, setFocused] = useState<string | null>(null);
@@ -49,7 +49,7 @@ export function OpsMapPage() {
               )}
             </OpsMapView>
           ) : (
-            streets.isError ? <p className="pad muted">Could not load streets.</p> : <InlineLoading text="Loading the map…" />
+            streets.isError ? <p className="pad muted">Could not load streets.</p> : <PageLoading text="Loading the map…" />
           )}
           <Credits />
         </div>

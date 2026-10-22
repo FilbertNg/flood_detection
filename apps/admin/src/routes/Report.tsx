@@ -6,7 +6,7 @@ import { KpiTiles } from '../components/KpiTiles';
 import { StationHealthTable } from '../components/StationHealthTable';
 import { api } from '../lib/api';
 import { dateLabel, monthLabel, ensureSuffix, todayIso } from '../lib/format';
-import { InlineLoading } from '../components/LogoFill';
+import { PageLoading } from '../components/LogoFill';
 
 export function ReportPage() {
   const [month, setMonth] = useState(todayIso().slice(0, 7));
@@ -20,7 +20,7 @@ export function ReportPage() {
         <button type="button" className="primary fit" onClick={() => window.print()}>Print / Save as PDF</button>
       </div>
       <h1>Flood-Ready Township report, {monthLabel(month)}</h1>
-      {q.isLoading && <InlineLoading text="Loading the report…" />}
+      {q.isLoading && <PageLoading text="Loading the report…" />}
       {q.isError && <p role="alert" className="error">Could not load the report.</p>}
       {r && (
         <>

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { Lang } from '@floodready/shared';
 import { BackButton } from '../components/BackButton';
-import { InlineLoading } from '../components/LogoFill';
+import { PageLoading } from '../components/LogoFill';
 import { api } from '../lib/api';
 import { NotificationOffer } from '../components/NotificationOffer';
 import { t } from '../lib/i18n';
@@ -47,7 +47,7 @@ export function PickStreetsPage({ lang, mine, deviceId, onSave, onClose }: { lan
       )}
       <h1>{t(lang, 'pickStreets')}</h1>
       <input className="search" placeholder={t(lang, 'searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
-      {isLoading && <InlineLoading text={t(lang, 'loadingStreets')} />}
+      {isLoading && <PageLoading text={t(lang, 'loadingStreets')} />}
       <ul className="pick-list" role="radiogroup" aria-label={t(lang, 'pickStreets')}>
         {streets.map((s) => (
           <li key={s.street_id}>

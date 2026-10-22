@@ -41,3 +41,13 @@ describe('admin pages show the logo-fill loader while their data loads', () => {
     expect(el.querySelector('svg.logo-fill')).not.toBeNull();
   });
 });
+
+describe('whole-page loads are centred in the page', () => {
+  it.each([
+    [<SuggestionsPage />, '/suggestions', '/suggestions', 'Loading suggestions…'],
+    [<StatisticsPage />, '/statistics', '/statistics', 'Loading statistics…'],
+  ] as const)('%#', async (ui, path, route, text) => {
+    renderPending(ui, path, route);
+    expect((await screen.findByText(text)).closest('[role="status"]')).toHaveClass('page-loading');
+  });
+});

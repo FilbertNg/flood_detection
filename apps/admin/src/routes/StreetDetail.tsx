@@ -6,7 +6,7 @@ import { StationChart } from '../components/StationChart';
 import { ModeChip } from '../components/ReplayControl';
 import { api } from '../lib/api';
 import { dayTime, hhmm, shiftIso } from '../lib/chart';
-import { InlineLoading } from '../components/LogoFill';
+import { InlineLoading, PageLoading } from '../components/LogoFill';
 
 const metres = (v: number) => `${v.toFixed(2)} m`;
 
@@ -32,7 +32,7 @@ export function StreetDetailPage() {
     })),
   });
 
-  if (street.isLoading) return <InlineLoading text="Loading the street…" />;
+  if (street.isLoading) return <PageLoading text="Loading the street…" full />;
   if (street.isError || !detail) return <p className="pad">Could not load this street. <Link to="/" className="link">Back to the map</Link></p>;
 
   const style = LEVEL_STYLE[detail.level];

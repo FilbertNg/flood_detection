@@ -674,7 +674,11 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .bone { display: block; border-radius: 7px; background: linear-gradient(90deg, #ececec 0, #f7f7f7 40%, #ececec 80%) 0 0 / 300% 100%; animation: sk-shine 1.4s linear infinite; }
 @keyframes sk-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
 
-/* Inline loader: the logo at 32 px beside a short line (map, street list). */
+/* Whole-page loads (map, street list, report form): the loader centred in the space under the header. */
+.page-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: calc(100vh - 180px); min-height: calc(100dvh - 180px); margin: 0; padding: 16px var(--gap); color: var(--muted); font-size: 15px; text-align: center; }
+/* The street picker has its title and search box above the list: a shorter area keeps it centred without scrolling. */
+.pick .page-loading { min-height: calc(100vh - 420px); min-height: calc(100dvh - 420px); }
+/* Compact loader inside a card or sheet: the logo at 32 px beside a short line (Change location). */
 .inline-loading { display: flex; align-items: center; gap: 10px; margin: 0; padding: 16px var(--gap); color: var(--muted); font-size: 15px; }
 
 /* Loader: reduced motion. No rise, slide or shimmer: the water sits at half and the logo pulses gently. The

@@ -34,7 +34,12 @@ export function LogoFill({ size = 64 }: { size?: number }) {
   );
 }
 
-/** The loader at 32 px beside a short line, for small loads (map, street list). */
+/** The loader centred in the page, 56 px above the line that says what is loading: for whole-page loads. */
+export function PageLoading({ text }: { text: string }) {
+  return <p className="page-loading" role="status"><LogoFill size={56} />{text}</p>;
+}
+
+/** The compact loader, 32 px beside a short line: for a wait inside a card or a sheet. */
 export function InlineLoading({ text }: { text: string }) {
   return <p className="inline-loading" role="status"><LogoFill size={32} />{text}</p>;
 }

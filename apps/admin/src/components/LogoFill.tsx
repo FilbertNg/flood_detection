@@ -35,7 +35,15 @@ export function LogoFill({ size = 64 }: { size?: number }) {
   );
 }
 
-/** The loader at 32 px beside a short line that says what is loading. */
+/**
+ * The loader centred in the page, 56 px above the line that says what is loading: for whole-page loads.
+ * `full`: the page has nothing above it yet (no heading), so the loader centres in the whole window.
+ */
+export function PageLoading({ text, full }: { text: string; full?: boolean }) {
+  return <p className={full ? 'page-loading full' : 'page-loading'} role="status"><LogoFill size={56} />{text}</p>;
+}
+
+/** The compact loader, 32 px beside a short line: for a wait inside a card or a sheet. */
 export function InlineLoading({ text }: { text: string }) {
   return <p className="inline-loading" role="status"><LogoFill size={32} />{text}</p>;
 }

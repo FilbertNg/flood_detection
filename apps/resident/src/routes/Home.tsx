@@ -6,7 +6,7 @@ import { BackButton } from '../components/BackButton';
 import { Credits } from '../components/Credits';
 import { Icon } from '../components/Icons';
 import { LangSwitch } from '../components/LangSwitch';
-import { InlineLoading } from '../components/LogoFill';
+import { PageLoading } from '../components/LogoFill';
 import { StatusLine } from '../components/StatusLine';
 import { StreetMap } from '../components/StreetMap';
 import { api } from '../lib/api';
@@ -58,7 +58,7 @@ export function HomePage({ lang, mine, onLang }: Props) {
     </>
   );
 
-  if (isLoading) return <>{header}<InlineLoading text={t(lang, 'loadingMap')} /></>;
+  if (isLoading) return <>{header}<PageLoading text={t(lang, 'loadingMap')} /></>;
   if (isError || !data) return <>{header}<p className="pad">{t(lang, 'error')}</p></>;
 
   const props = data.features.map((f) => f.properties);
