@@ -51,6 +51,9 @@ LOOKAHEAD = timedelta(days=7)
 
 def naive(value) -> datetime | None:
     """Naive MYT datetime from a datetime, ISO string (with or without +08:00) or pandas value."""
+    quick = outcomes.quick_naive(value)
+    if quick is not None:
+        return quick
     if value is None or (isinstance(value, float) and pd.isna(value)) or value is pd.NaT:
         return None
     ts = pd.Timestamp(value)
