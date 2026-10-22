@@ -8,7 +8,8 @@ Our entry for the [Sime Darby Property University Hackathon 2026](https://www.si
 | --- | --- |
 | Resident app | https://floodready-bbr.pages.dev |
 | Admin app (SDP township team, login required) | https://floodready-admin.pages.dev |
-| Pitch deck and demo video | links added at submission (23 Oct 2026) |
+| Pitch deck and demo video | [Pitch Deck](docs\bogosort-pitch-deck-final.pdf) |
+| Demo video | !() |
 
 The apps are hosted on Cloudflare Pages. The API behind them runs on a team laptop and is reached through Tailscale Funnel, so the apps show data only while that laptop is on.
 
@@ -56,35 +57,10 @@ So the first street alerts went out 45 minutes before the river crossed its warn
 
 The replay runs in the Admin app and with `scripts/demo_replay.py`. Everything it creates is labelled Replay and left out of the statistics.
 
-## What we measured, including what didn't work
-
-Every number below comes from the full JPS archive (79 river stations and 233 rain gauges, January 2024 to October 2026). The evidence for each is in [docs/findings.md](docs/findings.md).
-
-- **Our machine-learning model does not raise alerts, because it failed the test we set for it.** Before the final run we wrote down a bar: the model may raise a street to Watch only if it adds at least 30 minutes of warning, at no more than 1.5 times the false alarms, on stations it has never seen.
-  - On inland rivers it passed. The JPS rules alone caught 795 of 890 river crossings with a median 90 minutes' warning. Rules plus the model caught 823 with 135 minutes, at 1.21 times the false alarms.
-  - On 49 stations the model had never seen, it added only 15 minutes. So the official JPS thresholds set every level, and the model's probability is shown beside them for information. We kept the bar where it was. ([evaluation report](docs/evaluation-report.md))
-- **Some public gauges are dead, and the data doesn't say so.** The river gauge at Kg. Perepat (`26558`) has been frozen since July 2024 and is still published as a live reading. Through about 60 storms it moved at most 0.08 m, while the river at Pekan Meru rose. Our quality checks found it and five other dead river gauges, and a rain gauge that reported 2,113 mm in one month. Across the archive they blank 193,723 river readings, but never one at or above an alert level. The 85 BBR streets that rely on Kg. Perepat use the nearest working river station instead, and the app says so.
-- **Gridded rain misses flash floods.** On 12 Nov 2024, eight gridded rain sources showed at most 6.8 mm where the JPS gauge recorded 79 mm, so the system uses station rain only.
-- **Near the coast, a high river is usually the tide.** At the two tidal stations, Bandar Klang and Pandamaran, nearly every warning-level crossing comes within 1.5 hours of high tide, often with no rain at all. Inland flash floods and spring tides are judged separately.
-- **The terrain map points at the right streets.** 48 of the 61 street segments named in the residents' memorandum fall in the top two of five susceptibility classes, where chance would put 40%. The segments are not independent (38 of them are on Jalan Makyong), so we treat this as a check, not a score.
-- **We limited notifications so people keep listening.** In April 2024, a stormy month, the busiest street would have received 65 alerts. We now push Watch at most once per street every 12 hours and always push Warning and Danger, which brings that street down to 30. Every alert is still shown in the app.
 
 ## How it works
 
-```text
-JPS Infobanjir · MET Malaysia · Open-Meteo · OpenStreetMap · FABDEM terrain
-        │  loggers every 15 min, history archive, street and terrain builders
-        ▼
-quality checks  →  station features  →  JPS rules (+ ML probability, shown only)
-        │
-        ▼
-street level (risk matrix: trigger × terrain susceptibility)  →  alerts, all-clears, outlook
-        │  FastAPI + SQLite, Web Push
-        ▼
-Resident app (PWA)          Admin app
-        ▲                        │
-        └──── residents' answers confirm or reject alerts ────┘
-```
+![workflow](docs/figures/program-workflow.jpeg)
 
 Stack: Python 3.12 (pandas, scikit-learn, FastAPI, SQLAlchemy), React with Vite, TypeScript and react-leaflet, a pnpm workspace, and Web Push with VAPID keys. Python and web tests run in CI on every pull request; the Python suite has 820 tests.
 
