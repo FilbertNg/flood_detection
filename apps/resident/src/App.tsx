@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, Route, Routes, useLocation } from 'react-router';
 import type { Lang } from '@floodready/shared';
 import { LangSwitch } from './components/LangSwitch';
 import { LogoMark } from './components/Logo';
+import { LogoFill } from './components/LogoFill';
 import { api } from './lib/api';
 import { t } from './lib/i18n';
 import { loadPrefs, savePrefs, type Prefs } from './lib/prefs';
+import { useDelayed } from './lib/useDelayed';
 import { usePushSync } from './push/usePushSync';
 import { HomePage } from './routes/Home';
 import { PickStreetsPage } from './routes/PickStreets';
@@ -24,12 +26,29 @@ export function App() {
   const mine = prefs.streets[0];
   const streets = useQuery({ queryKey: ['streets'], queryFn: () => api.streets(), enabled: !!mine });
   const place = (mine && streets.data?.features.find((f) => f.properties.street_id === mine)?.properties.name) || t(lang, 'township');
+  // First open: wait for the first status answer (live or replay) behind a splash, shown only if it takes
+  // over 300 ms. One retry, then the screens take over and show their own errors.
+  const boot = useQuery({ queryKey: ['status'], queryFn: api.status, retry: 1 });
+  // A one-time gate: once the first answer (or error) is in, later refetches never bring the splash back.
+  const booted = useRef(false);
+  if (!boot.isPending) booted.current = true;
+  const splash = useDelayed(!booted.current, 300);
 
   // The street picker needs no live line, and the report form shows no data at all, so it gets no line;
   // every screen that shows data labels a replay (replayed data must be shown as such).
   const map = path.startsWith('/map');
   // The first-visit onboarding (/ with no street saved) is one full screen with no header.
   const onboarding = path === '/' && !mine;
+
+  if (!booted.current) {
+    return splash ? (
+      <div className="splash" role="status" aria-label={`${t(lang, 'appName')}: ${t(lang, 'splashChecking')}`}>
+        <LogoFill size={104} />
+        <b>{t(lang, 'appName')}</b>
+        <small>{t(lang, 'splashChecking')}</small>
+      </div>
+    ) : null;
+  }
 
   return (
     <div className="app">

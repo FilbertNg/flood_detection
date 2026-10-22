@@ -68,3 +68,46 @@ describe('App status line', () => {
     expect(document.querySelector('.status-chip')).toBeNull();
   });
 });
+
+describe('App splash', () => {
+  function renderSlow(delayMs: number) {
+    let answer: () => void = () => {};
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (!url.includes('/status')) return Promise.resolve(new Response(JSON.stringify(streets), { status: 200 }));
+      return new Promise<Response>((resolve) => {
+        answer = () => resolve(new Response(JSON.stringify(status), { status: 200 }));
+        if (delayMs >= 0) setTimeout(answer, delayMs);
+      });
+    }));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/']}><App /></MemoryRouter></QueryClientProvider>);
+    return () => answer();
+  }
+  const splash = () => screen.queryByRole('status', { name: /Flood-Ready/ });
+
+  it('shows the splash only after 300 ms of loading, and removes it when the data arrives', async () => {
+    const answer = renderSlow(-1);
+    await new Promise((r) => setTimeout(r, 150));
+    expect(splash()).toBeNull();
+    await waitFor(() => expect(splash()).not.toBeNull(), { timeout: 1000 });
+    expect(splash()).toHaveTextContent('Checking the river and rain…');
+    expect(splash()!.querySelector('svg.logo-fill')).toHaveAttribute('width', '104');
+    answer();
+    expect(await screen.findByRole('button', { name: 'Find my street' })).toBeInTheDocument();
+    expect(splash()).toBeNull();
+  });
+
+  it('never flashes on a fast load', async () => {
+    renderSlow(50);
+    expect(await screen.findByRole('button', { name: 'Find my street' })).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 400));
+    expect(splash()).toBeNull();
+  });
+
+  it('goes on to the app when the first status request fails, so the screens can show their own errors', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url.includes('/status') ? {} : streets), { status: url.includes('/status') ? 500 : 200 })));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/']}><App /></MemoryRouter></QueryClientProvider>);
+    expect(await screen.findByRole('button', { name: 'Find my street' }, { timeout: 4000 })).toBeInTheDocument();
+  });
+});

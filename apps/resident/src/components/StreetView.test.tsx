@@ -148,3 +148,32 @@ describe('StreetView sky view follows the street page', () => {
     expect(hero.compareDocumentPosition(page.querySelector('.ptiles')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+describe('StreetView loading skeleton', () => {
+  it('holds the page with a "Loading your street" status, then the real page replaces it', async () => {
+    let answer: () => void = () => {};
+    const detail = { ...streetDetail, level: 'normal' as const, active_alert: null };
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      if (url.includes('open-meteo') || url.includes('/stations')) return Promise.resolve(new Response('[]', { status: 200 }));
+      return new Promise<Response>((resolve) => { answer = () => resolve(new Response(JSON.stringify(detail), { status: 200 })); });
+    }));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/street/BBR-jalan-makyong']}>
+          <Routes><Route path="/street/:id" element={<StreetView id="BBR-jalan-makyong" lang="ms" deviceId="dev_1" showBack={false} />} /></Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const sk = screen.getByRole('status', { name: 'Memuatkan jalan anda' });
+    expect(sk).toHaveTextContent('Memuatkan jalan anda…');
+    expect(sk.querySelector('.sk-hero svg.logo-fill')).toHaveAttribute('width', '64');
+    const tiles = sk.querySelectorAll('.ptiles .sk-tile');
+    expect(tiles).toHaveLength(5);
+    expect(tiles[4]).toHaveAttribute('data-wide', 'true');
+    for (const tile of tiles) expect(tile.querySelectorAll('.bone').length).toBeGreaterThanOrEqual(2);
+    answer();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Jalan Makyong' })).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Memuatkan jalan anda' })).toBeNull();
+  });
+});

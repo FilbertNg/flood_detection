@@ -5,6 +5,7 @@ import { LEVEL_LABEL, type Lang, type Level } from '@floodready/shared';
 import { AlertHistory } from './AlertHistory';
 import { BackButton } from './BackButton';
 import { Icon, WeatherIcon } from './Icons';
+import { LogoFill } from './LogoFill';
 import { SkyBackdrop } from './SkyHero';
 import { SkyView } from './SkyView';
 import { ModelTile, PlainTile, RainNextTile, RainNowTile, RiverTile, StreetTile, TideTile, TileGrid, UpdatedTile, WhyTile } from './PanelTiles';
@@ -29,6 +30,15 @@ const SOLID: Record<Level, string> = { normal: '#2e7d32', watch: '#b26a00', warn
 const TINT: Record<Level, string> = { normal: '#7ee0a1', watch: '#ffd166', warning: '#ff9f43', danger: '#ff5d5d' };
 
 const FIFTEEN_MIN = 15 * 60_000;
+
+/** Placeholder bars per skeleton tile, [height, width]: four half tiles and one full-width (the proposal's). */
+const SKELETON: [number, string][][] = [
+  [[10, '55%'], [26, '45%'], [10, '80%']],
+  [[10, '60%'], [26, '40%'], [10, '70%']],
+  [[10, '50%'], [26, '50%'], [10, '75%']],
+  [[10, '45%'], [26, '35%'], [10, '65%']],
+  [[10, '35%'], [40, '100%']],
+];
 
 /** Open-Meteo hourly weather for the data day; any failure means "no weather", never an error screen. */
 async function fetchWeather(dataTime: string) {
@@ -118,7 +128,22 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft, below
     refetchInterval: 60_000,
   });
 
-  if (isLoading) return <p className="pad">{t(lang, 'loading')}</p>;
+  if (isLoading) {
+    // The page's shape while the street loads: the hero card and the tile grid, so nothing jumps when it arrives.
+    return (
+      <article className="street" role="status" aria-label={t(lang, 'loadingStreetLabel')}>
+        {showBack && <BackButton lang={lang} />}
+        <div className="sk-hero"><LogoFill size={64} /><small>{t(lang, 'loadingStreet')}</small></div>
+        <div className="ptiles" aria-hidden="true">
+          {SKELETON.map((bones, i) => (
+            <div key={i} className="sk-tile" data-wide={i === SKELETON.length - 1 || undefined}>
+              {bones.map(([h, w], j) => <span key={j} className="bone" style={{ height: h, width: w }} />)}
+            </div>
+          ))}
+        </div>
+      </article>
+    );
+  }
   if (isError || !data) return <p className="pad">{t(lang, 'error')}</p>;
 
   const hours = weather.data ?? null;

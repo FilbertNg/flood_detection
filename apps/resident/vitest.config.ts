@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
-    css: false,
+    // Stylesheets are stubbed out, except the app's own, which the loader test reads as text (?raw).
+    css: { include: [/src\/styles\.css/] },
   },
 });

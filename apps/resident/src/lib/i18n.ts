@@ -1,6 +1,6 @@
 import type { Lang } from '@floodready/shared';
 
-const STRINGS = {
+export const STRINGS = {
   en: {
     appName: 'Flood-Ready',
     township: 'Bandar Bukit Raja',
@@ -68,7 +68,11 @@ const STRINGS = {
     of5: 'of 5',
     back: 'Back',
     noStreets: 'Pick one or more streets to follow.',
-    loading: 'Loading…',
+    splashChecking: 'Checking the river and rain…',
+    loadingStreet: 'Loading your street…',
+    loadingStreetLabel: 'Loading your street',
+    loadingMap: 'Loading the flood map…',
+    loadingStreets: 'Loading the street list…',
     error: 'Could not reach the server.',
     creditsShort: '© OpenStreetMap contributors · JPS Public Infobanjir · MET Malaysia · Open-Meteo · FABDEM (Univ. of Bristol, CC BY-NC-SA) · ESA WorldCover',
     verifyTitle: 'Is it flooding here?',
@@ -367,7 +371,11 @@ const STRINGS = {
     of5: 'daripada 5',
     back: 'Kembali',
     noStreets: 'Pilih satu atau lebih jalan untuk diikuti.',
-    loading: 'Memuatkan…',
+    splashChecking: 'Menyemak sungai dan hujan…',
+    loadingStreet: 'Memuatkan jalan anda…',
+    loadingStreetLabel: 'Memuatkan jalan anda',
+    loadingMap: 'Memuatkan peta banjir…',
+    loadingStreets: 'Memuatkan senarai jalan…',
     error: 'Tidak dapat menghubungi pelayan.',
     creditsShort: '© Penyumbang OpenStreetMap · JPS Public Infobanjir · MET Malaysia · Open-Meteo · FABDEM (Univ. of Bristol, CC BY-NC-SA) · ESA WorldCover',
     verifyTitle: 'Adakah banjir di sini?',
