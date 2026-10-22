@@ -30,7 +30,7 @@ export function SuggestionsPage() {
       {save.isError && <p role="alert" className="error">Could not save the change. Try again.</p>}
       {q.data && ranked.length === 0 && <p className="muted">No suggestions yet. They appear once enough confirmed events or station history exist.</p>}
       {ranked.map((s) => (
-        <SuggestionCard key={s.id} s={s} busy={save.isPending} onStatus={(status, note) => save.mutate({ id: s.id, status, note })} />
+        <SuggestionCard key={s.id} s={s} busy={save.isPending} onSave={(status, note) => save.mutateAsync({ id: s.id, status, note })} />
       ))}
     </main>
   );
