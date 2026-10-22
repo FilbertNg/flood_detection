@@ -21,9 +21,9 @@ function stubApi() {
   }));
 }
 
-function renderHome(at: string, saved: string[], onSave = vi.fn()) {
+function renderHome(at: string, saved: string[], onSave = vi.fn(), introDone = true, onIntroDone = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const el = <StreetHome lang="en" deviceId="dev_1" saved={saved} onSave={onSave} />;
+  const el = <StreetHome lang="en" deviceId="dev_1" saved={saved} onSave={onSave} introDone={introDone} onIntroDone={onIntroDone} />;
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[at]}>
@@ -50,6 +50,23 @@ describe('StreetHome (one street)', () => {
   it('shows the start screen when no street is saved', async () => {
     renderHome('/', []);
     expect(await screen.findByRole('heading', { level: 1, name: 'Know before the water reaches your street' })).toBeInTheDocument();
+  });
+
+  it('shows the onboarding screen first on a new visit, even with a street saved, offering to open it', async () => {
+    const onIntroDone = vi.fn();
+    renderHome('/', ['BBR-persiaran-batu-belah'], vi.fn(), false, onIntroDone);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Know before the water reaches your street' })).toBeInTheDocument();
+    const open = await screen.findByRole('button', { name: 'Open Persiaran Batu Belah' });
+    expect(screen.getByRole('link', { name: 'Choose another street' })).toHaveAttribute('href', '/streets');
+    expect(screen.queryByRole('button', { name: 'Find my street' })).toBeNull();
+    fireEvent.click(open);
+    expect(onIntroDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens a street link (/street/:id, e.g. from a notification) directly, without the onboarding screen', async () => {
+    renderHome('/street/BBR-persiaran-batu-belah', ['BBR-persiaran-batu-belah'], vi.fn(), false);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Persiaran Batu Belah' }, slow)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Know before the water reaches your street' })).toBeNull();
   });
 
   it('opens straight on my street, with no swiping and no page dots', async () => {

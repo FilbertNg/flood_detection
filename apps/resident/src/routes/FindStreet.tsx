@@ -6,7 +6,7 @@ import { LogoMark } from '../components/Logo';
 import { OnboardingMap } from '../components/OnboardingMap';
 import { api } from '../lib/api';
 import { currentPosition, nearestStreet } from '../lib/geo';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 
 /** Further than this from every BBR street means the phone is outside the township. */
 const OUTSIDE_M = 1000;
@@ -28,16 +28,19 @@ function LocateIcon() {
 }
 
 /**
- * First-visit screen when no street is saved (docs/design/onboarding-proposal.html): one screen with no
+ * Onboarding (docs/design/onboarding-proposal.html), the first screen of every visit: one screen with no
  * scrolling, no app header and no language switch. The red illustration and the logo fill the top; a
  * white card holds the line and the two actions. The location is asked for only after "Find my street"
  * is tapped, and the nearest street is found on the phone from the street map: the position is not sent.
  */
-export function FindStreetPage({ lang, onSave }: { lang: Lang; onSave: (ids: string[]) => void }) {
+export function FindStreetPage({ lang, onSave, mine, onOpen }: { lang: Lang; onSave: (ids: string[]) => void; mine?: string; onOpen?: () => void }) {
   const client = useQueryClient();
   const [state, setState] = useState<State>({ k: 'idle' });
   // Replayed data must be labelled; this screen has no live line, so it never says "Live".
   const { data: status } = useQuery({ queryKey: ['status'], queryFn: api.status, refetchInterval: 10_000 });
+  // A returning resident (a street saved): the card opens their street instead of finding one.
+  const streets = useQuery({ queryKey: ['streets'], queryFn: () => api.streets(), enabled: !!mine });
+  const mineName = mine && streets.data?.features.find((f) => f.properties.street_id === mine)?.properties.name;
 
   const locate = async () => {
     setState({ k: 'busy' });
@@ -73,7 +76,13 @@ export function FindStreetPage({ lang, onSave }: { lang: Lang; onSave: (ids: str
 
       <section className="onb-card" aria-labelledby="onb-title">
         <h1 id="onb-title">{t(lang, 'onbTitle')} <em>{t(lang, 'onbTitleEm')}</em></h1>
-        {state.k === 'idle' && (
+        {state.k === 'idle' && mine && (
+          <>
+            <button type="button" className="onb-find" onClick={onOpen}>{mineName ? tf(lang, 'onbOpen', { street: mineName }) : t(lang, 'onbOpenMine')}</button>
+            <Link to="/streets" className="onb-link">{t(lang, 'onbAnother')}</Link>
+          </>
+        )}
+        {state.k === 'idle' && !mine && (
           <>
             <button type="button" className="onb-find" onClick={locate}><LocateIcon />{t(lang, 'onbFind')}</button>
             {list}

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { status, streets } from '@floodready/shared/mocks';
@@ -23,6 +23,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('App header', () => {
@@ -109,5 +110,34 @@ describe('App splash', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/']}><App /></MemoryRouter></QueryClientProvider>);
     expect(await screen.findByRole('button', { name: 'Find my street' }, { timeout: 4000 })).toBeInTheDocument();
+  });
+});
+
+describe('App onboarding on every visit', () => {
+  const saved = () => localStorage.setItem('floodready.prefs.v1', JSON.stringify({ lang: 'en', deviceId: 'device_test_000001', streets: ['BBR-jalan-makyong'] }));
+
+  it('opens on the onboarding screen with a street saved, then the home page once, for the rest of the visit', async () => {
+    saved();
+    renderAt('/');
+    const open = await screen.findByRole('button', { name: 'Open Jalan Makyong' });
+    expect(document.querySelector('header.top')).toBeNull();
+    fireEvent.click(open);
+    expect(await screen.findByRole('link', { name: /Flood-Ready/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Jalan Makyong' })).toBeNull();
+    // Same visit (tab): the home page opens directly.
+    cleanup();
+    renderAt('/');
+    expect(await screen.findByRole('link', { name: /Flood-Ready/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Jalan Makyong' })).toBeNull();
+  });
+
+  it('shows the onboarding screen again on a new visit', async () => {
+    saved();
+    renderAt('/');
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Jalan Makyong' }));
+    cleanup();
+    sessionStorage.clear(); // the tab was closed
+    renderAt('/');
+    expect(await screen.findByRole('button', { name: 'Open Jalan Makyong' })).toBeInTheDocument();
   });
 });
