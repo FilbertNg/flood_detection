@@ -50,8 +50,7 @@ def build_context(township_id: str = "BBR") -> EngineContext:
         a = archive()
         return a[(a.time_local >= pd.Timestamp(start)) & (a.time_local <= pd.Timestamp(end))]
 
-    def load_live(since: datetime) -> pd.DataFrame:
-        return live.load_live_readings(DATA / "raw" / "jps_live", since, set(ids), archive_dir=hist)
+    load_live = live.LiveReadingsCache(DATA / "raw" / "jps_live", set(ids), hist)
 
     def forecast(at: datetime) -> list[dict]:
         files = sorted(glob.glob(str(DATA / "raw" / "openmeteo_live" / "*.parquet")))

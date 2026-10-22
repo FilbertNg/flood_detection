@@ -251,3 +251,62 @@ def test_a_level_that_falls_gently_to_zero_keeps_its_zero(tmp_path):
     live_dir = _live_wl(tmp_path, "DRAIN", [T("16:30"), T("16:45"), T("17:00")], [0.08, 0.04, 0.0])
     out = live.load_live_readings(live_dir, T("16:00"), {"DRAIN"}, stations=None).set_index("time_local")
     assert out.loc[T("17:00"), "wl_m"] == 0.0
+
+
+# ---------- LiveReadingsCache (the API's live loader) ----------
+
+def _cache_dirs(tmp_path, days=("2026-10-16", "2026-10-17")):
+    live_dir, hist = tmp_path / "jps_live", tmp_path / "jps_hist"
+    for kind in ("wl", "rf"):
+        (live_dir / kind).mkdir(parents=True)
+        (hist / kind).mkdir(parents=True)
+        for d in days:
+            (live_dir / kind / f"{d}.parquet").write_bytes(b"x")
+    (hist / "rf" / "26558.parquet").write_bytes(b"x")
+    return live_dir, hist
+
+
+def _spy(monkeypatch):
+    calls = []
+
+    def fake(live_dir, since, graph_ids=None, archive_dir=None, **kw):
+        calls.append(since)
+        return pd.DataFrame({"time_local": [since]})
+    monkeypatch.setattr(live, "load_live_readings", fake)
+    return calls
+
+
+def test_live_cache_starts_at_the_first_logged_day(tmp_path, monkeypatch):
+    calls = _spy(monkeypatch)
+    live_dir, hist = _cache_dirs(tmp_path)
+    load = live.LiveReadingsCache(live_dir, {"26558"}, hist)
+    load(datetime(2024, 11, 1))                                     # an old admin window: nothing live before 16 Oct
+    load(datetime(2026, 10, 17, 9, 0))                              # the engine's window is kept as asked
+    assert calls == [datetime(2026, 10, 16), datetime(2026, 10, 17, 9, 0)]
+
+
+def test_live_cache_reuses_results_until_a_file_changes(tmp_path, monkeypatch):
+    import os
+    calls = _spy(monkeypatch)
+    live_dir, hist = _cache_dirs(tmp_path)
+    load = live.LiveReadingsCache(live_dir, {"26558"}, hist)
+    first = load(datetime(2024, 1, 1))
+    load(datetime(2025, 6, 1))                                      # same start after the clamp: cached
+    assert len(calls) == 1
+    first.loc[0, "time_local"] = datetime(2000, 1, 1)               # callers get a copy
+    assert load(datetime(2024, 1, 1)).time_local[0] == datetime(2026, 10, 16)
+    f = live_dir / "wl" / "2026-10-17.parquet"
+    f.write_bytes(b"xy")                                            # the logger appended a reading
+    load(datetime(2024, 1, 1))
+    assert len(calls) == 2
+    a = hist / "rf" / "26558.parquet"
+    os.utime(a, ns=(a.stat().st_atime_ns, a.stat().st_mtime_ns + 10**9))   # the archiver rewrote a gauge
+    load(datetime(2024, 1, 1))
+    assert len(calls) == 3
+
+
+def test_live_cache_without_live_files_passes_since_through(tmp_path, monkeypatch):
+    calls = _spy(monkeypatch)
+    live_dir, hist = _cache_dirs(tmp_path, days=())
+    live.LiveReadingsCache(live_dir, {"26558"}, hist)(datetime(2024, 1, 1))
+    assert calls == [datetime(2024, 1, 1)]
