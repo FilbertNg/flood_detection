@@ -285,6 +285,26 @@ button { font: inherit; cursor: pointer; }
   * { transition: none !important; animation: none !important; }
 }
 
+/* Loader (LogoFill, docs/design/loader-proposal.html, the same as the resident app): water fills the pin
+   like a cup over a 2.6 s loop (rise to full by 70 %, hold, drain), the waves sliding sideways. */
+.logo-fill { display: block; flex: none; }
+.logo-fill .cup { fill: var(--brand-soft); }
+.logo-fill .rim { fill: none; stroke: #ea0009; stroke-width: 2.2; opacity: 0.35; }
+.logo-fill .water { animation: lf-rise 2.6s cubic-bezier(.45, .05, .35, 1) infinite; }
+.logo-fill .wave { fill: #ea0009; animation: lf-slide 1.1s linear infinite; }
+.logo-fill .wave.back { fill: #ff5a4f; opacity: 0.45; animation-duration: 1.7s; }
+@keyframes lf-rise { 0% { transform: translateY(62px); } 70% { transform: translateY(4px); } 85% { transform: translateY(4px); } 100% { transform: translateY(62px); } }
+@keyframes lf-slide { from { transform: translateX(0); } to { transform: translateX(-24px); } }
+@keyframes lf-pulse { 50% { opacity: 0.6; } }
+.inline-loading { display: flex; align-items: center; gap: 10px; margin: 0; padding: 12px 0; color: var(--muted); font-size: 0.95rem; }
+/* Loader: reduced motion. No rise or slide: the water sits at half and the logo pulses gently. More specific
+   than the rule above (which turns every animation off with !important), so the still water and the pulse win. */
+@media (prefers-reduced-motion: reduce) {
+  .logo-fill .water { animation: none !important; transform: translateY(30px); }
+  .logo-fill .wave { animation: none !important; }
+  .logo-fill { animation: lf-pulse 1.6s ease-in-out infinite !important; }
+}
+
 @page { size: A4; margin: 15mm; }
 @media print {
   :root, body { background: #fff; }

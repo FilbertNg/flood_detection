@@ -639,6 +639,7 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .onb-link:hover { text-decoration: underline; }
 .onb-card :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .onb-status { display: grid; gap: 4px; }
+.onb-locating { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .onb-status p, .onb-msg, .onb-confirm p { margin: 0; font-size: 15px; }
 .onb-status .onb-fine { font-size: 13px; color: var(--muted); }
 .onb-confirm { display: grid; gap: 10px; }

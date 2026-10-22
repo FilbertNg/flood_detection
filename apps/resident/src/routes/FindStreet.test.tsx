@@ -54,6 +54,7 @@ describe('FindStreetPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Find my street' }));
     expect(await screen.findByText('Finding your street…')).toBeInTheDocument();
     expect(screen.getByText('Your location stays on this phone.')).toBeInTheDocument();
+    expect(screen.getByText('Finding your street…').closest('[role="status"]')!.querySelector('svg.logo-fill')).not.toBeNull();
     resolve({ lat: 3.0899, lon: 101.4251 });
     expect(await screen.findByText('Is this your street?')).toBeInTheDocument();
   });

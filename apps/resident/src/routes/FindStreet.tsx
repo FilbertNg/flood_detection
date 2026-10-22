@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import type { Lang, StreetProperties } from '@floodready/shared';
 import { LogoMark } from '../components/Logo';
+import { LogoFill } from '../components/LogoFill';
 import { OnboardingMap } from '../components/OnboardingMap';
 import { api } from '../lib/api';
 import { currentPosition, nearestStreet } from '../lib/geo';
@@ -90,7 +91,7 @@ export function FindStreetPage({ lang, onSave, mine, onOpen }: { lang: Lang; onS
         )}
         {state.k === 'busy' && (
           <div role="status" className="onb-status">
-            <p>{t(lang, 'findLocating')}</p>
+            <p className="onb-locating"><LogoFill size={32} />{t(lang, 'findLocating')}</p>
             <p className="onb-fine">{t(lang, 'findPrivacy')}</p>
           </div>
         )}

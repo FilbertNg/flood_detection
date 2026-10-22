@@ -6,6 +6,7 @@ import { currentPosition, nearestStreet } from '../lib/geo';
 import { t } from '../lib/i18n';
 import { PickStreetsPage } from '../routes/PickStreets';
 import { Icon } from './Icons';
+import { InlineLoading } from './LogoFill';
 
 /** Further than this from every BBR street means the phone is outside the township. */
 const OUTSIDE_M = 1000;
@@ -73,7 +74,7 @@ export function ChangeLocation({ lang, mine, deviceId, onSave }: { lang: Lang; m
                   </div>
                 ) : (
                   <div className="find-actions">
-                    {state.k === 'busy' && <p role="status" className="find-note">{t(lang, 'findLocating')}</p>}
+                    {state.k === 'busy' && <InlineLoading text={t(lang, 'findLocating')} />}
                     {state.k === 'outside' && <p role="status">{t(lang, 'findOutside')}</p>}
                     {state.k === 'failed' && <p role="alert" className="form-error">{t(lang, 'findFailed')}</p>}
                     <button type="button" className="primary" onClick={locate} disabled={state.k === 'busy'}>{t(lang, 'findUseLocation')}</button>
