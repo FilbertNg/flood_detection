@@ -57,6 +57,8 @@ const json = (body: unknown, method: string): RequestInit => ({
 export const api = {
   login: (email: string, password: string) =>
     request<LoginResponse>('/admin/login', json({ email, password }, 'POST'), { login: true }),
+  /** Read-only preview token without an account; 404 when the server has ADMIN_PREVIEW off. */
+  preview: () => request<LoginResponse>('/admin/preview', { method: 'POST' }, { login: true }),
   status: () => request<Status>('/status'),
   streets: (township = 'BBR') => request<StreetCollection>(`/streets?township=${township}`),
   street: (id: string) => request<StreetDetail>(`/streets/${encodeURIComponent(id)}`),

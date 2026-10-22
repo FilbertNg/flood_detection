@@ -127,6 +127,17 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1") -> tuple:
         limiter.succeeded(body.email)
         return {"token": auth.issue_token(who.email, who.role, key)}
 
+    @app.post(f"{api}/admin/preview")
+    def preview():
+        """Read-only preview token without a password; only while ADMIN_PREVIEW=1."""
+        if not auth.preview_flag():
+            raise HTTPException(status_code=404, detail="Not Found")
+        with tx() as conn:
+            key = auth.secret(conn)
+        if key is None:
+            raise HTTPException(status_code=503, detail="admin login not configured")
+        return {"token": auth.issue_token(auth.PREVIEW_EMAIL, "viewer", key)}
+
     @app.get(f"{api}/admin/stats")
     def get_stats(_who: Annotated[auth.Principal, Depends(read)], date_from: Annotated[date, Query(alias="from")],
                   date_to: Annotated[date, Query(alias="to")]):
@@ -168,8 +179,10 @@ def install(app: FastAPI, *, ctx, runner, api: str = "/api/v1") -> tuple:
             return report_mod.suggestion_view(repo.get_suggestion(conn, suggestion_id), names)
 
     @app.get(f"{api}/admin/answers")
-    def get_answers(_who: Annotated[auth.Principal, Depends(read)],
+    def get_answers(who: Annotated[auth.Principal, Depends(read)],
                     review_status: Literal["pending", "valid", "spam"] | None = None):
+        if who.is_preview:
+            raise HTTPException(status_code=403, detail="Residents' answers are not shown in the preview")
         with tx() as conn:
             key = auth.upload_key(conn)
             return [answer_view(r, key) for r in repo.list_answers(conn, review_status=review_status)]

@@ -19,7 +19,10 @@ const NAV: { group: string; links: { to: string; label: string; end?: boolean }[
 
 export function App() {
   const token = useSyncExternalStore(auth.subscribe, auth.getToken);
+  const preview = useSyncExternalStore(auth.subscribe, auth.isPreview);
   if (!token) return <LoginPage />;
+  // The preview never shows residents' answers, so the Review page is left out of it.
+  const nav = preview ? NAV.map((g) => ({ ...g, links: g.links.filter((l) => l.to !== '/review') })) : NAV;
 
   return (
     <div className="shell">
@@ -32,7 +35,7 @@ export function App() {
           </span>
         </span>
         <nav aria-label="Main">
-          {NAV.map((g) => {
+          {nav.map((g) => {
             const id = `nav-${g.group.toLowerCase().replace(' ', '-')}`;
             return (
               <div key={g.group} className="nav-group">
@@ -50,16 +53,21 @@ export function App() {
             );
           })}
         </nav>
-        <button type="button" className="signout" onClick={() => auth.logout()}>Sign out</button>
+        <button type="button" className="signout" onClick={() => auth.logout()}>{preview ? 'Leave preview' : 'Sign out'}</button>
       </aside>
       <div className="main">
+        {preview && (
+          <p className="preview-banner" role="status" aria-label="Read-only preview">
+            Read-only preview: changes are switched off and residents' answers are hidden.
+          </p>
+        )}
         <Routes>
           <Route path="/" element={<OpsMapPage />} />
           <Route path="/street/:id" element={<StreetDetailPage />} />
           <Route path="/statistics" element={<StatisticsPage />} />
           <Route path="/reports" element={<ReportPage />} />
           <Route path="/suggestions" element={<SuggestionsPage />} />
-          <Route path="/review" element={<ReviewPage />} />
+          <Route path="/review" element={preview ? <Navigate to="/" replace /> : <ReviewPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

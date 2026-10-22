@@ -23,6 +23,19 @@ export function LoginPage() {
     }
   }
 
+  async function onPreview() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { token } = await api.preview();
+      auth.login(token, { preview: true });
+    } catch {
+      setError('The read-only preview is not available right now.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="login">
       <form className="card login-card" onSubmit={onSubmit}>
@@ -41,6 +54,7 @@ export function LoginPage() {
         </label>
         {error && <p role="alert" className="error">{error}</p>}
         <button type="submit" className="primary" disabled={busy}>Sign in</button>
+        <button type="button" className="preview-btn" disabled={busy} onClick={onPreview}>Try a read-only preview</button>
       </form>
     </main>
   );

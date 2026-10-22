@@ -1,4 +1,6 @@
+import { useSyncExternalStore } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { auth } from '../auth';
 import type { Priority, Suggestion } from '@floodready/shared';
 import { SuggestionCard } from '../components/SuggestionCard';
 import { api } from '../lib/api';
@@ -10,6 +12,7 @@ const FROM = '2024-01-01';
 
 export function SuggestionsPage() {
   const qc = useQueryClient();
+  const preview = useSyncExternalStore(auth.subscribe, auth.isPreview);
   const to = todayIso();
   const key = ['suggestions', FROM, to];
   const q = useQuery({ queryKey: key, queryFn: () => api.suggestions(FROM, to) });
@@ -31,7 +34,8 @@ export function SuggestionsPage() {
       {save.isError && <p role="alert" className="error">Could not save the change. Try again.</p>}
       {q.data && ranked.length === 0 && <p className="muted">No suggestions yet. They appear once enough confirmed events or station history exist.</p>}
       {ranked.map((s) => (
-        <SuggestionCard key={s.id} s={s} busy={save.isPending} onSave={(status, note) => save.mutateAsync({ id: s.id, status, note })} />
+        <SuggestionCard key={s.id} s={s} busy={save.isPending} readOnly={preview}
+          onSave={(status, note) => save.mutateAsync({ id: s.id, status, note })} />
       ))}
     </main>
   );

@@ -23,7 +23,7 @@ The contract between the engine/API (Python) and the two apps (TypeScript). It i
 - **Alerts:** `GET /alerts` and `StreetDetail.history` now include `watch` alerts (`alerts.alert_levels` in `config/rules.yaml` is `[watch, warning, danger]`). A rising level re-alerts inside the cooldown. Each alert has `push: boolean` (level in `alerts.push_levels`; since 17 Oct 2026 `[watch, warning, danger]`, so Watch is pushed too); all-clears have `push: false`. The nowcast `window` is set only from `alerts.window_from` (default `warning`), so Watch streets have `window: null`. The all-clear is held until the alert is `alerts.clear_after_min` (60 min) old; until then the alert stays in `active` (`GET /alerts?active=true`, `StreetDetail.active_alert`) even if the street reads Normal, and a level that returns inside the hold is not re-pushed. Behaviour only: no field or shape changes.
 - **IDs:** `street_id` = `<TOWNSHIP_ID>-<slug>` (e.g. `BBR-jalan-makyong`); `township_id` from `config/townships.yaml`; `graph_id` = JPS Infobanjir station ID (e.g. `26558`, `PEKANMERU`).
 - **Errors:** `{"detail": "..."}` (FastAPI default) with 400 (invalid input), 401 (missing or invalid token), 404 (unknown ID), 409 (duplicate answer), 422 (validation).
-- **Admin auth:** `Authorization: Bearer <token>` from `POST /admin/login`.
+- **Admin auth:** `Authorization: Bearer <token>` from `POST /admin/login`, or a read-only preview token from `POST /admin/preview` (only while the API has `ADMIN_PREVIEW=1`; 404 otherwise). A preview token has viewer rights and gets 403 on `GET /admin/answers`.
 - **Sensor auth:** `Authorization: Bearer <SENSOR_TOKEN>`.
 - **CORS:** the two app origins listed in the API's `CORS_ORIGINS` env var.
 - **Reason codes** (`StreetDetail.reasons[].code`): `rain_1h`, `rain_2to4h`, `river_level`, `ml_probability`, `tide_high`, `forecast_rain`, `met_warning`, `stale_data`, and `radar_approaching` (unit `min`, `value` = estimated minutes until a rain cell arrives; **informational only, it never changes `level`**, see [radar-nowcast.md](radar-nowcast.md)). It appears only in live mode and only while the radar logger is running.
@@ -45,6 +45,7 @@ The contract between the engine/API (Python) and the two apps (TypeScript). It i
 | `POST /answers` | — | `AnswerForm` (multipart) | `AnswerCreated`; 409 if this device already answered this alert |
 | `POST /sensor/readings` | sensor token | `SensorReading` | 204 |
 | `POST /admin/login` | — | `LoginRequest` | `LoginResponse` |
+| `POST /admin/preview` | — | — | `LoginResponse` (read-only preview; 404 when `ADMIN_PREVIEW` is off, 503 without `JWT_SECRET`) |
 | `GET /admin/stats?from=&to=` | JWT | ISO dates | `Stats` |
 | `GET /admin/report?month=YYYY-MM` | JWT | — | `Report` |
 | `GET /admin/suggestions?from=&to=` | JWT | — | `Suggestion[]` |
