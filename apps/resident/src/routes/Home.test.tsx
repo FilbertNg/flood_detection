@@ -48,20 +48,20 @@ afterEach(() => {
 });
 
 describe('HomePage watch and credits', () => {
-  it('counts Warning/Danger and Watch in two boxes, red and yellow (English)', async () => {
+  it('counts Warning/Danger and Watch in two boxes, red and yellow: the level on top, then the count (English)', async () => {
     renderHome('en', []);
-    await screen.findByText(/streets at Warning or Danger/);
-    const risk = document.querySelector('.summary-box[data-kind="risk"]')!;
-    const watch = document.querySelector('.summary-box[data-kind="watch"]')!;
-    expect(risk.textContent).toBe('2streets at Warning or Danger');
-    expect(watch.textContent).toBe('1streets at Watch');
+    const risk = await screen.findByRole('button', { name: '2 streets at Warning or Danger' });
+    const watch = screen.getByRole('button', { name: '1 streets at Watch' });
+    expect(risk).toHaveAttribute('data-kind', 'risk');
+    expect(risk.textContent).toBe('Warning or danger2 streets');
+    expect(watch.textContent).toBe('Watch1 street');
   });
 
   it('counts Warning/Danger and Watch in two boxes (Malay)', async () => {
     renderHome('ms', []);
-    await screen.findByText(/jalan pada tahap Amaran atau Bahaya/);
-    expect(document.querySelector('.summary-box[data-kind="risk"]')!.textContent).toBe('2jalan pada tahap Amaran atau Bahaya');
-    expect(document.querySelector('.summary-box[data-kind="watch"]')!.textContent).toBe('1jalan pada tahap Waspada');
+    await screen.findByRole('button', { name: '2 jalan pada tahap Amaran atau Bahaya' });
+    expect(document.querySelector('.summary-box[data-kind="risk"]')!.textContent).toBe('Amaran atau bahaya2 jalan');
+    expect(document.querySelector('.summary-box[data-kind="watch"]')!.textContent).toBe('Waspada1 jalan');
   });
 
   it('shows a distinct watch banner for my street at Watch', async () => {
@@ -125,7 +125,11 @@ describe('HomePage count panels', () => {
 describe('HomePage report link', () => {
   it('links to Report a flood when none of my streets has an alert', async () => {
     renderHome('en', ['BBR-persiaran-batu-belah']);
-    expect(await screen.findByRole('link', { name: 'Report a flood' })).toHaveAttribute('href', '/report');
+    const link = await screen.findByRole('link', { name: 'Report a flood' });
+    expect(link).toHaveAttribute('href', '/report');
+    // The red filled button, not the outlined one.
+    expect(link).toHaveClass('primary');
+    expect(link).not.toHaveClass('secondary');
   });
   it('hides it while a followed street is at Warning or Danger', async () => {
     const followed = streets.features.find((f) => f.properties.street_id === 'BBR-jalan-makyong');
@@ -139,7 +143,7 @@ describe('HomePage report link', () => {
 describe('HomePage at /map', () => {
   it('has a red header with Back to the swipe home and the title', async () => {
     renderHome('en', []);
-    await screen.findByText(/streets at Warning or Danger/);
+    await screen.findByRole('button', { name: /streets at Warning or Danger/ });
     // A round back button: a red arrow on white, no "Back" text (the name is for screen readers).
     const back = screen.getByRole('link', { name: 'Back' });
     expect(back).toHaveAttribute('href', '/');

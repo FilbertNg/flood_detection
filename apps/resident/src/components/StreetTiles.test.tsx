@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { RainCurve, RiverMeter, TideChart } from './StreetTiles';
+import { JpsMarks, RainCurve, RiverMeter, TideChart } from './StreetTiles';
 
 afterEach(cleanup);
 
@@ -43,6 +43,76 @@ describe('RiverMeter', () => {
     const { container } = render(<RiverMeter wl={3.8} th={{ alert: 3.8, warning: 4.0, danger: 4.2 }} />);
     const now = container.querySelector('.river-now') as HTMLElement;
     expect(parseFloat(now.style.left)).toBeCloseTo((1.2 / 1.9) * 100);
+  });
+});
+
+describe('JpsMarks', () => {
+  const th = { alert: 0.6, warning: 1.0, danger: 1.5 };
+  const tile = (mark: string) => document.querySelector(`[data-mark="${mark}"]`) as HTMLElement;
+  const lit = (row: HTMLElement) => row.querySelectorAll('[data-bar][data-on]').length;
+
+  it('shows each JPS mark with its height', () => {
+    render(<JpsMarks lang="en" wl={0.3} th={th} />);
+    expect(screen.getByText('0.60 m')).toBeInTheDocument();
+    expect(screen.getByText('1.00 m')).toBeInTheDocument();
+    expect(screen.getByText('1.50 m')).toBeInTheDocument();
+  });
+
+  it('lights more signal bars the closer the river is to the alert and warning marks, all four once reached', () => {
+    render(<JpsMarks lang="en" wl={0.6} th={th} />);
+    expect(tile('alert').querySelectorAll('[data-bar]')).toHaveLength(4);
+    expect(lit(tile('alert'))).toBe(4);
+    expect(lit(tile('warning'))).toBe(3);
+    cleanup();
+    render(<JpsMarks lang="en" wl={-1} th={th} />);
+    expect(lit(tile('alert'))).toBe(1);
+  });
+
+  it('colours all lit bars alike by how many are lit: one green, two amber, three or more red', () => {
+    const tier = (wl: number, mark = 'alert') => {
+      cleanup();
+      render(<JpsMarks lang="en" wl={wl} th={th} />);
+      return tile(mark).querySelector('.signal')!.getAttribute('data-tier');
+    };
+    expect(tier(-1)).toBe('ok');          // 1 bar
+    expect(tier(-0.5)).toBe('watch');     // 2 bars
+    expect(tier(0.6, 'warning')).toBe('danger'); // 3 bars
+    expect(tier(0.6)).toBe('danger');     // 4 bars, reached
+  });
+
+  it('says in words how far below each mark the river is, or that it is reached', () => {
+    render(<JpsMarks lang="en" wl={0.6} th={th} />);
+    expect(tile('alert')).toHaveTextContent('Reached');
+    expect(tile('warning')).toHaveTextContent('0.40 m below');
+    expect(tile('danger')).toHaveTextContent('0.90 m below the danger mark');
+  });
+
+  it('marks the current stage on the danger gauge, with the water marker inside that stage', () => {
+    const stage = (wl: number) => {
+      cleanup();
+      render(<JpsMarks lang="en" wl={wl} th={th} />);
+      return document.querySelector('[data-stage][aria-current="true"]')?.getAttribute('data-stage');
+    };
+    expect(stage(0.3)).toBe('safe');
+    expect(stage(1.2)).toBe('alert');
+    expect(stage(1.6)).toBe('danger');
+    expect(document.querySelector('[data-stage="danger"]')).toHaveTextContent('Now');
+    expect(document.querySelector('[data-stage="safe"]')).not.toHaveTextContent('Now');
+    expect(tile('danger')).toHaveTextContent('0.10 m above the danger mark');
+    const marker = document.querySelector('.gauge-marker') as HTMLElement;
+    expect(parseFloat(marker.style.left)).toBeGreaterThan(200 / 3);
+    cleanup();
+    render(<JpsMarks lang="en" wl={0.6} th={th} />);
+    expect(parseFloat((document.querySelector('.gauge-marker') as HTMLElement).style.left)).toBeCloseTo(100 / 3);
+  });
+
+  it('lights no bars, draws no marker and marks no stage without a river reading', () => {
+    const { container } = render(<JpsMarks lang="ms" wl={null} th={th} />);
+    expect(container.querySelectorAll('[data-bar][data-on]')).toHaveLength(0);
+    expect(container.querySelector('[aria-current="true"]')).toBeNull();
+    expect(container.querySelector('.gauge-marker')).toBeNull();
+    expect(screen.getByText('Selamat')).toBeInTheDocument();
+    expect(tile('danger')).toHaveTextContent('Tiada bacaan sekarang');
   });
 });
 

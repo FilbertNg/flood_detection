@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Onboarding proposal</title></head><body>
+<title>Flood-Ready Onboarding</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a phone screen split in two. Top ~60%: a full-bleed stylised flood map of Bandar Bukit Raja in SDP red, with glowing markers that change per slide. Bottom: a white card with dots, title, text and the action. One screen, no scrolling. */
+:root { color-scheme: light; --page: #f6f6f6; --bg: #ffffff; --ink: #121212; --muted: #666666; --line: #e4e4e4;
+  --brand: #d71920; --brand-d: #b5121a; --brand-l: #e8434a; --ok: #2e7d32; --watch: #b26a00; --warn: #e65100;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { background: var(--page); color: var(--ink); font-family: var(--font); }
+.wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; text-align: center; max-width: 380px; }
+.phone { position: relative; width: 100%; max-width: 390px; height: min(800px, calc(100dvh - 60px)); min-height: 620px; border-radius: 36px; overflow: hidden; background: #9a0007; box-shadow: 0 30px 70px rgba(120,10,15,.25); display: flex; flex-direction: column; }
+.map { position: relative; flex: 1; min-height: 0; }
+.map > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.top { position: absolute; left: 18px; right: 18px; top: 16px; display: flex; justify-content: flex-end; align-items: center; z-index: 2; color: #fff; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; } .brand svg { width: 26px; height: 26px; }
+.top button { font: 700 12px var(--font); color: #fff; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+[hidden] { display: none !important; }
+.center { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; gap: 2px; padding-bottom: 10px; }
+.center .ring { position: absolute; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, rgba(234,0,9,.6) 30%, rgba(234,0,9,0) 70%); }
+.biglogo { position: relative; width: 92px; height: 92px; filter: drop-shadow(0 10px 18px rgba(120,0,5,.35)); margin-bottom: 8px; }
+.center b { position: relative; font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
+.center small { position: relative; font-size: 13px; opacity: .85; }
+.mk { transition: opacity .5s, transform .5s; transform-box: fill-box; transform-origin: center; }
+.mk.off { opacity: 0; transform: scale(.6); }
+.halo { animation: pulse 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes pulse { 0% { opacity: .55; transform: scale(.6); } 100% { opacity: 0; transform: scale(1.6); } }
+
+.sheet { position: relative; background: var(--bg); border-radius: 28px 28px 0 0; margin: 0 10px; border-top: 4px solid #df6436; padding: 26px 22px 18px; display: grid; gap: 14px; text-align: center; box-shadow: 0 -10px 30px rgba(0,0,0,.12); }
+.dots { display: flex; justify-content: center; gap: 6px; }
+.dots button { width: 7px; height: 7px; border-radius: 4px; border: 0; padding: 0; background: #d4d4d4; cursor: pointer; transition: width .3s, background .3s; }
+.dots button[aria-current="true"] { width: 20px; background: var(--brand); }
+.sheet h1 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; margin: 0; text-wrap: balance; }
+.sheet p { font-size: 14.5px; line-height: 1.5; color: var(--muted); margin: 0 auto; max-width: 32ch; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; font: 700 16px var(--font); border-radius: 16px; padding: 15px; cursor: pointer; border: 0; }
+.primary { background: var(--brand); color: #fff; box-shadow: 0 8px 18px rgba(215,25,32,.3); }
+.link { background: none; color: var(--brand); padding: 6px; font-size: 15px; }
+.bar { width: 40px; height: 4px; border-radius: 2px; background: #df6436; margin: 0 auto -2px; }
+.sheet .tag { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--brand); margin: 0 auto; }
+.sheet h1 em { font-style: normal; color: var(--brand); }
+.sheet .fine { font-size: 12px; margin-top: -6px; }
+.btn svg { width: 18px; height: 18px; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.top :focus-visible { outline-color: #fff; }
+@media (prefers-reduced-motion: reduce) { .halo { animation: none; } .mk, .dots button { transition: none; } }
+</style>
+
+<div class="wrap">
+  <p class="hint">Onboarding proposal, minimal: logo on a wavy SDP-red gradient with a faint hint of roads, river and flood water; one line, two actions.</p>
+  <article class="phone" id="phone">
+    <div class="map" id="map">
+      <div class="center" aria-hidden="false"><span class="ring"></span><svg class="biglogo" viewBox="0 0 64 64" role="img" aria-label="Flood-Ready"><defs><clipPath id="lg9"><path d="M32 4C20.7 4 11.5 13 11.5 24.2 11.5 38.6 32 60 32 60s20.5-21.4 20.5-35.8C52.5 13 43.3 4 32 4z"/></clipPath>  <filter id="soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+    </defs><path d="M32 4C20.7 4 11.5 13 11.5 24.2 11.5 38.6 32 60 32 60s20.5-21.4 20.5-35.8C52.5 13 43.3 4 32 4z" fill="#fff"/><path d="M6 33c3.2 0 4.8-3.2 8-3.2s4.8 3.2 8 3.2 4.8-3.2 8-3.2 4.8 3.2 8 3.2 4.8-3.2 8-3.2 4.8 3.2 8 3.2 4.8-3.2 8-3.2" clip-path="url(#lg9)" fill="none" stroke="#EA0009" stroke-width="4.5" stroke-linecap="round"/></svg><b>Flood-Ready</b></div>
+            <svg viewBox="0 0 390 480" preserveAspectRatio="xMidYMid slice" aria-hidden="true" id="art"></svg>
+    </div>
+    <div class="sheet">
+      <h1>Know before the water <em>reaches your street</em></h1>
+      <button type="button" class="btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>Find my street</button>
+      <button type="button" class="btn link">Choose from the list</button>
+    </div>
+  </article>
+</div>
+
+<script>
+const W = 390, H = 480;
+/* A loose, drawn street grid for the township, the river and the coast. Decoration, not real geometry. */
+const streets = [
+  [[-10,120],[400,150]], [[-10,190],[400,205]], [[-10,262],[400,270]], [[-10,330],[400,342]],
+  [[60,60],[80,420]], [[140,50],[150,420]], [[225,60],[232,420]], [[305,60],[318,420]],
+  [[20,380],[220,300]], [[250,110],[380,40]],
+];
+const river = 'M-20 400 C 60 360, 120 430, 200 395 S 330 340, 420 370';
+const coast = 'M300 -10 C 330 80, 360 120, 410 150 L410 -10 Z';
+/* Markers per slide: [x, y, kind, label]. */
+const SLIDES = [
+  { title: 'Know before the water reaches your street',
+    text: 'Street-by-street flood warnings for Bandar Bukit Raja, from official JPS river and rain gauges, checked every 15 minutes.',
+    lit: {},
+    marks: [[90, 266, 'pt'], [300, 120, 'pt'], [250, 340, 'pt']] },
+];
+const GLYPH = {
+  pt: '<circle r="4" fill="#fff"/>',
+  you: '<path d="M0-13c-5 0-9 4-9 9 0 6.5 9 15 9 15s9-8.5 9-15c0-5-4-9-9-9z" fill="#fff"/><circle cy="-4" r="3.4" fill="#d71920"/>',
+  ok: '<circle r="6" fill="#7ee0a1"/>', watch: '<circle r="6" fill="#ffd166"/>', warn: '<circle r="7" fill="#ff9f43"/>',
+  river: '<path d="M-8-2c3 0 4-2 6-2s3 2 6 2 4-2 6-2M-8 4c3 0 4-2 6-2s3 2 6 2 4-2 6-2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>',
+  rain: '<path d="M0-8s6 6.6 6 10a6 6 0 0 1-12 0c0-3.4 6-10 6-10z" fill="#fff"/>',
+  tide: '<path d="M-8 3c3-8 5-8 8 0s5 8 8 0" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+  cloud: '<path d="M-7 5h13a4.5 4.5 0 0 0 .4-9A6 6 0 0 0-5-4.5 4.8 4.8 0 0 0-7 5z" fill="#fff"/><path d="M-3 8l-1 3M1 8l-1 3M5 8l-1 3" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>',
+  bell: '<path d="M0 9a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-5V0a6 6 0 0 0-4-5.6V-6a2 2 0 0 0-4 0v.4A6 6 0 0 0-6 0v4l-2 2v1h16V6z" fill="#fff"/>',
+  car: '<path d="M-8 2l2-6h12l2 6v5h-2v-2H-6v2h-2z" fill="#fff"/><circle cx="-4" cy="4" r="1.4" fill="#d71920"/><circle cx="4" cy="4" r="1.4" fill="#d71920"/>',
+};
+const DOT_KINDS = ['ok', 'watch', 'warn'];
+function line([[x1, y1], [x2, y2]], stroke, w, op = 1) { return `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`; }
+function art() {
+  /* Wavy red gradient: layered soft bands from SDP red to deep red with a warm orange glow. */
+  const bands = [
+    ['M0 90 C 90 50, 170 140, 260 100 S 360 60, 390 80 L390 0 L0 0 Z', 'url(#g1)', 1],
+    ['M0 200 C 80 160, 180 250, 280 200 S 370 160, 390 180 L390 0 L0 0 Z', 'url(#g2)', .55],
+    ['M0 330 C 100 290, 190 380, 290 330 S 370 300, 390 315 L390 480 L0 480 Z', 'url(#g3)', .7],
+    ['M0 420 C 110 380, 200 460, 300 420 S 370 400, 390 410 L390 480 L0 480 Z', 'url(#g4)', .8],
+  ];
+  /* A faint hint of the township: roads, a river with a side stream, a footpath and shallow flood pools, all tone-on-tone so nothing reads as a bright line. */
+  const lanes = [
+    'M-10 150 C 60 130, 120 175, 190 160 S 310 120, 400 140',
+    'M-10 300 C 70 285, 140 320, 210 300 S 330 260, 400 280',
+    'M70 -10 C 90 80, 50 160, 85 250 S 120 400, 95 490',
+    'M300 -10 C 280 90, 320 170, 295 260 S 260 400, 290 490',
+  ];
+  const river = 'M-20 390 C 50 350, 110 420, 180 385 S 290 330, 340 360 S 380 390, 410 370';
+  const stream = 'M150 392 C 190 360, 240 372, 290 345 S 360 320, 400 325';
+  const footpath = 'M20 40 C 80 70, 140 40, 200 70 S 320 60, 380 30';
+  return `<defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff2a2f"/><stop offset=".5" stop-color="#ea0009"/><stop offset="1" stop-color="#b80008"/></linearGradient>
+      <linearGradient id="g1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff4a3d"/><stop offset="1" stop-color="#df6436"/></linearGradient>
+      <linearGradient id="g2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff3b3b" stop-opacity=".0"/><stop offset="1" stop-color="#ff6a4d"/></linearGradient>
+      <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d0000a"/><stop offset="1" stop-color="#a80007"/></linearGradient>
+      <linearGradient id="g4" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b00008"/><stop offset="1" stop-color="#8f0006"/></linearGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="url(#bg)"/>
+    ${bands.map(([d, f, o]) => `<path d="${d}" fill="${f}" opacity="${o}"/>`).join('')}
+    <g fill="none" stroke-linecap="round">
+      ${lanes.map((d) => `<path d="${d}" stroke="#6e0004" stroke-width="7" opacity=".14"/><path d="${d}" stroke="#ffb3a0" stroke-width="1" stroke-dasharray="6 8" opacity=".16"/>`).join('')}
+      <path d="${footpath}" stroke="#ffd0c0" stroke-width="1.2" stroke-dasharray="1 6" opacity=".3"/>
+      <path d="${river}" stroke="#ff8a6a" stroke-width="30" opacity=".16"/>
+      <path d="${river}" stroke="#ffb59e" stroke-width="12" opacity=".14"/>
+      <path d="${stream}" stroke="#ff8a6a" stroke-width="12" opacity=".14"/>
+    </g>
+    <g fill="#ff9f85" opacity=".16" filter="url(#soft)">
+      <path d="M-10 392 C 20 378, 48 396, 72 386 C 96 377, 104 398, 128 402 C 150 406, 146 424, 118 428 C 96 431, 84 420, 62 430 C 40 440, 16 426, -10 432 Z"/>
+      <path d="M282 350 C 300 338, 318 352, 340 344 C 362 336, 384 348, 400 346 L400 382 C 384 388, 368 376, 350 384 C 332 392, 322 378, 304 382 C 288 386, 270 366, 282 350 Z"/>
+      <path d="M196 388 C 210 380, 222 392, 238 386 C 252 381, 262 394, 252 402 C 240 410, 228 400, 214 406 C 200 411, 186 398, 196 388 Z"/>
+    </g>
+    <g fill="none" stroke="#ffd6c9" stroke-width="1.2" stroke-linecap="round" opacity=".28">
+      ${[[40, 406], [80, 418], [310, 362], [345, 372], [215, 396]].map(([x, y]) => `<path d="M${x} ${y} q5 -4 10 0 t10 0"/>`).join('')}
+    </g>`;
+}
+const svg = document.getElementById('art');
+svg.innerHTML = art();
+svg.querySelectorAll('.mk').forEach((m) => { m.classList.add('off'); requestAnimationFrame(() => requestAnimationFrame(() => m.classList.remove('off'))); });
+</script>
+</body></html>

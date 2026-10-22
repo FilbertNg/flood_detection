@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Logo fill loader</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--red:#EA0009;--red2:#D71920;--deep:#B80008;--tint:#FDECEC;--ink:#121212;--muted:#666;--page:#F6F6F6;--card:#fff;--bone:#ECECEC;--shine:#F7F7F7}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#F2F2F2;--muted:#A8A8A8;--page:#161616;--card:#1F1F1F;--bone:#2A2A2A;--shine:#343434;--tint:#3A1517}}
+:root[data-theme="dark"]{--ink:#F2F2F2;--muted:#A8A8A8;--page:#161616;--card:#1F1F1F;--bone:#2A2A2A;--shine:#343434;--tint:#3A1517}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px 40px}
+.cap{color:var(--muted);font-size:13px;margin:0 0 16px;text-align:center}
+.row{display:flex;gap:28px;justify-content:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;align-items:center;gap:10px}
+.col h3{margin:0;font-size:13px;font-weight:600;color:var(--muted)}
+.phone{width:320px;height:620px;border-radius:36px;overflow:hidden;background:var(--card);box-shadow:0 20px 50px rgba(0,0,0,.12);position:relative}
+
+/* The logo fill */
+.fill{display:block}
+.fill .cup{fill:var(--tint)}
+.fill .rim{fill:none;stroke:var(--red);stroke-width:2.2;opacity:.35}
+.fill .water{animation:rise 2.6s cubic-bezier(.45,.05,.35,1) infinite}
+.fill .wave{animation:slide 1.1s linear infinite}
+.fill .wave.back{animation-duration:1.7s;opacity:.45}
+@keyframes rise{0%{transform:translateY(62px)}70%{transform:translateY(4px)}85%{transform:translateY(4px)}100%{transform:translateY(62px)}}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-24px)}}
+
+/* Splash */
+.splash{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:var(--card)}
+.splash b{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.splash small{font-size:13px;color:var(--muted)}
+
+/* Page skeleton */
+.bar{background:#EA0009;height:56px;display:flex;align-items:center;padding:0 16px;gap:10px}
+.bar i{display:block;height:12px;width:110px;border-radius:6px;background:rgba(255,255,255,.35)}
+.sk{padding:14px;display:flex;flex-direction:column;gap:12px;background:var(--page);height:calc(100% - 56px)}
+.hero{height:210px;border-radius:24px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.hero small{font-size:12.5px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.tile{height:118px;border-radius:20px;background:var(--card);padding:14px;display:flex;flex-direction:column;gap:9px}
+.bone{border-radius:7px;background:linear-gradient(90deg,var(--bone) 0,var(--shine) 40%,var(--bone) 80%) 0 0/300% 100%;animation:shine 1.4s linear infinite}
+@keyframes shine{from{background-position:100% 0}to{background-position:0 0}}
+.wide{grid-column:1/-1;height:96px}
+
+@media (prefers-reduced-motion: reduce){
+  .fill .water{animation:none;transform:translateY(30px)}
+  .fill .wave{animation:none}
+  .fill{animation:pulse 1.6s ease-in-out infinite}
+  .bone{animation:none}
+  @keyframes pulse{50%{opacity:.6}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="cap">Loader proposal: water fills the Flood-Ready pin like a cup, drains and fills again. Left: first open. Right: the street page while data loads.</p>
+  <div class="row">
+    <div class="col">
+      <h3>Splash (first load)</h3>
+      <div class="phone">
+        <div class="splash" role="status" aria-live="polite">
+          <span data-logo="104"></span>
+          <b>Flood-Ready</b>
+          <small>Checking the river and rain…</small>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <h3>Street page skeleton</h3>
+      <div class="phone">
+        <div class="bar"><i></i></div>
+        <div class="sk" role="status" aria-label="Loading your street">
+          <div class="hero"><span data-logo="64"></span><small>Loading your street…</small></div>
+          <div class="grid">
+            <div class="tile"><span class="bone" style="height:10px;width:55%"></span><span class="bone" style="height:26px;width:45%"></span><span class="bone" style="height:10px;width:80%"></span></div>
+            <div class="tile"><span class="bone" style="height:10px;width:60%"></span><span class="bone" style="height:26px;width:40%"></span><span class="bone" style="height:10px;width:70%"></span></div>
+            <div class="tile"><span class="bone" style="height:10px;width:50%"></span><span class="bone" style="height:26px;width:50%"></span><span class="bone" style="height:10px;width:75%"></span></div>
+            <div class="tile"><span class="bone" style="height:10px;width:45%"></span><span class="bone" style="height:26px;width:35%"></span><span class="bone" style="height:10px;width:65%"></span></div>
+            <div class="tile wide"><span class="bone" style="height:10px;width:35%"></span><span class="bone" style="height:40px;width:100%"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+/* The pin from the Flood-Ready logo; water is a wavy rect clipped to it that rises from the bottom. */
+const PIN = 'M32 4C20.7 4 11.5 13 11.5 24.2 11.5 38.6 32 60 32 60s20.5-21.4 20.5-35.8C52.5 13 43.3 4 32 4z';
+const wave = (y) => { let d = `M-24 ${y}`; for (let x = -24; x < 96; x += 24) d += ` q6 -3.2 12 0 t12 0`; return d + ` V70 H-24 Z`; };
+let n = 0;
+document.querySelectorAll('[data-logo]').forEach((el) => {
+  const id = 'pin' + n++, s = el.dataset.logo;
+  el.outerHTML = `<svg class="fill" width="${s}" height="${s}" viewBox="0 0 64 64" aria-hidden="true">
+    <defs><clipPath id="${id}"><path d="${PIN}"/></clipPath></defs>
+    <path class="cup" d="${PIN}"/>
+    <g clip-path="url(#${id})"><g class="water">
+      <path class="wave back" d="${wave(2)}" fill="#ff5a4f"/>
+      <path class="wave" d="${wave(4)}" fill="#EA0009"/>
+    </g></g>
+    <path class="rim" d="${PIN}"/>
+  </svg>`;
+});
+</script>
+</body>
+</html>

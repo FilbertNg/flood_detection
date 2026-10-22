@@ -6,6 +6,7 @@ import { StationChart } from '../components/StationChart';
 import { ModeChip } from '../components/ReplayControl';
 import { api } from '../lib/api';
 import { dayTime, hhmm, shiftIso } from '../lib/chart';
+import { InlineLoading, PageLoading } from '../components/LogoFill';
 
 const metres = (v: number) => `${v.toFixed(2)} m`;
 
@@ -31,7 +32,7 @@ export function StreetDetailPage() {
     })),
   });
 
-  if (street.isLoading) return <p className="pad muted">Loading…</p>;
+  if (street.isLoading) return <PageLoading text="Loading the street…" full />;
   if (street.isError || !detail) return <p className="pad">Could not load this street. <Link to="/" className="link">Back to the map</Link></p>;
 
   const style = LEVEL_STYLE[detail.level];
@@ -85,7 +86,7 @@ export function StreetDetailPage() {
           {ids.map((gid, i) => {
             const matches = (stations.data ?? []).filter((s) => s.graph_id === gid);
             const q = series[i];
-            if (matches.length === 0 || !q) return <p key={gid} className="muted small">Loading {gid}…</p>;
+            if (matches.length === 0 || !q) return <InlineLoading key={gid} text={`Loading readings for ${gid}…`} />;
             if (q.isError) return <p key={gid} className="muted small">Could not load readings for {matches[0].name}.</p>;
             return matches.map((station) => <StationChart key={`${gid}:${station.kind}`} station={station} series={q.data ?? []} />);
           })}

@@ -11,6 +11,7 @@ import { StatIcon, type StatIconName } from '../components/StatIcons';
 import { api } from '../lib/api';
 import { daysInclusive, shiftDays, todayIso } from '../lib/format';
 import { useStreetNames } from '../lib/useStreetNames';
+import { PageLoading } from '../components/LogoFill';
 
 /** Start of the backfilled JPS history. */
 const DEFAULT_FROM = '2024-01-01';
@@ -80,7 +81,7 @@ export function StatisticsPage() {
         </div>
       </div>
       {!valid && <p role="alert" className="error">Choose a start date on or before the end date.</p>}
-      {valid && q.isLoading && <p className="muted">Loading…</p>}
+      {valid && q.isLoading && <PageLoading text="Loading statistics…" />}
       {q.isError && <p role="alert" className="error">Could not load statistics.</p>}
       {s && (
         <>

@@ -6,12 +6,16 @@ import { BackButton } from '../components/BackButton';
 import { Credits } from '../components/Credits';
 import { Icon } from '../components/Icons';
 import { LangSwitch } from '../components/LangSwitch';
+import { PageLoading } from '../components/LogoFill';
 import { StatusLine } from '../components/StatusLine';
 import { StreetMap } from '../components/StreetMap';
 import { api } from '../lib/api';
-import { t } from '../lib/i18n';
+import { t, tf } from '../lib/i18n';
 
 const SOLID = { normal: '#2e7d32', watch: '#b26a00', warning: '#e65100', danger: '#c62828' } as const;
+
+/** "1 street", "2 streets" (Malay has one form). */
+const streetCount = (lang: Lang, n: number) => tf(lang, n === 1 ? 'streetsOne' : 'streetsMany', { n });
 
 interface Props {
   lang: Lang;
@@ -54,7 +58,7 @@ export function HomePage({ lang, mine, onLang }: Props) {
     </>
   );
 
-  if (isLoading) return <>{header}<p className="pad">{t(lang, 'loading')}</p></>;
+  if (isLoading) return <>{header}<PageLoading text={t(lang, 'loadingMap')} /></>;
   if (isError || !data) return <>{header}<p className="pad">{t(lang, 'error')}</p></>;
 
   const props = data.features.map((f) => f.properties);
@@ -109,14 +113,14 @@ export function HomePage({ lang, mine, onLang }: Props) {
 
       <section className="map-foot">
         <div className="summary-pair">
-          <button type="button" className="summary-box" data-kind="risk" aria-haspopup="dialog" onClick={() => setList('risk')}>
-            <strong>{risky.length}</strong><span>{t(lang, 'streetsAtRisk')}</span>
+          <button type="button" className="summary-box" data-kind="risk" aria-haspopup="dialog" aria-label={`${risky.length} ${t(lang, 'streetsAtRisk')}`} onClick={() => setList('risk')}>
+            <span>{t(lang, 'boxRisk')}</span><strong>{streetCount(lang, risky.length)}</strong>
           </button>
-          <button type="button" className="summary-box" data-kind="watch" aria-haspopup="dialog" onClick={() => setList('watch')}>
-            <strong>{watched.length}</strong><span>{t(lang, 'streetsWatchBox')}</span>
+          <button type="button" className="summary-box" data-kind="watch" aria-haspopup="dialog" aria-label={`${watched.length} ${t(lang, 'streetsWatchBox')}`} onClick={() => setList('watch')}>
+            <span>{t(lang, 'boxWatch')}</span><strong>{streetCount(lang, watched.length)}</strong>
           </button>
         </div>
-        {alerting.length === 0 && <Link to="/report" className="secondary report-link">{t(lang, 'reportLink')}</Link>}
+        {alerting.length === 0 && <Link to="/report" className="primary report-link">{t(lang, 'reportLink')}</Link>}
         <Credits lang={lang} />
       </section>
 

@@ -32,6 +32,14 @@
   --watch: #b26a00;
   --warn: #e65100;
   --danger: #c62828;
+  /* Picture tiles: water blues for anything that is water, tints and darker inks (>= 4.5:1 on the tint) per level. */
+  --water: #3b82c4;
+  --water-2: #8fbbe3;
+  --water-3: #dcebf8;
+  --ok-t: #dff0e0; --ok-ink: #1b5e20;
+  --watch-t: #fdefd2; --watch-ink: #8a4b00;
+  --warn-t: #fde3d3; --warn-ink: #a83a00;
+  --danger-t: #f9dada; --danger-ink: #a51d1d;
   --r-tile: 16px;
   --r-card: 20px;
   --r-hero: 24px;
@@ -133,9 +141,9 @@ p { margin: 0 0 0.5rem; }
 /* Compact footer under the map: counts, report link and credits in as little height as they need. */
 .map-foot { flex: none; display: grid; gap: 8px; padding: 10px var(--gap) 6px; }
 .map-foot .summary-pair { margin: 0; gap: 8px; }
-.map-foot .summary-box { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; }
+.map-foot .summary-box { display: grid; gap: 2px; padding: 10px 30px 10px 14px; }
 .map-foot .summary-box strong { font-size: 22px; }
-.map-foot .summary-box span { margin: 0; font-size: 12px; }
+.map-foot .summary-box span { margin: 0; font-size: 13px; }
 .map-foot .report-link { min-height: 40px; margin: 0; padding: 8px 16px; font-size: 15px; }
 .map-foot .credits { margin: 0; font-size: 11px; line-height: 1.4; }
 .map-foot .credits summary { min-height: 32px; padding: 6px 0 0; }
@@ -184,9 +192,9 @@ p { margin: 0 0 0.5rem; }
 .summary-box::after { content: ""; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; border-right: 2px solid var(--sum-ink); border-bottom: 2px solid var(--sum-ink);
   transform: translateY(-50%) rotate(-45deg); }
 .summary-box:hover { filter: brightness(0.97); }
-.summary-box::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--sum-bar); }
 .summary-box strong { display: block; font-size: 30px; font-weight: 800; line-height: 1.1; color: var(--sum-ink); font-variant-numeric: tabular-nums; }
-.summary-box span { display: block; margin-top: 2px; font-size: 13px; font-weight: 600; line-height: 1.3; color: var(--ink); }
+/* The level on top, the count under it (no side bar). */
+.summary-box span { display: block; font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--ink); }
 .summary-box[data-kind="risk"] { --sum-bg: #fdecec; --sum-edge: #ef9a9a; --sum-bar: var(--danger); --sum-ink: #b71c1c; }
 .summary-box[data-kind="watch"] { --sum-bg: #fff8e1; --sum-edge: #f5d77a; --sum-bar: #f9a825; --sum-ink: #8a4b00; }
 .alert-banner { display: block; margin: 12px var(--gap) 0; background: #b71c1c; color: #fff; padding: 14px 18px; font-weight: 700; border-radius: var(--r-card); }
@@ -342,6 +350,53 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .tech h3 { margin: 14px 0 4px; font-size: 13px; font-weight: 700; }
 .reasons { margin: 0; padding-left: 1.1rem; font-size: 14px; }
 .reasons li { margin-bottom: 4px; }
+/* Technical details tiles: the JPS marks and the two readings share one tile (surface grey, 12 px radius)
+   so the section reads as a set of instruments, not a list. */
+.mark-tile, .gauge { padding: 12px; border-radius: 12px; background: var(--surface); color: var(--ink); min-width: 0; }
+.mark-name { font-size: 13px; font-weight: 700; }
+.mark-m { font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.jps-marks { display: grid; gap: 8px; margin-top: 6px; }
+/* Alert and Warning side by side: name and bars on top, the mark, then how far the river is from it. */
+.mark-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mark-tile { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 8px; }
+.mark-tile .mark-m, .mark-gap { grid-column: 1 / -1; }
+.mark-gap { font-size: 13px; font-weight: 700; color: var(--muted); }
+/* The lit bars all take one colour from how many are lit (1 green, 2 amber, 3-4 red); words say the same. */
+.signal { display: inline-flex; align-items: flex-end; gap: 3px; height: 18px; }
+.signal i { width: 6px; border-radius: 2px; background: #d6d6d6; }
+.signal i:nth-child(1) { height: 6px; } .signal i:nth-child(2) { height: 10px; } .signal i:nth-child(3) { height: 14px; } .signal i:nth-child(4) { height: 18px; }
+[data-tier="ok"] { --tier: var(--ok); --tier-ink: var(--ok); }
+[data-tier="watch"] { --tier: var(--watch); --tier-ink: #8a4b00; }
+[data-tier="danger"] { --tier: var(--danger); --tier-ink: var(--danger); }
+.signal i[data-on] { background: var(--tier); }
+.mark-gap[data-tier]:not([data-tier="none"]) { color: var(--tier-ink); }
+/* Danger: one gauge in three equal steps, filled to a water marker in the colour of the step it is in. */
+.gauge { display: grid; gap: 8px; }
+.gauge-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.gauge[data-stage-now="safe"] { --step: var(--ok); --step-ink: var(--ok); }
+.gauge[data-stage-now="alert"] { --step: var(--watch); --step-ink: #8a4b00; }
+.gauge[data-stage-now="danger"] { --step: var(--danger); --step-ink: var(--danger); }
+.gauge-track { position: relative; height: 10px; margin: 6px 0 0; border-radius: 5px;
+  background: linear-gradient(90deg, #e0e0e0 calc(33.333% - 1px), var(--surface) 0 calc(33.333% + 1px), #e0e0e0 0 calc(66.667% - 1px), var(--surface) 0 calc(66.667% + 1px), #e0e0e0 0); }
+.gauge-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--step); }
+.gauge-marker { position: absolute; top: 50%; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 4px solid var(--step);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); transform: translate(-50%, -50%); }
+.gauge-ticks { position: relative; height: 14px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.gauge-ticks span { position: absolute; top: 0; transform: translateX(-50%); }
+.gauge-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; }
+.gauge-steps li { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; }
+.gauge-steps li[aria-current="true"] { background: #fff; color: var(--step-ink); font-weight: 800; box-shadow: inset 0 0 0 1.5px var(--step); }
+.gauge-steps small { font-size: 11px; font-weight: 700; }
+.gauge-note { margin: 0; font-size: 14px; font-weight: 700; color: var(--step-ink, var(--muted)); }
+/* Why: a tinted callout, green with a tick when nothing is happening, amber with reasons. */
+.why { margin-top: 14px; padding: 12px 14px; border-radius: 14px; border: 1.5px solid; }
+.tech .why h3 { margin: 0 0 4px; font-size: 14px; }
+.why p { margin: 0; font-size: 15px; font-weight: 700; }
+.why[data-tone="ok"] { background: #e8f5e9; border-color: #a5d6a7; color: #1b5e20; }
+.why[data-tone="ok"] p::before { content: "✓"; display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 8px; border-radius: 50%; background: var(--ok); color: #fff; font-size: 12px; }
+.why[data-tone="alert"] { background: #fff3dc; border-color: #f5c27a; color: #8a4b00; }
+.why[data-tone="alert"] .reasons { font-weight: 600; }
+.tech .fine strong { color: var(--ink); }
 .river-gauge { position: relative; height: 6px; margin: 12px 0 6px; border-radius: 3px; background: #d9d9d9; }
 .river-band { position: absolute; top: 0; bottom: 0; }
 .band-alert { background: #f5c542; }
@@ -368,10 +423,11 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .tide-trend[data-trend="falling"]::before { content: "↓ "; }
 
 /* The closing question or the report card. */
-.report-card { display: flex; align-items: center; gap: 14px; min-height: 64px; }
+.report-card { display: flex; align-items: center; gap: 14px; min-height: 64px; background: var(--brand); border-color: var(--brand); color: #fff; }
 .report-card strong { display: block; font-size: 18px; }
-.report-card:hover { border-color: var(--brand); }
-.report-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--brand-soft); color: var(--brand); }
+.report-card .tile-note { color: #fff; }
+.report-card:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+.report-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.2); color: #fff; }
 
 /* Red floating map button, bottom right above the safe area; pages keep room below their last card. */
 .fab { position: fixed; z-index: 20; right: max(18px, calc((100vw - 640px) / 2 + 18px)); bottom: calc(20px + env(safe-area-inset-bottom));
@@ -397,7 +453,7 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .sky-view .sky { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .sky-view .sky-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 620px;
   -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); mask-image: linear-gradient(180deg, #000 60%, transparent); }
-.sky-view-top { display: flex; justify-content: space-between; align-items: center; padding: calc(16px + env(safe-area-inset-top)) 18px 0; }
+.sky-view-top { display: flex; justify-content: flex-end; align-items: center; min-height: 44px; padding: calc(16px + env(safe-area-inset-top)) 18px 0; }
 .sky-close { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.12); color: #fff;
   font-size: 22px; line-height: 1; cursor: pointer; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .sky-view :focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
@@ -457,50 +513,183 @@ select.search { appearance: none; -webkit-appearance: none; padding-right: 48px;
 .sky-view-body .tide-chart path[stroke] { stroke: #9fd3ff; }
 .sky-view-body :focus-visible { outline-color: #fff; }
 
-/* The big word in the iPhone lock-screen clock style: the system face (SF Pro on Apple devices), heavy,
-   narrow where the face has a condensed width, and stretched 30 % taller from its baseline (the margin
-   above grows by the same 0.3 em so nothing overlaps). On the full-screen sky it is 1.15x the card size
+/* The big word (Safe, Be alert, Get ready, Move now) in the weather-app temperature style: the system
+   face (SF Pro Display on iPhones, Roboto on Android) at Light 300, regular width, no stretching, slightly
+   tight tracking. It is solid in the word colour (white, or the level tint at Warning and Danger, both
+   >= 4.5:1 on the sky) with a soft shadow that lifts it off the sky. Light letters read calm at Safe and
+   still carry the level colour; no web font to download. On the full-screen sky it is 1.15x the card size
    (the card size is already fitted to the word's length). */
-.hero-word, .sky-view-word { font-weight: 800; font-stretch: condensed; letter-spacing: -0.02em; transform: scaleY(1.3); transform-origin: 50% 100%; }
-.hero-word { margin-top: calc(8px + 0.3em); }
-.sky-view-word { font-size: min(calc(var(--word-size, 64px) * 1.15), 22vw); margin-top: calc(14px + 0.3em); }
-
-/* Liquid glass lettering for the big word (Safe, Get ready, ...), on the hero card and the full-screen sky.
-   The letters are the word's colour (white, or the level tint at Warning and Danger) fading towards clear
-   at the bottom, so the sky shows through; a bright glow rim outlines them; a diagonal band of light (and a
-   slight shade beside it, so the band also shows on white letters) crosses them; a soft drop shadow
-   lifts the word off the sky. The fill never drops below 55 % so the word keeps >= 3:1 as large text.
-   (Text shadows show through clear text, so the depth is a filter.) */
-.hero-word, .sky-view-word {
-  background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0) 24%, rgba(255, 255, 255, 0.85) 38%, rgba(255, 255, 255, 0) 46%, rgba(20, 30, 50, 0.18) 54%, rgba(20, 30, 50, 0) 64%),
-    linear-gradient(180deg, color-mix(in srgb, var(--word) 96%, transparent) 0%, color-mix(in srgb, var(--word) 82%, transparent) 40%, color-mix(in srgb, var(--word) 55%, transparent) 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
-  text-shadow: none;
-  /* The rim is drawn by light glow filters, not a text stroke: a stroke traces the overlapping shapes
-     inside heavy letters and shows little boxes in "e" and "a". A lit top edge, a white rim, then depth. */
-  filter: drop-shadow(0 -0.5px 0 rgba(255, 255, 255, 0.75)) drop-shadow(0 0 0.4px rgba(255, 255, 255, 0.8))
-    drop-shadow(0 2px 1.5px rgba(0, 0, 0, 0.18)) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
-  padding-bottom: 0.06em; }
+.hero-word, .sky-view-word { font-weight: 300; font-stretch: normal; letter-spacing: -0.035em; line-height: 1.05; color: var(--word);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.22); }
+.hero-word { margin-top: 10px; }
+.sky-view-word { font-size: min(calc(var(--word-size, 64px) * 1.15), 22vw); margin-top: 16px; }
 /* The solid amber callout keeps its dark text crisp: no glass text shadow on it. */
 .sky-view-body .panel-flag { text-shadow: none; }
 /* The level chip on the sky (hero card and full view) is liquid glass too: white text, the dot keeps the
    level colour, a light ring round the dot so it reads on the glass. */
 .hero-top .level-pill, .sky-view-top .level-pill { color: #fff; }
 .hero-top .level-pill i, .sky-view-top .level-pill i { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55); }
+/* × stays in the top left corner while the sky view scrolls; a darker glass so it reads over the cards too. */
+.sky-view .sky-close { position: fixed; z-index: 10; top: calc(16px + env(safe-area-inset-top)); left: 18px;
+  background: rgba(20, 30, 50, 0.55); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); }
+/* The full-screen sky shows the street page's picture tiles: white tiles straight on the sky (no grey
+   band), dark text inside them; the section labels stay white on the sky. */
+.sky-view-body .ptiles { margin: 0; padding: 0; background: none; }
+.sky-view-body .ptiles-sec { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22); }
+.sky-view-body .ptile { color: var(--ink); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
+.sky-view-body .ptile .ptile-head { color: var(--ink); }
+.sky-view-body .report-card { background: var(--brand); }
 .sky-view-note { margin: 0; padding: 14px 24px calc(28px + env(safe-area-inset-bottom)); font-size: 13px; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .sky-view { animation: none; } .hero { transition: none; } }
 
-/* Start screen when no street is saved. */
-.find { display: grid; align-content: start; gap: 14px; padding: 12px var(--gap) 24px; }
-.find-hero { padding: 28px 20px 26px; }
-.find-hero .hero-name { margin-top: 0; font-size: 26px; }
-.find-hero .logo { display: block; margin-bottom: 12px; filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2)); }
+/* Picture tiles on the white street page (PanelTiles): a full-bleed grey band, a two-column grid of white
+   tiles, each reading drawn as an object. The full-screen sky shows the same tiles (see the sky rules). */
+.ptiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 calc(-1 * var(--gap)); padding: 12px var(--gap) 16px; background: var(--surface); }
+.ptiles-sec { grid-column: 1 / -1; margin: 4px 2px 0; font-size: 12px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.ptile { display: grid; align-content: start; gap: 4px; min-width: 0; padding: 14px; border-radius: 22px; background: var(--bg); }
+.ptile[data-wide] { grid-column: 1 / -1; }
+.ptile-head { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+.ptile-head .glyph { width: 16px; height: 16px; flex: none; color: var(--muted); }
+/* Value beside the picture while both fit; the picture wraps under the value on narrow tiles, never overflows. */
+.ptile-body { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 4px; min-height: 112px; }
+.ptile-body > div { flex: 1 1 0; min-width: min-content; }
+.ptile-val { margin: 0; font-size: 34px; font-weight: 400; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ptile-val small { margin-left: 2px; font-size: 16px; color: var(--muted); letter-spacing: 0; }
+.ptile-val-m { margin: 2px 0; font-size: 26px; }
+.ptile-mean { margin: 6px 0 0; font-size: 14px; font-weight: 600; }
+.ptile-note { margin: 0; font-size: 12px; line-height: 1.35; color: var(--muted); }
+.ptile-note b { color: var(--ink); }
+.ptile-gap { margin-top: 6px; }
+.ptile-flag { margin: 4px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--watch-t); color: var(--watch-ink); font-size: 12px; font-weight: 700; }
+.ptile-chip { justify-self: start; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.ptile-chip[data-tone="ok"] { background: var(--ok-t); color: var(--ok-ink); }
+.ptile-chip[data-tone="watch"] { background: var(--watch-t); color: var(--watch-ink); }
+.ptile-chip[data-tone="warn"] { background: var(--warn-t); color: var(--warn-ink); }
+.ptile-chip[data-tone="danger"] { background: var(--danger-t); color: var(--danger-ink); }
+.ptile-center { display: grid; justify-items: center; gap: 4px; margin-top: 4px; text-align: center; }
+.ptile-center .ptile-mean { margin: 0; }
+/* Rain now: the mm small at the top left, the drop centred, the word and note centred under it. */
+.rain-now { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.rain-now .rain-now-val { justify-self: start; font-size: 24px; }
+.rain-now .rain-now-val small { font-size: 13px; }
+.rain-now .ptile-mean { margin: 4px 0 0; }
+.ptile-why { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+.ptile-tide { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
+/* Pictures: SVG classes take colours from the tokens; text in a picture is a small muted label. */
+.pic { display: block; overflow: visible; }
+.pic text { font: 700 10px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: var(--muted); }
+.pic-stretch { width: 100%; height: auto; }
+.pic-axis { display: flex; justify-content: space-between; margin: 2px 0 0; font-size: 10px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pic .w1 { fill: var(--water); } .pic .w2 { fill: var(--water-2); } .pic .w3 { fill: var(--water-3); }
+.pic .w-edge { stroke: var(--water); } .pic .ink { fill: var(--ink); } .pic .past { opacity: 0.55; }
+.pic .baseline { stroke: var(--ink); }
+.pic .now-dot { fill: #fff; stroke: var(--brand); }
+.pic .tick-alert line { stroke: var(--watch); } .pic .tick-alert text { fill: var(--watch-ink); }
+.pic .tick-warning line { stroke: var(--warn); } .pic .tick-warning text { fill: var(--warn-ink); }
+.pic .tick-danger line { stroke: var(--danger); } .pic .tick-danger text { fill: var(--danger-ink); }
+/* Badge and ring: the number is text stacked on the picture. */
+.pic-stack { display: grid; place-items: center; }
+.pic-stack > * { grid-area: 1 / 1; }
+.badge-val { display: grid; justify-items: center; margin: 0; line-height: 1; }
+.badge-val small { margin-top: 2px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.ptile-ring-val { font-size: 24px; }
+[data-tone="ok"] .badge { fill: var(--ok-t); } [data-tone="watch"] .badge { fill: var(--watch-t); } [data-tone="warn"] .badge { fill: var(--warn-t); }
+.pic [data-dot] { fill: var(--line); }
+[data-tone="ok"] .pic [data-dot][data-on] { fill: var(--ok); } [data-tone="watch"] .pic [data-dot][data-on] { fill: var(--watch); } [data-tone="warn"] .pic [data-dot][data-on] { fill: var(--warn); }
+.pic .ring-track { stroke: var(--line); }
+[data-tone="ok"] .ring { stroke: var(--ok); } [data-tone="watch"] .ring { stroke: var(--watch); } [data-tone="warn"] .ring { stroke: var(--warn); }
+.pic .clock-face { fill: var(--surface); } .pic .clock-tick { fill: var(--muted); } .pic .clock-hand { stroke: var(--ink); } .pic .now-pin { fill: var(--brand); }
+/* The water in the drop and the pill rises from empty once, on first render (none with reduced motion). */
+.pic .rise { transform-box: fill-box; transform-origin: 50% 100%; animation: tile-rise 400ms ease-out; }
+@keyframes tile-rise { from { transform: scaleY(0); } }
+/* Technical details blocks inside a wide tile. */
+.ptile .jps-marks { margin-top: 2px; }
+@media (max-width: 359px) { .ptile-tide { grid-template-columns: minmax(0, 1fr); } }
+
+/* Location confirm and actions (Change location on the street page). */
 .find-actions { display: grid; gap: 10px; }
 .find-actions p { margin: 0; }
 .find-note { margin: 0; font-size: 14px; color: var(--muted); text-align: center; }
 .find-confirm p { margin: 0; }
 .find-street { display: block; margin: 6px 0 12px; font-size: 22px; }
+
+/* First-visit onboarding (FindStreet, docs/design/onboarding-proposal.html): one screen that never scrolls,
+   no app header. The red illustration and the logo take the top; a white card holds the line and the two
+   actions. The deepest red sits behind the card so no flat stripe shows between the art and the card. */
+.onb { position: relative; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; background: #9a0007; }
+.onb-art { position: relative; flex: 1; min-height: 0; }
+.onb-art > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.onb-brand { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 10px; color: #fff; }
+.onb-glow { position: absolute; width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle, rgba(234, 0, 9, 0.6) 30%, rgba(234, 0, 9, 0) 70%); }
+.onb-brand .logo { position: relative; margin-bottom: 8px; filter: drop-shadow(0 10px 18px rgba(120, 0, 5, 0.35)); }
+.onb-name { position: relative; font-size: 26px; font-weight: 800; letter-spacing: -0.01em; }
+/* Top corners: the replay label on the left (replay only), who it is built for on the right. */
+.onb-replay, .onb-builtfor { position: absolute; z-index: 2; top: calc(14px + env(safe-area-inset-top)); margin: 0; background: #fff; box-shadow: 0 4px 14px rgba(90, 0, 5, 0.25); }
+.onb-replay { left: 14px; padding: 6px 11px; border-radius: 999px; color: var(--brand-dark); font-size: 12px; font-weight: 800; }
+.onb-builtfor { right: 14px; display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 11px; border-radius: 12px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.onb-builtfor img { display: block; width: 40px; height: auto; }
+.onb-card { position: relative; display: grid; gap: 14px; margin: 0 10px; padding: 26px 22px calc(18px + env(safe-area-inset-bottom));
+  border-top: 4px solid var(--edge); border-radius: 28px 28px 0 0; background: var(--bg); text-align: center; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12); }
+.onb-card h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; text-wrap: balance; color: var(--ink); }
+.onb-card h1 em { font-style: normal; color: var(--brand); }
+.onb-find { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; padding: 15px; border: 0; border-radius: 16px;
+  background: var(--brand); color: #fff; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 18px rgba(215, 25, 32, 0.3); }
+.onb-find:hover { background: var(--brand-dark); }
+.onb-link { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px; color: var(--brand); font-size: 15px; font-weight: 700; text-decoration: none; }
+.onb-link:hover { text-decoration: underline; }
+.onb-card :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.onb-status { display: grid; gap: 4px; }
+.onb-locating { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.onb-status p, .onb-msg, .onb-confirm p { margin: 0; font-size: 15px; }
+.onb-status .onb-fine { font-size: 13px; color: var(--muted); }
+.onb-confirm { display: grid; gap: 10px; }
+.onb-street { font-size: 20px; }
+/* Short phones (320 × 568): a little less air in the card so the logo keeps its room. */
+@media (max-height: 620px) { .onb-card { gap: 10px; padding-top: 20px; } .onb-card h1 { font-size: 20px; } .onb-glow { width: 220px; height: 220px; } }
+
+/* Loader (LogoFill, docs/design/loader-proposal.html): water fills the pin like a cup over a 2.6 s loop
+   (rise to full by 70 %, hold, drain), the waves sliding sideways all the time. */
+.logo-fill { display: block; flex: none; }
+.logo-fill .cup { fill: var(--brand-soft); }
+.logo-fill .rim { fill: none; stroke: #ea0009; stroke-width: 2.2; opacity: 0.35; }
+.logo-fill .water { animation: lf-rise 2.6s cubic-bezier(.45, .05, .35, 1) infinite; }
+.logo-fill .wave { fill: #ea0009; animation: lf-slide 1.1s linear infinite; }
+.logo-fill .wave.back { fill: #ff5a4f; opacity: 0.45; animation-duration: 1.7s; }
+@keyframes lf-rise { 0% { transform: translateY(62px); } 70% { transform: translateY(4px); } 85% { transform: translateY(4px); } 100% { transform: translateY(62px); } }
+@keyframes lf-slide { from { transform: translateX(0); } to { transform: translateX(-24px); } }
+@keyframes lf-pulse { 50% { opacity: 0.6; } }
+
+/* Splash on the first open, while the first status request is pending (after 300 ms only). */
+.splash { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: var(--bg); }
+.splash b { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+.splash small { font-size: 13px; color: var(--muted); }
+
+/* Street page skeleton: the hero card shape and the tile grid, so nothing jumps when the data arrives. */
+.sk-hero { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 287px; border: 1px solid var(--line); border-radius: var(--r-hero); background: var(--bg); }
+.sk-hero small { font-size: 12.5px; color: var(--muted); }
+.sk-tile { display: flex; flex-direction: column; gap: 9px; min-height: 118px; padding: 14px; border-radius: 22px; background: var(--bg); }
+.sk-tile[data-wide] { grid-column: 1 / -1; min-height: 96px; }
+/* Stands in for the grid's section label ("Right now"), same line height. */
+.sk-sec { grid-column: 1 / -1; width: 30%; height: 14px; margin: 6px 2px 2px; }
+.bone { display: block; border-radius: 7px; background: linear-gradient(90deg, #ececec 0, #f7f7f7 40%, #ececec 80%) 0 0 / 300% 100%; animation: sk-shine 1.4s linear infinite; }
+@keyframes sk-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+/* Whole-page loads (map, street list, report form): the loader centred in the space under the header. */
+.page-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: calc(100vh - 180px); min-height: calc(100dvh - 180px); margin: 0; padding: 16px var(--gap); color: var(--muted); font-size: 15px; text-align: center; }
+/* The street picker has its title and search box above the list: a shorter area keeps it centred without scrolling. */
+.pick .page-loading { min-height: calc(100vh - 420px); min-height: calc(100dvh - 420px); }
+/* Compact loader inside a card or sheet: the logo at 32 px beside a short line (Change location). */
+.inline-loading { display: flex; align-items: center; gap: 10px; margin: 0; padding: 16px var(--gap); color: var(--muted); font-size: 15px; }
+
+/* Loader: reduced motion. No rise, slide or shimmer: the water sits at half and the logo pulses gently. The
+   app-wide rule below turns every animation off with !important; these selectors are more specific so the
+   still water and the pulse win. */
+@media (prefers-reduced-motion: reduce) {
+  .logo-fill .water { animation: none !important; transform: translateY(30px); }
+  .logo-fill .wave { animation: none !important; }
+  .bone { animation: none !important; }
+  .logo-fill { animation: lf-pulse 1.6s ease-in-out infinite !important; }
+}
 
 .primary, .secondary, .choice, .lang-switch button { transition: background-color 120ms ease; }
 @media (prefers-reduced-motion: reduce) {

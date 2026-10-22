@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flood-Ready Panels</title>
+
+<style>
+/* Layout: phone column; SDP header, then a two-column grid of picture tiles (Google-Weather style) where each reading is drawn as an object: a drop that fills, a gauge pill, a scalloped badge, a tide arc, a ring. Single light look. */
+:root {
+  color-scheme: light;
+  --page: #e9e9ea; --bg: #ffffff; --surface: #f6f6f6; --ink: #121212; --muted: #666666; --line: #e4e4e4;
+  --brand: #d71920; --head: #ea0009; --edge: #df6436;
+  --water: #3b82c4; --water-2: #8fbbe3; --water-3: #dcebf8;
+  --ok: #2e7d32; --ok-t: #dff0e0; --watch: #b26a00; --watch-t: #fdefd2; --warn: #e65100; --warn-t: #fde3d3; --danger: #c62828; --danger-t: #f9dada;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { background: var(--page); color: var(--ink); font-family: var(--font); }
+.wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.demo { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.demo button { font: 600 13px var(--font); border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.demo button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.demo button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; text-align: center; max-width: 380px; }
+.phone { width: 100%; max-width: 400px; background: var(--surface); border-radius: 34px; overflow: hidden; box-shadow: 0 30px 70px rgba(0,0,0,.18); }
+.head { background: var(--head); color: #fff; padding: 14px 18px 12px; border-bottom: 3px solid var(--edge); font-weight: 800; font-size: 15px; }
+.head small { display: block; font-weight: 500; font-size: 12px; opacity: .9; }
+.hero { margin: 12px 14px 0; border-radius: 24px; padding: 16px 18px; color: #fff; background: linear-gradient(180deg, var(--s1), var(--s2)); }
+.hero b { display: block; font-size: 20px; } .hero span { font-size: 44px; font-weight: 200; line-height: 1.1; color: var(--hw); }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px 14px 22px; }
+.sec { grid-column: 1 / -1; font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 8px 2px 0; }
+
+.tile { background: var(--bg); border-radius: 22px; padding: 14px 14px 12px; min-width: 0; display: grid; gap: 4px; align-content: start; position: relative; }
+.wide { grid-column: 1 / -1; }
+.t-head { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; }
+.t-head svg { width: 16px; height: 16px; color: var(--muted); }
+.t-body { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-height: 112px; }
+.val { font-size: 34px; font-weight: 400; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.val small { font-size: 16px; color: var(--muted); margin-left: 2px; }
+.mean { font-size: 14px; font-weight: 600; margin-top: 6px; }
+.note { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.chip { justify-self: start; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 9px; background: var(--chip-bg, var(--surface)); color: var(--chip-ink, var(--ink)); }
+.pic { display: block; }
+.pic text { font: 700 10px var(--font); fill: var(--muted); }
+.tide-row { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+.tide-row .big { font-size: 26px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.why { font-size: 14px; line-height: 1.5; margin: 0; padding-left: 18px; }
+@media (max-width: 360px) { .t-body { grid-template-columns: 1fr; } }
+</style>
+</head><body>
+
+<div class="wrap">
+  <div class="demo" role="group" aria-label="Try a level">
+    <button type="button" data-s="normal" aria-pressed="true">Normal (your screenshot)</button>
+    <button type="button" data-s="warning">Warning</button>
+  </div>
+  <p class="hint">Every reading becomes a picture you can read at a glance, in SDP white with water blue and the level colours. Sample numbers; JPS marks here are placeholders.</p>
+  <article class="phone">
+    <div class="head">Flood-Ready<small>Bandar Bukit Raja</small></div>
+    <div class="hero" id="hero"><b>Aman Perdana 1A/KU 5</b><span id="hword">Safe</span></div>
+    <div class="grid" id="grid"></div>
+  </article>
+</div>
+
+<script>
+const S = {
+  normal: { word: 'Safe', sky: ['#4c5a70', '#7d889c'], hw: '#fff', level: 'normal',
+    rainNow: 0, rain12: [0, 0, .2, .5, 1.1, 1.4, .9, .4, .2, 0, 0, 0], startHour: 19,
+    river: .36, th: { alert: .60, warning: .80, danger: 1.00 }, station: 'Sg. Kapar Kechil di Kg. Perepat',
+    prone: 3, model: .04, tideNow: 18.0,
+    why: ['No JPS station near this street is above its alert line.'] },
+  warning: { word: 'Get ready', sky: ['#15171d', '#2c2f39'], hw: '#ff9f43', level: 'warning',
+    rainNow: 18, rain12: [18, 14, 8, 4, 2, 1, .5, 0, 0, 0, 0, 0], startHour: 20,
+    river: .86, th: { alert: .60, warning: .80, danger: 1.00 }, station: 'Sg. Kapar Kechil di Kg. Perepat',
+    prone: 4, model: .71, tideNow: 20.0,
+    why: ['River at Kg. Perepat is above its warning line (0.86 m).', 'Heavy rain at the nearest gauge: 18 mm in the last hour.'] },
+};
+const TONE = { ok: ['--ok-t', '--ok'], watch: ['--watch-t', '--watch'], warn: ['--warn-t', '--warn'], danger: ['--danger-t', '--danger'], info: ['--water-3', '--water'] };
+const ICON = {
+  drop: '<path d="M12 3s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z" fill="currentColor"/>',
+  bars: '<path d="M5 20V12M10 20V6M15 20v-9M20 20v-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+  river: '<path d="M3 9c2 0 3-1.5 4.5-1.5S10 9 12 9s3-1.5 4.5-1.5S19 9 21 9M3 15c2 0 3-1.5 4.5-1.5S10 15 12 15s3-1.5 4.5-1.5S19 15 21 15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>',
+  home: '<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" fill="currentColor"/>',
+  tide: '<path d="M3 16c3-8 6-8 9 0s6 8 9 0" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+  ring: '<circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2.4" fill="none"/><path d="M12 4a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="4" fill="none"/>',
+  why: '<circle cx="12" cy="12" r="9" fill="currentColor"/><path d="M12 11v6M12 7.5v.5" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>',
+};
+const v = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const head = (icon, title) => `<div class="t-head"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[icon]}</svg>${title}</div>`;
+const pad = (h) => String(h % 24).padStart(2, '0') + ':00';
+
+/* 1. Rain now: a drop that fills with water, 0 to 30+ mm in the last hour. */
+function rainNow(s) {
+  const f = Math.min(s.rainNow / 30, 1), top = 8 + (1 - f) * 84;
+  const drop = 'M40 6C40 6 12 40 12 62a28 28 0 0 0 56 0C68 40 40 6 40 6z';
+  const mean = s.rainNow === 0 ? 'None now' : s.rainNow < 2.5 ? 'Light' : s.rainNow < 10 ? 'Moderate' : 'Heavy';
+  return `<section class="tile">${head('drop', 'Rain now')}<div class="t-body"><div><div class="val">${s.rainNow}<small>mm</small></div><div class="mean">${mean}</div><div class="note">in the last hour, nearest gauge</div></div>
+  <svg class="pic" width="58" height="76" viewBox="0 0 80 104" aria-hidden="true"><defs><clipPath id="dc"><path d="${drop}"/></clipPath></defs>
+    <path d="${drop}" fill="${v('--water-3')}"/><rect x="0" y="${top}" width="80" height="100" fill="${v('--water')}" clip-path="url(#dc)"/>
+    <path d="${drop}" fill="none" stroke="${v('--water')}" stroke-width="2"/><text x="72" y="12" text-anchor="end">30+</text><text x="72" y="100" text-anchor="end">0</text></svg></div></section>`;
+}
+/* 2. Next 12 hours: total and a bar per hour. */
+function rainNext(s) {
+  const total = s.rain12.reduce((a, b) => a + b, 0), max = Math.max(5, ...s.rain12), W = 112, H = 70, bw = 6;
+  const bars = s.rain12.map((mm, i) => { const h = Math.max(3, mm / max * H); return `<rect x="${i * 9.4}" y="${H - h}" width="${bw}" height="${h}" rx="3" fill="${mm ? v('--water') : v('--water-3')}"/>`; }).join('');
+  const peak = s.rain12.indexOf(Math.max(...s.rain12));
+  return `<section class="tile">${head('bars', 'Next 12 hours')}<div class="val" style="margin-top:6px">${total.toFixed(1)}<small>mm</small></div>
+  <div class="note">${total ? `Heaviest around ${pad(s.startHour + peak)}` : 'No rain expected'}</div>
+  <svg class="pic" width="100%" height="88" viewBox="0 0 ${W} ${H + 16}" preserveAspectRatio="none" aria-hidden="true">${bars}<text x="0" y="${H + 13}">${pad(s.startHour)}</text><text x="${W}" y="${H + 13}" text-anchor="end">${pad(s.startHour + 11)}</text></svg></section>`;
+}
+/* 3. River: a gauge pill filled to today's level with the JPS marks as ticks. */
+function river(s) {
+  const { alert, warning, danger } = s.th, top = danger * 1.25, H = 112, y = (m) => 4 + (1 - Math.min(m, top) / top) * (H - 8);
+  const status = s.river >= danger ? ['Above danger', 'danger'] : s.river >= warning ? ['Above warning', 'warn'] : s.river >= alert ? ['Above alert', 'watch'] : s.river >= alert - .3 ? ['Close to alert', 'watch'] : ['Low', 'ok'];
+  const gap = s.river < alert ? `${(alert - s.river).toFixed(2)} m below alert` : `${(s.river - (s.river >= warning ? warning : alert)).toFixed(2)} m above ${s.river >= warning ? 'warning' : 'alert'}`;
+  const [tb, ti] = TONE[status[1]];
+  const tick = (m, c, l) => `<line x1="44" x2="52" y1="${y(m)}" y2="${y(m)}" stroke="${c}" stroke-width="3" stroke-linecap="round"/><text x="56" y="${y(m) + 3.5}" style="fill:${c}">${l}</text>`;
+  return `<section class="tile">${head('river', 'River level')}<span class="chip" style="--chip-bg:var(${tb});--chip-ink:var(${ti})">${status[0]}</span>
+  <div class="t-body"><div><div class="val">${s.river.toFixed(2)}<small>m</small></div><div class="note" style="margin-top:6px">${gap}</div></div>
+  <svg class="pic" width="74" height="${H}" viewBox="0 0 74 ${H}" aria-hidden="true"><defs><clipPath id="pc"><rect x="16" y="4" width="24" height="${H - 8}" rx="12"/></clipPath></defs>
+    <rect x="16" y="4" width="24" height="${H - 8}" rx="12" fill="${v('--water-3')}"/><rect x="16" y="${y(s.river)}" width="24" height="${H}" fill="${v('--water-2')}" clip-path="url(#pc)"/>
+    <path d="M4 ${y(s.river) - 5} L12 ${y(s.river)} L4 ${y(s.river) + 5}z" fill="${v('--ink')}"/>
+    ${tick(alert, v('--watch'), 'A')}${tick(warning, v('--warn'), 'W')}${tick(danger, v('--danger'), 'D')}</svg></div>
+  <div class="note">${s.station}</div></section>`;
+}
+/* 4. This street: a scalloped badge with the 1-5 flood-prone score. */
+function prone(s) {
+  const tone = s.prone >= 4 ? 'warn' : s.prone === 3 ? 'watch' : 'ok', [tb, ti] = TONE[tone], n = 12, R = 40, r = 35, cx = 46, cy = 46;
+  let d = ''; for (let i = 0; i <= n * 8; i++) { const a = i / (n * 8) * Math.PI * 2, rr = r + (R - r) * (0.5 + 0.5 * Math.cos(a * n)); d += `${i ? 'L' : 'M'}${(cx + rr * Math.sin(a)).toFixed(1)},${(cy - rr * Math.cos(a)).toFixed(1)}`; }
+  const dots = [1, 2, 3, 4, 5].map((i) => { const a = (-60 + (i - 1) * 30) * Math.PI / 180; return `<circle cx="${cx + 52 * Math.sin(a) * .0 + (i - 3) * 13}" cy="104" r="4" fill="${i <= s.prone ? v(ti) : v('--line')}"/>`; }).join('');
+  const word = s.prone >= 4 ? 'Low-lying' : s.prone === 3 ? 'Average' : 'Lower risk';
+  return `<section class="tile">${head('home', 'This street')}<div style="display:grid;justify-items:center;gap:2px;margin-top:4px">
+  <svg class="pic" width="92" height="112" viewBox="0 0 92 112" aria-hidden="true"><path d="${d}z" fill="${v(tb)}"/><text x="${cx}" y="${cy + 12}" text-anchor="middle" style="font:400 34px var(--font);fill:${v('--ink')}">${s.prone}</text><text x="${cx}" y="${cy + 26}" text-anchor="middle">of 5</text>${dots}</svg>
+  <div class="mean" style="margin:0">${word}</div><div class="note" style="text-align:center">How easily this street floods, from the ground shape</div></div></section>`;
+}
+/* 5. Tide: a day-long wave like the sunrise card, with now marked and the next high water. */
+function tide(s) {
+  const pts = Array.from({ length: 25 }, (_, h) => 2.6 + 2.0 * Math.sin((h - 3.2) / 12.4 * 2 * Math.PI));
+  const W = 210, H = 84, x = (h) => h / 24 * W, y = (m) => H - 8 - (m - .4) / 4.6 * (H - 16);
+  const line = pts.map((m, h) => `${h ? 'L' : 'M'}${x(h).toFixed(1)},${y(m).toFixed(1)}`).join('');
+  const nowM = 2.6 + 2.0 * Math.sin((s.tideNow - 3.2) / 12.4 * 2 * Math.PI);
+  let hiT = 3.2 + 3.1; while (hiT <= s.tideNow) hiT += 12.4;
+  const hiH = Math.floor(hiT) % 24, hiM = Math.round((hiT % 1) * 60), hiLabel = `${String(hiH).padStart(2, '0')}:${String(hiM).padStart(2, '0')}`;
+  const rising = Math.cos((s.tideNow - 3.2) / 12.4 * 2 * Math.PI) > 0;
+  const past = pts.map((m, h) => h <= s.tideNow ? `${h ? 'L' : 'M'}${x(h).toFixed(1)},${y(m).toFixed(1)}` : '').join('');
+  return `<section class="tile wide">${head('tide', 'Tide · Port Klang')}<div class="tide-row"><div><div class="note">Next high water</div><div class="big">${hiLabel}</div><div class="note">4.6 m · ${rising ? 'rising now' : 'falling now'}</div></div>
+  <svg class="pic" width="100%" height="${H + 14}" viewBox="0 0 ${W} ${H + 14}" preserveAspectRatio="none" aria-hidden="true">
+    <path d="${line} L${W},${H} L0,${H}z" fill="${v('--water-3')}"/><path d="${past} L${x(s.tideNow)},${H} L0,${H}z" fill="${v('--water-2')}" opacity=".55"/>
+    <path d="${line}" fill="none" stroke="${v('--water')}" stroke-width="2"/><line x1="0" x2="${W}" y1="${H}" y2="${H}" stroke="${v('--ink')}" stroke-width="1.5"/>
+    <circle cx="${x(s.tideNow)}" cy="${y(nowM)}" r="6" fill="#fff" stroke="${v('--brand')}" stroke-width="3"/>
+    <text x="0" y="${H + 12}">00:00</text><text x="${W / 2}" y="${H + 12}" text-anchor="middle">12:00</text><text x="${W}" y="${H + 12}" text-anchor="end">24:00</text></svg></div>
+  <div class="note">High tide only matters when it meets heavy rain: drains empty slower.</div></section>`;
+}
+/* 6. Flood model: a ring, shown as information only. */
+function model(s) {
+  const p = s.model, R = 34, C = 2 * Math.PI * R, tone = p >= .5 ? 'warn' : p >= .2 ? 'watch' : 'ok';
+  return `<section class="tile">${head('ring', 'Flood model')}<div style="display:grid;justify-items:center;margin-top:6px">
+  <svg class="pic" width="96" height="96" viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="${R}" fill="none" stroke="${v('--line')}" stroke-width="9"/>
+    <circle cx="48" cy="48" r="${R}" fill="none" stroke="${v(TONE[tone][1])}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${Math.max(.01, p) * C} ${C}" transform="rotate(-90 48 48)"/>
+    <text x="48" y="55" text-anchor="middle" style="font:400 24px var(--font);fill:${v('--ink')}">${Math.round(p * 100)}%</text></svg></div>
+  <div class="note" style="text-align:center">Chance the river crosses its warning line in 2 h. For information; alerts follow JPS.</div></section>`;
+}
+/* 7. Updated: a clock face with the data time. */
+function updated() {
+  return `<section class="tile">${head('why', 'Updated')}<div style="display:grid;justify-items:center;margin-top:6px">
+  <svg class="pic" width="96" height="96" viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="38" fill="${v('--surface')}"/>
+    ${Array.from({ length: 12 }, (_, i) => { const a = i * 30 * Math.PI / 180; return `<circle cx="${48 + 31 * Math.sin(a)}" cy="${48 - 31 * Math.cos(a)}" r="2" fill="${v('--muted')}"/>`; }).join('')}
+    <line x1="48" y1="48" x2="48" y2="24" stroke="${v('--ink')}" stroke-width="4" stroke-linecap="round"/><line x1="48" y1="48" x2="48" y2="66" stroke="${v('--ink')}" stroke-width="3" stroke-linecap="round" transform="rotate(180 48 48)"/>
+    <circle cx="48" cy="48" r="4" fill="${v('--brand')}"/></svg></div>
+  <div class="note" style="text-align:center"><b style="color:var(--ink)">18:00</b> · every 15 min<br>JPS Infobanjir, Open-Meteo</div></section>`;
+}
+function why(s) { return `<section class="tile wide">${head('why', 'Why this level')}<ul class="why">${s.why.map((w) => `<li>${w}</li>`).join('')}</ul></section>`; }
+
+function render(k) {
+  const s = S[k], h = document.getElementById('hero').style;
+  h.setProperty('--s1', s.sky[0]); h.setProperty('--s2', s.sky[1]); h.setProperty('--hw', s.hw);
+  document.getElementById('hword').textContent = s.word;
+  document.getElementById('grid').innerHTML = `<p class="sec">Right now</p>${rainNow(s)}${rainNext(s)}${river(s)}${prone(s)}${tide(s)}<p class="sec">Technical details</p>${model(s)}${updated()}${why(s)}`;
+  document.querySelectorAll('.demo button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.s === k)));
+}
+document.querySelectorAll('.demo button').forEach((b) => b.addEventListener('click', () => render(b.dataset.s)));
+render('normal');
+</script>
+
+</body></html>

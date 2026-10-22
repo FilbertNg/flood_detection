@@ -88,7 +88,7 @@ describe('StreetPage', () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByText('Cloudy · 70% chance of rain')).toBeInTheDocument();
-    expect(screen.getByText('Weather: Open-Meteo')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Updated' }).closest('.ptile')).toHaveTextContent('JPS Infobanjir, Open-Meteo');
   });
 
   it('labels replayed data inside the hero card', async () => {
@@ -99,8 +99,9 @@ describe('StreetPage', () => {
 
   it('describes a flood-prone street in plain words', async () => {
     renderStreet('en', { ...streetDetail, susceptibility: 5 });
-    expect(await screen.findByText('Low-lying: floods more easily than most')).toBeInTheDocument();
-    expect(screen.getByText('5 / 5')).toBeInTheDocument();
+    const street = (await screen.findByRole('heading', { name: 'This street' })).closest('.ptile') as HTMLElement;
+    expect(street).toHaveTextContent('Low-lying');
+    expect(street).toHaveTextContent('of 5');
   });
 
   it('shows no replay label for live data', async () => {
@@ -117,22 +118,20 @@ describe('StreetPage', () => {
     expect(document.querySelector('.keys')).toBeNull();
   });
 
-  it('puts the Rain panel full width first, then River level beside This street', async () => {
+  it('draws "Right now" as picture tiles: rain now, next 12 hours, river, this street, then the tide full width', async () => {
     renderStreet('en');
     await screen.findByText('Get ready');
-    const rain = screen.getByRole('heading', { name: 'Rain' }).closest('.panel')!;
-    const river = screen.getByRole('heading', { name: 'River level' }).closest('.panel')!;
-    const street = screen.getByRole('heading', { name: 'This street' }).closest('.panel')!;
-    expect(rain.parentElement!.classList.contains('panel-pair')).toBe(false);
-    expect(rain.compareDocumentPosition(river) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(river.parentElement).toBe(street.parentElement);
-    expect(river.parentElement!.classList.contains('panel-pair')).toBe(true);
+    const grid = screen.getByRole('heading', { name: 'Right now' }).closest('.ptiles') as HTMLElement;
+    const titles = [...grid.querySelectorAll('.ptile-head')].map((h) => h.textContent);
+    expect(titles).toEqual(['Rain now', 'Next 12 hours', 'River level', 'This street', 'Tide · Port Klang']);
+    expect(grid.querySelectorAll('.ptile')[4]).toHaveAttribute('data-wide', 'true');
+    for (const pic of grid.querySelectorAll('svg.pic')) expect(pic).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('keeps technical words and numbers inside the Technical details card, shown open with no toggle', async () => {
     renderStreet('en');
     await screen.findByText('Jalan Makyong');
-    const details = screen.getByRole('heading', { name: 'Technical details' }).closest('section.tech') as HTMLElement;
+    const details = screen.getByRole('heading', { name: 'Technical details' }).closest('section.tech-tiles') as HTMLElement;
     expect(details).not.toBeNull();
     expect(document.querySelector('details.tech')).toBeNull();
     expect(details).toBeVisible();
@@ -145,7 +144,7 @@ describe('StreetPage', () => {
       if (details.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_PRECEDING) above.push(n.textContent ?? '');
     }
     const text = above.join(' ');
-    // River heights are shown above it on purpose (the River level panel); source and model names are not.
+    // River heights are shown above it on purpose (the River level tile); source and model names are not.
     expect(text).not.toMatch(/JPS|ML|model|Open-Meteo/);
   });
 
@@ -185,31 +184,44 @@ describe('StreetPage', () => {
   it('gives the river its own panel: height, distance to the next mark, status and the forecast highlight', async () => {
     renderStreet('en', streetDetail, true);
     // The station reading arrives after the street.
-    const panel = (await screen.findByText('3.52 m')).closest('.panel') as HTMLElement;
-    expect(panel).toHaveTextContent('3.52 m');
+    const panel = (await screen.findByText('Measured at Sg. Binjai di Pekan Meru')).closest('.ptile') as HTMLElement;
+    expect(panel).toHaveTextContent('3.52m');
     expect(panel).toHaveTextContent('0.28 m below the alert line');
     expect(panel).toHaveTextContent('Close to alert');
-    expect(panel).toHaveTextContent('Measured at Sg. Binjai di Pekan Meru');
     expect(panel).toHaveTextContent('Estimate: may reach the warning line by 10:00');
-    expect(panel.querySelector('.river-gauge')).not.toBeNull();
+    expect(panel.querySelectorAll('[data-tick]')).toHaveLength(3);
   });
 
   it('says there is no reading in the river panel when no river station reports', async () => {
     renderStreet('en');
-    const panel = (await screen.findByRole('heading', { name: 'River level' })).closest('.panel') as HTMLElement;
+    const panel = (await screen.findByRole('heading', { name: 'River level' })).closest('.ptile') as HTMLElement;
     expect(panel).toHaveTextContent('No reading right now');
   });
 
-  it('shows rain, street and tide panels outside Technical details', async () => {
+  it('shows rain, street and tide tiles outside Technical details', async () => {
     renderStreet('en', streetDetail, true);
-    await screen.findByText('3.52 m');
-    const rain = screen.getByRole('heading', { name: 'Rain' }).closest('.panel') as HTMLElement;
-    expect(rain).toHaveTextContent('61.5 mm in the last hour');
-    expect(rain).toHaveTextContent('2.5 mm forecast in the next 12 hours');
-    const street = screen.getByRole('heading', { name: 'This street' }).closest('.panel') as HTMLElement;
-    expect(street).toHaveTextContent('5 / 5');
-    const tide = screen.getByRole('heading', { name: 'Tide' }).closest('.panel') as HTMLElement;
-    expect(tide.closest('details')).toBeNull();
-    expect(tide).toHaveTextContent('High tide 11:00 · 2.2 m');
+    await screen.findByText('Measured at Sg. Binjai di Pekan Meru');
+    const tile = (name: string) => screen.getByRole('heading', { name }).closest('.ptile') as HTMLElement;
+    const tech = screen.getByRole('heading', { name: 'Technical details' });
+    expect(tile('Rain now')).toHaveTextContent('61.5mm');
+    expect(tile('Next 12 hours')).toHaveTextContent('2.5mm');
+    expect(tile('This street')).toHaveTextContent('of 5');
+    expect(tile('Tide · Port Klang')).toHaveTextContent('11:00');
+    expect(tile('Tide · Port Klang')).toHaveTextContent('2.2 m');
+    for (const name of ['Rain now', 'Next 12 hours', 'This street', 'Tide · Port Klang']) {
+      expect(tile(name).compareDocumentPosition(tech) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it('puts the flood model, the update time and the reasons in Technical details, and hides the model tile without a value', async () => {
+    renderStreet('en');
+    const grid = (await screen.findByRole('heading', { name: 'Technical details' })).closest('.ptiles') as HTMLElement;
+    expect(grid).toHaveTextContent('Flood model');
+    expect(grid).toHaveTextContent('Updated');
+    expect(grid).toHaveTextContent('Why this level');
+    cleanup();
+    renderStreet('en', { ...streetDetail, flood_probability: null });
+    await screen.findByRole('heading', { name: 'Technical details' });
+    expect(screen.queryByRole('heading', { name: 'Flood model' })).toBeNull();
   });
 });

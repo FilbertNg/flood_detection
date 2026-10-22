@@ -3,6 +3,7 @@ import type { Answer, AnswerReview } from '@floodready/shared';
 import { API_URL, api } from '../lib/api';
 import { useStreetNames } from '../lib/useStreetNames';
 import { dayTime } from '../lib/chart';
+import { PageLoading } from '../components/LogoFill';
 
 const KEY = ['answers', 'pending'];
 
@@ -22,7 +23,7 @@ export function ReviewPage() {
     <main className="page">
       <h1>Review queue</h1>
       <p className="muted small">Resident answers and photos waiting for review. Valid reports go into the training labels; spam is ignored.</p>
-      {q.isLoading && <p className="muted">Loading…</p>}
+      {q.isLoading && <PageLoading text="Loading the review queue…" />}
       {q.isError && <p role="alert" className="error">Could not load the review queue.</p>}
       {review.isError && <p role="alert" className="error">Could not save the review. Try again.</p>}
       {q.data && q.data.length === 0 && <p className="muted">No answers waiting for review.</p>}
