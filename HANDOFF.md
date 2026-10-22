@@ -194,7 +194,7 @@ The code for the remaining-MVP plan is merged except hosting (WP14). Work on a b
 - Full all-clear fix: hold until the street has been Normal *continuously* for `clear_after_min` (today the hold counts from the alert's issue time; 13% of April 2024 alerts still re-alert within 60 min of an all-clear, `docs/findings.md` D1d). Needs per-street normal-since state, an engine contract change. The Watch push cap already limits what residents receive.
 - Backfill: if `ml_drives_alerts` is ever switched on, guard the 1-day warm-up at quarter starts (it uses the previous quarter's in-sample model; harmless while ML only displays a probability).
 - Outlook reason text says "has an active …" even when the MET warning starts hours ahead.
-- `/admin/stats` reloads and QCs the readings on every call (slow for multi-year periods): cache.
+- `/admin/stats` over "All" (2024 to today) still computes in ~12 s (175k backfill alert rows through `repo.list_alerts`); the result cache and the warm-up after each live tick hide it. Faster would need a leaner alert query for statistics.
 - Suggestions: SUG-7 ids carry no township (two townships sharing a station share a row); SUG-3 lacks the PRD's "similar rain" check; SUG-4's id depends on the cluster's first street.
 - QC: rain gauge stuck at zero. (Heavy rain at one gauge while its neighbours are dry is usually real: 99% of rain-only Watch alerts in Apr 2024 came from a single gauge, `docs/findings.md` D1e.)
 - Wording of the confirmation push for a real (non-simulated) sensor; chunked-upload size limit for photos.

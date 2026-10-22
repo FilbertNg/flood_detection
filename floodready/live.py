@@ -148,6 +148,47 @@ def load_live_readings(live_dir: Path, since: datetime, graph_ids: set[str] | No
     return out[out.time_local >= since_ts].reset_index(drop=True)
 
 
+class LiveReadingsCache:
+    """`load_live_readings` for the API, called with `since` only.
+
+    It starts no earlier than the first logged live day: nothing is logged before it, and starting there spares an
+    old admin statistics window (since = 2024-11-01) a QC run over two years of archive (~23 s instead of ~4 s).
+    The last few results are reused until a live or archive file changes (the logger writes every 15 min)."""
+
+    def __init__(self, live_dir: Path, graph_ids: set[str], archive_dir: Path, size: int = 4):
+        self.live_dir, self.graph_ids, self.archive_dir, self.size = Path(live_dir), graph_ids, Path(archive_dir), size
+        self._memo: dict[tuple, pd.DataFrame] = {}
+        self._lock = threading.Lock()
+
+    def _files(self) -> tuple[list[Path], list[Path]]:
+        live_files = sorted(f for kind in ("wl", "rf") for f in (self.live_dir / kind).glob("*.parquet"))
+        hist_files = sorted(f for kind in ("rf", "wl") for f in (self.archive_dir / kind).glob("*.parquet")
+                            if f.stem in self.graph_ids)
+        return live_files, hist_files
+
+    def __call__(self, since: datetime) -> pd.DataFrame:
+        live_files, hist_files = self._files()
+        if live_files:
+            first = datetime.strptime(min(f.stem for f in live_files), "%Y-%m-%d")
+            since = max(since, first)
+        try:
+            sig = tuple((str(f), f.stat().st_mtime_ns, f.stat().st_size) for f in live_files + hist_files)
+        except OSError:                                  # a file replaced mid-scan: load without the cache
+            sig = None
+        key = (pd.Timestamp(since), sig)
+        with self._lock:
+            hit = self._memo.get(key) if sig is not None else None
+        if hit is not None:
+            return hit.copy()
+        out = load_live_readings(self.live_dir, since, self.graph_ids, archive_dir=self.archive_dir)
+        if sig is not None:
+            with self._lock:
+                if len(self._memo) >= self.size:
+                    self._memo.pop(next(iter(self._memo)))
+                self._memo[key] = out
+        return out.copy()
+
+
 ZERO_PLACEHOLDER_LOOKBACK = pd.Timedelta(hours=6)
 ZERO_PLACEHOLDER_MIN_PREV_M = 0.10
 

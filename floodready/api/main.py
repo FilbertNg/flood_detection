@@ -102,6 +102,10 @@ def create_app(runner: Runner, start_live_loop: bool = True, on_alert_confirmed=
                 runner.refresh_live()
             except Exception:
                 log.exception("live refresh failed")
+            try:
+                app.state.warm_admin()      # in this thread, so the archive is never loaded twice at once
+            except Exception:
+                log.exception("precomputing the admin statistics failed")
             stop.wait(900 - time.time() % 900 + 150)  # 2.5 min after each quarter hour (loggers run at +2)
 
     @asynccontextmanager

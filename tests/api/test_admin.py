@@ -469,3 +469,47 @@ def test_stats_and_report_survive_an_area_row_next_to_a_street_row(adm, tmp_path
     assert adm.client.get(f"{API}/admin/stats", params={"from": "2024-11-01", "to": "2024-11-30"}, headers=h).status_code == 200
     r = adm.client.get(f"{API}/admin/report", params={"month": "2024-11"}, headers=h)
     assert r.status_code == 200 and [e["event_id"] for e in r.json()["events"]] == ["area", "st"]
+
+
+# ---------- result cache (stats and report) ----------
+
+def stats_nov(adm, h):
+    return adm.client.get(f"{API}/admin/stats", params={"from": "2024-11-01", "to": "2024-11-30"}, headers=h).json()
+
+
+def test_stats_are_cached_until_a_write_that_feeds_them(adm):
+    a = adm.seed_alert()
+    adm.seed_answer(alert_id=a)
+    second = adm.seed_answer(alert_id=a, device_id="d2")
+    h = adm.token()
+    assert stats_nov(adm, h)["kpis"]["confirmed"] == 1
+    adm.seed_alert(at=datetime(2024, 11, 20, 9, 0))         # written behind the API's back: the cached result stands
+    assert stats_nov(adm, h)["kpis"]["alerts"] == 1
+    r = adm.client.patch(f"{API}/admin/answers/{second}", json={"review_status": "spam"}, headers=h)
+    assert r.status_code == 200
+    s = stats_nov(adm, h)                                  # the review cleared the cache
+    assert s["kpis"]["alerts"] == 2 and s["kpis"]["confirmed"] == 0
+
+
+def test_a_rejected_write_or_a_login_does_not_clear_the_cache(adm):
+    adm.seed_alert()
+    h = adm.token()
+    stats_nov(adm, h)
+    adm.seed_alert(at=datetime(2024, 11, 20, 9, 0))
+    viewer = adm.token("view@test", "pw-view-12345")
+    assert adm.client.post(f"{API}/admin/notes", json={"street_id": STREET, "text": "x"}, headers=viewer).status_code == 403
+    adm.client.post(f"{API}/admin/preview")
+    assert stats_nov(adm, h)["kpis"]["alerts"] == 1
+
+
+def test_warm_precomputes_the_default_statistics_and_this_months_report(adm, monkeypatch):
+    from floodready.stats import report as report_mod
+    from floodready.stats import statistics
+    adm.seed_alert()
+    adm.client.app.state.warm_admin(datetime(2024, 11, 30, 10, 0))
+    monkeypatch.setattr(statistics, "stats", lambda *a, **k: pytest.fail("stats recomputed"))
+    monkeypatch.setattr(report_mod, "monthly_report", lambda *a, **k: pytest.fail("report recomputed"))
+    h = adm.token()
+    r = adm.client.get(f"{API}/admin/stats", params={"from": "2024-01-01", "to": "2024-11-30"}, headers=h)
+    assert r.status_code == 200 and r.json()["kpis"]["alerts"] == 1
+    assert adm.client.get(f"{API}/admin/report", params={"month": "2024-11"}, headers=h).status_code == 200

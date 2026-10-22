@@ -11,7 +11,7 @@ Scoring rules (starting values from the PRD):
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
@@ -25,7 +25,26 @@ NO_NEEDED = 3
 WARNING_LEVELS = ("warning", "danger")
 
 
+MYT = timezone(timedelta(hours=8))
+
+
+def quick_naive(value) -> datetime | None:
+    """Naive MYT datetime from a plain datetime or an ISO string without pandas, or None when pandas must parse it.
+    pd.Timestamp costs ~25 µs a call and statistics over the full archive make about a million of these calls."""
+    if type(value) is str:
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    elif type(value) is not datetime:
+        return None
+    return value.astimezone(MYT).replace(tzinfo=None) if value.tzinfo is not None else value
+
+
 def _dt(value) -> datetime | None:
+    quick = quick_naive(value)
+    if quick is not None:
+        return quick
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     ts = pd.Timestamp(value)
