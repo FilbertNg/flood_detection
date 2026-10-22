@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router';
+import { auth } from '../auth';
 import { LEVEL_LABEL, LEVEL_ORDER, LEVEL_STYLE } from '@floodready/shared';
 import { Credits } from '../components/Credits';
 import { OpsMapView } from '../components/OpsMapView';
@@ -11,6 +12,7 @@ import { STALE_GREY } from '../lib/colours';
 import { PageLoading } from '../components/LogoFill';
 
 export function OpsMapPage() {
+  const preview = useSyncExternalStore(auth.subscribe, auth.isPreview);
   const [focused, setFocused] = useState<string | null>(null);
   // Which count panels have their street list dropped down (each on its own).
   const [open, setOpen] = useState({ risk: false, watch: false });
@@ -103,11 +105,13 @@ export function OpsMapPage() {
               ))}
             </ul>
           </section>
-          <section className="card">
-            <h2>Demo replay</h2>
-            <p className="muted small">Replays the real 12 Nov 2024 flash flood from JPS data. Everything it creates is labelled Replay.</p>
-            <ReplayControl />
-          </section>
+          {!preview && (
+            <section className="card">
+              <h2>Demo replay</h2>
+              <p className="muted small">Replays the real 12 Nov 2024 flash flood from JPS data. Everything it creates is labelled Replay.</p>
+              <ReplayControl />
+            </section>
+          )}
         </aside>
       </div>
     </>

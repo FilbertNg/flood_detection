@@ -68,6 +68,7 @@ What each value is for:
 | Setting | What it is | Where it is used |
 | --- | --- | --- |
 | `JWT_SECRET` | The key that signs Admin login tokens. Anyone who has it can forge an admin login. | API only |
+| `ADMIN_PREVIEW` | `1` turns on the read-only Admin preview (a "Try a read-only preview" button on the login page) for judges and visitors. It can read the map, statistics, reports and suggestions; it cannot change anything or see residents' answers. Leave it unset to switch the preview off. | API only |
 | `UPLOAD_URL_SECRET` | Signs the 1-hour links to residents' photos in the Admin review queue. | API only |
 | `SENSOR_TOKEN` | Password the (simulated) water-level sensor sends with each reading (`scripts/sim_sensor.py`). | API and the sensor script |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web Push keys (see below). | API only |

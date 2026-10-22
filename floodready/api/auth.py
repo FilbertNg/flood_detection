@@ -10,6 +10,10 @@ Login sources, in order:
 3. the development login, ONLY when FLOODREADY_DEV_LOGIN=1 is set explicitly AND ADMIN_EMAIL, ADMIN_PASSWORD and
    JWT_SECRET are unset AND `admin_users` is empty. Absent configuration never turns it on.
 
+Read-only preview: with ADMIN_PREVIEW=1, `POST /admin/preview` issues a viewer token for PREVIEW_EMAIL without a
+password, so judges and visitors can look around. It is read-only like any viewer, and it may not read residents'
+answers (device ids, photos, locations). Switching the flag off rejects every preview token at once.
+
 `JWT_SECRET` must be at least 32 bytes; a shorter one is treated as unset. Without a usable secret (and without the
 dev flag) login answers 503 "admin login not configured" and every token is rejected.
 """
@@ -36,6 +40,7 @@ log = logging.getLogger(__name__)
 DEV_ADMIN = ("admin@floodready.local", "floodready-demo")
 DEV_SECRET = "dev-only-secret-change-me-before-any-deployment"
 ROLES = ("admin", "viewer")
+PREVIEW_EMAIL = "preview@floodready.local"
 TOKEN_HOURS = 12
 MIN_SECRET_BYTES = 32
 MAX_PASSWORD_BYTES = 72          # bcrypt ignores everything after 72 bytes; refuse instead of silently truncating
@@ -53,6 +58,10 @@ class Principal:
     @property
     def can_write(self) -> bool:
         return self.role == "admin"
+
+    @property
+    def is_preview(self) -> bool:
+        return self.email == PREVIEW_EMAIL
 
 
 # ---------- users ----------
@@ -104,6 +113,10 @@ def user_count(conn) -> int:
 
 def dev_flag() -> bool:
     return os.environ.get("FLOODREADY_DEV_LOGIN") == "1"
+
+
+def preview_flag() -> bool:
+    return os.environ.get("ADMIN_PREVIEW") == "1"
 
 
 def real_secret() -> str | None:
@@ -186,6 +199,8 @@ def principal_for(conn, claims: dict) -> Principal | None:
         return Principal(email, "admin")
     if email == DEV_ADMIN[0] and dev_mode(conn):
         return Principal(email, "admin")
+    if email == PREVIEW_EMAIL and preview_flag():
+        return Principal(email, "viewer")
     return None
 
 

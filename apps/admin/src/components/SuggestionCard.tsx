@@ -51,7 +51,9 @@ function DateStrip({ label, dates }: { label: string; dates: string[] }) {
  * status; the action and the screening caveat; tiles and a date strip from the structured evidence; the
  * method folded away; a note that saves itself; buttons for the next step only.
  */
-export function SuggestionCard({ s, busy, onSave }: { s: Suggestion; busy: boolean; onSave: (status: SuggestionStatus, note: string) => Promise<unknown> }) {
+export function SuggestionCard({ s, busy, onSave, readOnly = false }: {
+  s: Suggestion; busy: boolean; onSave: (status: SuggestionStatus, note: string) => Promise<unknown>; readOnly?: boolean;
+}) {
   const [note, setNote] = useState(s.note ?? '');
   const [saved, setSaved] = useState(false);
   const current = useRef(note);
@@ -109,6 +111,9 @@ export function SuggestionCard({ s, busy, onSave }: { s: Suggestion; busy: boole
         </details>
       )}
 
+      {readOnly ? (
+        s.note && <p className="sug-note-text">Note: {s.note}</p>
+      ) : (
       <div className="sug-foot">
         <div className="sug-note">
           <label htmlFor={`note-${s.id}`}>Note (optional)</label>
@@ -131,6 +136,7 @@ export function SuggestionCard({ s, busy, onSave }: { s: Suggestion; busy: boole
           ))}
         </div>
       </div>
+      )}
     </article>
   );
 }
