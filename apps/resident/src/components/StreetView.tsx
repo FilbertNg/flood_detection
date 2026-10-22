@@ -133,8 +133,12 @@ export function StreetView({ id, lang, deviceId, showBack = true, topLeft, below
     return (
       <article className="street" role="status" aria-label={t(lang, 'loadingStreetLabel')}>
         {showBack && <BackButton lang={lang} />}
+        {topLeft && <div className="street-top">{topLeft}</div>}
         <div className="sk-hero"><LogoFill size={64} /><small>{t(lang, 'loadingStreet')}</small></div>
+        {/* The controls around the hero card need no data, so they keep their place. */}
+        {belowHero}
         <div className="ptiles" aria-hidden="true">
+          <span className="bone sk-sec" />
           {SKELETON.map((bones, i) => (
             <div key={i} className="sk-tile" data-wide={i === SKELETON.length - 1 || undefined}>
               {bones.map(([h, w], j) => <span key={j} className="bone" style={{ height: h, width: w }} />)}
