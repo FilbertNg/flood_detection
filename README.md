@@ -9,8 +9,8 @@ Our entry for the [Sime Darby Property University Hackathon 2026](https://www.si
 | Resident app | https://floodready-bbr.pages.dev |
 | Admin app (SDP township team, login required) | https://floodready-admin.pages.dev |
 | Pitch deck and demo video | [Pitch Deck](submission_files\SDP-Hackathon-2026_Team-bogosort_Flood-Ready-Pitch-Deck.pdf) |
-| Demo video | !() |
-| Extra Document | ![Pilot Budget](submission_files\SDP-Hackathon-2026_Team-bogosort_Flood-Ready-Township-Pilot-Budget.xlsx)|
+| Demo video | [Demo Video](https://drive.google.com/file/d/1VxO8EWRFYvjstVFDDypNTT2l4YH06INt/view?usp=sharing) |
+| Extra Document | [Pilot Budget](submission_files\SDP-Hackathon-2026_Team-bogosort_Flood-Ready-Township-Pilot-Budget.xlsx)|
 
 The apps are hosted on Cloudflare Pages. The API behind them runs on a team laptop and is reached through Tailscale Funnel, so the apps show data only while that laptop is on.
 
